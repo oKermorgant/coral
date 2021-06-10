@@ -26,7 +26,6 @@ fs::path resolvePath(const std::string &file)
     const auto pkg_path(ament_index_cpp::get_package_share_directory(package));
     abs_path = pkg_path + file.substr(slash);
   }
-
   return abs_path;
 }
 
@@ -38,8 +37,8 @@ osg::Node * extractMesh(const std::string &mesh)
 
   if(!fs::exists(fullpath))
   {
-    //OSG_FATAL << "Cannot find mesh file '"
-      //         << fullpath << "'\n";
+    OSG_FATAL << "Cannot find mesh file '"
+              << fullpath << "'\n";
   }
 
   addResourcePath(path);

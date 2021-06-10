@@ -40,8 +40,10 @@ public:
 //                       Scene 
 // ----------------------------------------------------
 
-Scene::Scene(const SceneParams &params, const std::string& terrain_shader_basename )
+Scene::Scene(const SceneParams &params) : params(params)
 {
+  initCoralResources();
+
   osgOcean::ShaderManager::instance().enableShaders(true);
 
   {
@@ -66,7 +68,7 @@ Scene::Scene(const SceneParams &params, const std::string& terrain_shader_basena
               params.windDirection,
               params.windSpeed, params.depth,
               params.reflectionDamping,
-              params.waveScale, params.isChoppy,
+              params.waveScale, params.isChoppy(),
               params.choppyFactor, 10.f, 256 );
       }
       else
@@ -77,7 +79,7 @@ Scene::Scene(const SceneParams &params, const std::string& terrain_shader_basena
               params.windDirection,
               params.windSpeed, params.depth,
               params.reflectionDamping,
-              params.waveScale, params.isChoppy,
+              params.waveScale, params.isChoppy(),
               params.choppyFactor, 10.f, 256 );
       }
 
@@ -115,14 +117,16 @@ Scene::Scene(const SceneParams &params, const std::string& terrain_shader_basena
       ocean_scene->setUnderwaterDiffuse( scene_type.underwaterDiffuse );
       ocean_scene->setUnderwaterAttenuation( scene_type.underwaterAttenuation);
 
-      ocean_scene->setSunDirection( sunDir );
-      ocean_scene->enableGodRays(true);
+      ocean_scene->setSunDirection( sunDir );      
       ocean_scene->enableSilt(true);
-      ocean_scene->enableUnderwaterDOF(true);
+      ocean_scene->enableUnderwaterDOF(params.underwaterDof);
       ocean_scene->enableUnderwaterScattering(true);
       ocean_scene->enableDistortion(true);
-      ocean_scene->enableGlare(true);
+      ocean_scene->enableGlare(params.glare);
       ocean_scene->setGlareAttenuation(0.8f);
+
+      ocean_scene->enableGodRays(params.godrays);
+      ocean_scene->setScreenDims(params.width, params.height);
 
       // create sky dome and add to ocean scene
       // set masks so it appears in reflected scene and normal scene
@@ -165,25 +169,6 @@ Scene::Scene(const SceneParams &params, const std::string& terrain_shader_basena
     }
 
     {
-      ScopedTimer islandsTimer("  . Loading islands: ", osg::notify(osg::NOTICE));
-      osg::ref_ptr<osg::Node> islandModel = loadIslands(terrain_shader_basename);
-
-      if( islandModel.valid() )
-      {
-        island_switch = new osg::Switch;
-        island_switch->addChild( islandModel.get(), true );
-
-        island_switch->setNodeMask( ocean_scene->getNormalSceneMask()    |
-                                    ocean_scene->getReflectedSceneMask() |
-                                    ocean_scene->getRefractedSceneMask() |
-                                    ocean_scene->getHeightmapMask()      |
-                                    RECEIVE_SHADOW);
-
-        ocean_scene->addChild( island_switch.get() );
-      }
-    }
-
-    {
       ScopedTimer lightingTimer("  . Setting up lighting: ", osg::notify(osg::NOTICE));
       osg::LightSource* lightSource = new osg::LightSource;
       lightSource->setNodeMask(lightSource->getNodeMask() & ~CAST_SHADOW & ~RECEIVE_SHADOW);
@@ -202,6 +187,30 @@ Scene::Scene(const SceneParams &params, const std::string& terrain_shader_basena
       scene->addChild( lightSource );
       scene->addChild( ocean_scene.get() );
       //_scene->addChild( sunDebug(_sunPositions[CLOUDY]) );
+    }
+
+    {
+      ScopedTimer lightingTimer("  . Setting up shaders: ", osg::notify(osg::NOTICE));
+
+      static const char model_vertex[] = "coral_scene.vert";
+      static const char model_fragment[] = "coral_scene.frag";
+      auto program = osgOcean::ShaderManager::instance().createProgram("object_shader", model_vertex,model_fragment, "", "");
+      ocean_scene->setDefaultSceneShader(program);
+
+      root = scene; //new osg::Group;
+
+      root->getOrCreateStateSet()->addUniform(new osg::Uniform("uOverlayMap", 1));
+      root->getStateSet()->addUniform(new osg::Uniform("uNormalMap", 2));
+      root->getStateSet()->addUniform(new osg::Uniform("SLStex", 3));
+      root->getStateSet()->addUniform(new osg::Uniform("SLStex2", 4));
+      root->getStateSet()->addUniform( new osg::Uniform("stddev", 0.0f ) );
+      root->getStateSet()->addUniform( new osg::Uniform("mean", 0.0f ) );
+      root->getStateSet()->addUniform( new osg::Uniform("light", 1.f ) );
+
+      ocean_scene->setOceanSurfaceHeight(0);
+
+      if(root.get() != scene.get())
+        root->addChild(scene);
     }
 
     osg::notify(osg::NOTICE) << "complete.\nTime Taken: ";
@@ -229,71 +238,17 @@ void Scene::changeScene( SceneType::SCENE_TYPE type )
   ocean_scene->setSunDirection( sunDir );
   light->setPosition( osg::Vec4f(-sunDir, 0.f) );
   light->setDiffuse( scene_type.sunDiffuse);
-
-  if(island_switch.valid() )
-  {
-    if(type == SceneType::CLEAR || type == SceneType::CLOUDY)
-      island_switch->setAllChildrenOn();
-    else
-      island_switch->setAllChildrenOff();
-  }
-}
-
-#define USE_CUSTOM_SHADER
-
-// Load the islands model
-// Here we attach a custom shader to the model.
-// This shader overrides the default shader applied by OceanScene but uses uniforms applied by OceanScene.
-// The custom shader is needed to add multi-texturing and bump mapping to the terrain.
-osg::Node* Scene::loadIslands(const std::string& terrain_shader_basename)
-{
-
-  //  osgDB::Registry::instance()->getDataFilePathList().push_back("island");
-  const std::string filename = "island/islands.ive";
-  osg::ref_ptr<osg::Node> island = osgDB::readNodeFile(filename);
-
-  if(!island.valid()){
-    osg::notify(osg::WARN) << "Could not find: " << filename << std::endl;
-    return NULL;
-  }
-
-#ifdef USE_CUSTOM_SHADER
-  const std::string terrain_vertex   = terrain_shader_basename + ".vert";
-  const std::string terrain_fragment = terrain_shader_basename + ".frag";
-
-  osg::Program* program = osgOcean::ShaderManager::instance().createProgram("terrain", terrain_vertex, terrain_fragment, "", "" );
-  if(program) program->addBindAttribLocation("aTangent", 6);
-
-#endif
-  island->setNodeMask( ocean_scene->getNormalSceneMask()    |
-                       ocean_scene->getReflectedSceneMask() |
-                       ocean_scene->getRefractedSceneMask() |
-                       ocean_scene->getHeightmapMask()      |
-                       RECEIVE_SHADOW);
-  island->getStateSet()->addUniform( new osg::Uniform( "uTextureMap", 0 ) );
-
-#ifdef USE_CUSTOM_SHADER
-  island->getOrCreateStateSet()->setAttributeAndModes(program,osg::StateAttribute::ON);
-  island->getStateSet()->addUniform( new osg::Uniform( "uOverlayMap", 1 ) );
-  island->getStateSet()->addUniform( new osg::Uniform( "uNormalMap",  2 ) );
-#endif
-  osg::PositionAttitudeTransform* islandpat = new osg::PositionAttitudeTransform;
-  islandpat->setPosition(osg::Vec3f( -island->getBound().center()+osg::Vec3f(80, 100, 58) ) );
-  islandpat->setScale( osg::Vec3f(4.f, 4.f, 3.f ) );
-  islandpat->addChild(island.get());
-
-  return islandpat;
 }
 
 osg::ref_ptr<osg::TextureCubeMap> Scene::loadCubeMapTextures( const std::string& dir )
 {
   static const std::map<osg::TextureCubeMap::Face, std::string> filenames
-  {{osg::TextureCubeMap::NEGATIVE_X,"west"},
-  {osg::TextureCubeMap::POSITIVE_X, "east"},
-  {osg::TextureCubeMap::NEGATIVE_Y, "up"},
-  {osg::TextureCubeMap::POSITIVE_Y, "down"},
-  {osg::TextureCubeMap::NEGATIVE_Z, "south"},
-  {osg::TextureCubeMap::POSITIVE_Z, "north"}};
+  {{osg::TextureCubeMap::NEGATIVE_X,"west.png"},
+  {osg::TextureCubeMap::POSITIVE_X, "east.png"},
+  {osg::TextureCubeMap::NEGATIVE_Y, "up.png"},
+  {osg::TextureCubeMap::POSITIVE_Y, "down.png"},
+  {osg::TextureCubeMap::NEGATIVE_Z, "south.png"},
+  {osg::TextureCubeMap::POSITIVE_Z, "north.png"}};
 
   osg::ref_ptr<osg::TextureCubeMap> cubeMap = new osg::TextureCubeMap;
   cubeMap->setInternalFormat(GL_RGBA);
@@ -307,11 +262,12 @@ osg::ref_ptr<osg::TextureCubeMap> Scene::loadCubeMapTextures( const std::string&
 
   for(const auto &[dir, filename]: filenames)
   {
-    cubeMap->setImage(dir, osgDB::readImageFile(path + filename + ".png") );
+    cubeMap->setImage(dir, osgDB::readImageFile(path + filename) );
   }
 
   return cubeMap;
 }
+
 
 osg::Geode* Scene::sunDebug( const osg::Vec3f& position )
 {

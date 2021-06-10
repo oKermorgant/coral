@@ -20,11 +20,10 @@ osg::Vec3d osgVecFrom(const urdf::Vector3 &v)
 
 osg::Quat osgQuatFrom(const std::vector<double> &rpy)
 {
-  osg::Matrixd Rx, Ry, Rz;
-  Rx.makeRotate(rpy[0], 1, 0, 0);
-  Ry.makeRotate(rpy[1], 0, 1, 0);
-  Rz.makeRotate(rpy[2], 0, 0, 1);
-  return (Rz * Ry * Rx).getRotate();
+  static const osg::Vec3d X(1,0,0);
+  static const osg::Vec3d Y(0,1,0);
+  static const osg::Vec3d Z(0,0,1);
+  return {rpy[0], X, rpy[1], Y, rpy[2], Z};
 }
 
 osg::Quat osgQuatFrom(const urdf::Rotation &q)
@@ -35,6 +34,7 @@ osg::Quat osgQuatFrom(const urdf::Rotation &q)
 VisualLink::Visual::Visual(const std::string &mesh, const osg::Matrixd &M)
   : mesh(extractMesh(mesh)), pose(new osg::MatrixTransform(M))
 {
+  pose->setDataVariance(osg::Object::STATIC);
   pose->addChild(this->mesh);
 }
 
@@ -50,7 +50,7 @@ VisualLink::VisualLink(std::string name, urdf::LinkSharedPtr link) : name(name)
 
 void VisualLink::parseVisual(urdf::VisualSharedPtr visual)
 {
-  // only considers meshes visuals
+  // for now only considers meshed visuals
   // TODO deal with geometric ones (one day...)
   if(visual->geometry->type == visual->geometry->MESH)
   {
@@ -72,26 +72,40 @@ void VisualLink::addVisual(const std::string &mesh, const std::vector<double> &x
 
 void VisualLink::addVisual(const std::string &mesh, osg::Vec3d t, osg::Quat q, osg::Vec3d scale)
 {
-  osg::Matrixd M(q);
+  osg::Matrixd M(-q);
   M.setTrans(t);
   M.preMultScale(scale);
   visuals.emplace_back(mesh, M);
 }
 
-void VisualLink::attachTo(osg::Group * parent)
+void VisualLink::attachTo(coral::Scene *scene)
 {
   // build tree from parent to visuals
-  pose = new osg::MatrixTransform();
+  pose = new osg::MatrixTransform(); 
+  pose->setDataVariance(osg::Object::DYNAMIC);
 
   for(const auto &visual: visuals)
+  {
     pose->addChild(visual.pose);
+    scene->setupMeshNode(visual.mesh.get());
 
-  parent->addChild(pose);
+    if(visual.mesh->getStateSet() == nullptr)
+    {
+      std::cout << name << ": no stateset" << std::endl;
+    }
+  }
+  scene->lock();
+  scene->oceanScene()->addChild(pose);
+  scene->unlock();
 }
 
-void VisualLink::refreshFrom(tf2_ros::Buffer &tf_buffer)
+void VisualLink::refreshFrom(tf2_ros::Buffer &tf_buffer, const std::vector<std::string> &tf_links)
 {
+  if(std::find(tf_links.begin(), tf_links.end(), name) == tf_links.end())
+    return;
+
   static geometry_msgs::msg::TransformStamped tr;
+  static osg::Matrixd M;
   static const std::string world("world");
   static const auto timeout(std::chrono::milliseconds(10));
 
@@ -102,7 +116,7 @@ void VisualLink::refreshFrom(tf2_ros::Buffer &tf_buffer)
   const auto &t(tr.transform.translation);
   const auto &q(tr.transform.rotation);
 
-  osg::Matrixd M(osg::Quat{q.x, q.y, q.z, q.w});
+  M.setRotate({q.x, q.y, q.z, q.w});
   M.setTrans(t.x, t.y, t.z);
 
   pose->setMatrix(M);

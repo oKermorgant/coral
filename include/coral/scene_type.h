@@ -13,8 +13,7 @@ struct SceneType
 {
   enum SCENE_TYPE{ CLEAR, DUSK, CLOUDY };
 
-  // default values for CLEAR
-  std::string cubemap = "sky_clear";
+  std::string cubemap;
   osg::Vec4f lightColor = intColor( 105,138,174 );
   osg::Vec4f fogColor = intColor( 199,226,255 );
   osg::Vec3f underwaterAttenuation = osg::Vec3f(0.015f, 0.0075f, 0.005f);
@@ -22,6 +21,12 @@ struct SceneType
   osg::Vec3f sunPosition = osg::Vec3f(326.573, 1212.99 ,1275.19);
   osg::Vec4f sunDiffuse =  intColor( 191, 191, 191 );
   osg::Vec4f waterFogColor = intColor(27,57,109);
+
+  inline SceneType()
+  {
+    // default values for CLEAR
+    switchTo(SceneType::CLEAR);
+  }
 
   static inline osg::Vec4f intColor(unsigned r, unsigned g, unsigned b, unsigned a = 255 )
   {

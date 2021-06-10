@@ -3,7 +3,8 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/node.hpp>
-#include <coral/scene_interface.h>
+#include <coral/Scene.h>
+#include <coral/viewer.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
 #include <coral/visual_link.h>
@@ -17,11 +18,17 @@ class CoralNode : public rclcpp::Node
 {
 public:
   CoralNode();
-  void setInterface(SceneInterface &scene);
-  SceneParams nodeParams();
+  inline void manage(Scene &scene, Viewer &viewer)
+  {
+    this->scene = &scene;
+    this->viewer = &viewer;
+  }
+
+  SceneParams parameters();
 
 private:
-  SceneInterface * scene;
+  Scene * scene;
+  Viewer * viewer;
 
   rclcpp::TimerBase::SharedPtr tree_parser_timer, pose_update_timer;
   void parseTFTree();
@@ -31,14 +38,15 @@ private:
 
   // links and their meshes
   bool world_is_parsed = false;
+  std::vector<std::string> tf_links;
   std::vector<std::string> parsed_links;
-  std::vector<VisualLink> links;
-  void parseLink(const std::string &link);
-  void parseModel(const std::string &model);
-  void parseWorld();
+  std::vector<VisualLink> visual_links;
+  VisualLink world_link;
+  bool parseLink(const std::string &link);
+  bool parseModel(const std::string &model);
+  bool parseWorld();
 
   // camera view point
-  osg::Matrixd cam_view;
   const std::string coral_cam_link = "coral_cam_view";
   bool has_cam_view = false;
 };

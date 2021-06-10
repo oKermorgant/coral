@@ -3,8 +3,9 @@
 
 #include <osgViewer/Viewer>
 #include <osgWidget/WindowManager>
-#include <coral/scene_interface.h>
-#include <coral/TextHUD.h>
+#include <osgGA/TrackballManipulator>
+#include <osgGA/NodeTrackerManipulator>
+#include <coral/Scene.h>
 
 namespace coral
 {
@@ -12,21 +13,32 @@ namespace coral
 class Viewer
 {
 public:
-  Viewer(SceneInterface &interface);
+  Viewer(Scene &scene);
 
   inline bool done() const {return viewer->done();}
-  inline void frame()
-  {
-    scene_mutex->lock();
-    viewer->frame();
-    scene_mutex->unlock();
-  }
+  void frame();
+
+  void lockCamera(osg::Vec3d trans, osg::Quat q);
+  void freeCamera();
 
 private:
   osg::ref_ptr<osgViewer::Viewer> viewer;
   osg::ref_ptr<osgWidget::WindowManager> wm;
-  osg::ref_ptr<TextHUD> hud;
+  osgOcean::OceanScene* ocean_scene;
   std::mutex* scene_mutex;
+
+  // free / tracking manipulators
+  osg::ref_ptr <osg::MatrixTransform> cam_pose = new osg::MatrixTransform;
+  osg::ref_ptr <osgGA::TrackballManipulator> free_manip = new osgGA::TrackballManipulator;
+  osg::ref_ptr <osgGA::NodeTrackerManipulator> tracking_manip = new osgGA::NodeTrackerManipulator;
+
+  bool cam_is_free = true;
+
+  // detect when window has been resized
+  osgViewer::GraphicsWindow* window;
+  int width, height;
+
+  bool windowWasResized();
 };
 
 }

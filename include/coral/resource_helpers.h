@@ -27,7 +27,7 @@ inline void initCoralResources()
 }
 
 
-// resolve the path (package:// included) and create an osg-compatible mesh
+// resolve the path (package:// - compatible) and returns the corresponding node
 osg::Node *extractMesh(const std::string &path);
 
 }

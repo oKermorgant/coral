@@ -33,18 +33,16 @@ endif()
 if(OSGOCEAN_EXTERNAL)
 
     # manual compile 
-    set(OSGOCEAN_LIBRARIES ${PROJECT_SOURCE_DIR}/osgocean/build/libosgOcean.so)
-
     SET(OSGOCEAN_BUILD_DIR ${PROJECT_SOURCE_DIR}/osgocean/build)
-        if(NOT EXISTS ${OSGOCEAN_LIBRARIES})
+    set(OSGOCEAN_LIBRARIES ${OSGOCEAN_BUILD_DIR}/libosgOcean.so)
+        
+    if(NOT EXISTS ${OSGOCEAN_LIBRARIES})
         file(MAKE_DIRECTORY ${OSGOCEAN_BUILD_DIR})
-        execute_process(COMMAND cmake .. 
-        WORKING_DIRECTORY ${OSGOCEAN_BUILD_DIR})
-        execute_process(COMMAND make
-        WORKING_DIRECTORY ${OSGOCEAN_BUILD_DIR})
+        execute_process(COMMAND cmake .. WORKING_DIRECTORY ${OSGOCEAN_BUILD_DIR})
+        execute_process(COMMAND make WORKING_DIRECTORY ${OSGOCEAN_BUILD_DIR})
     endif()
 
-    # manual install 
+    # manual install, ament-wise
     if(NOT EXISTS ${CMAKE_INSTALL_PREFIX}/lib/libosgOcean.so)
         file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX})
         file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX}/lib)
@@ -70,41 +68,25 @@ find_package (OpenGL REQUIRED)
 add_executable(coral
 src/coral_main.cpp
 src/coral_node.cpp
-src/scene_interface.cpp
+src/event_handler.cpp
 src/visual_link.cpp
 src/resource_helpers.cpp
 src/viewer.cpp
+# from osgOcean + example
 src/OceanScene.cpp
 src/Scene.cpp
 src/SkyDome.cpp
 src/SphereSegment.cpp
 )
+
 target_include_directories(coral SYSTEM PRIVATE include ${OPENSCENEGRAPH_INCLUDE_DIR} ${OSGOCEAN_INCLUDE_DIRS} ${OPENGL_INCLUDE_DIR})
+target_include_directories(coral PRIVATE include)
 target_link_libraries(coral osgOcean ${OPENSCENEGRAPH_LIBRARIES} ${OPENGL_LIBRARY})
 ament_target_dependencies(coral rclcpp sensor_msgs geometry_msgs nav_msgs urdf ament_index_cpp tf2_ros)
-
-#add_executable(listener
-#tests/listener.cpp
-#src/coral_node.cpp
-#src/visual_link.cpp
-#src/resource_helpers.cpp
-#)
-#target_include_directories(listener SYSTEM PRIVATE include ${OPENSCENEGRAPH_INCLUDE_DIR} ${OSGOCEAN_INCLUDE_DIRS})
-#target_link_libraries(listener osgOcean ${OPENSCENEGRAPH_LIBRARIES} ${OPENGL_LIBRARY})
-#ament_target_dependencies(listener rclcpp sensor_msgs geometry_msgs nav_msgs urdf ament_index_cpp tf2_ros)
-
-
-## osgOcean example
-#add_executable(example
-#example/application.cpp example/Scene.cpp  example/SceneEventHandler.h  example/Scene.h  example/ScopedTimer.h  example/SkyDome.cpp  example/SkyDome.h  example/SphereSegment.cpp  example/SphereSegment.h  example/TextHUD.h)
-#target_include_directories(example PRIVATE include ${OPENSCENEGRAPH_INCLUDE_DIR} ${OSGOCEAN_INCLUDE_DIRS} -lGLU)
-#target_link_libraries(example osgOcean ${OPENSCENEGRAPH_LIBRARIES} -lGLU)
-#ament_target_dependencies(example ament_index_cpp)
 
 
 install(TARGETS 
 coral
-#listener
 DESTINATION lib/${PROJECT_NAME})
 
 if(NOT OSGOCEAN_EXTERNAL)
@@ -115,6 +97,7 @@ install(TARGETS osgOcean
 endif()
 
 # common osgocean resources
+install(DIRECTORY osgocean/shaders DESTINATION share/${PROJECT_NAME}) 
 install(DIRECTORY ${OSGOCEAN_SRC}/resources DESTINATION share/${PROJECT_NAME}) 
 install(DIRECTORY ${OSGOCEAN_SRC}/demo/island ${OSGOCEAN_SRC}/demo/textures DESTINATION share/${PROJECT_NAME}/resources)
 

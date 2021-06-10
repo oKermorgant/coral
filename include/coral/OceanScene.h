@@ -4,6 +4,8 @@
 * Copyright (C) 2009 Kim Bale
 * Copyright (C) 2009 The University of Hull, UK
 *
+* Modified for use in ROS 2 CORAL (c) 2021 Olivier Kermorgant
+*
 * This program is free software; you can redistribute it and/or modify it under
 * the terms of the GNU Lesser General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
@@ -59,7 +61,7 @@ private:
   bool _enableRefractions         {true};
   bool _enableReflections         {true};
   bool _enableGodRays             {true};
-  bool _enableSilt                {false};
+  bool _enableSilt                {true};
   bool _enableDOF                 {true};
   bool _enableGlare               {true};
   bool _enableDistortion          {true};
@@ -89,22 +91,22 @@ private:
   float _dofFar                   {160};
   float _dofFarClamp              {1};
   float _dofFocus                 {30};
-  float _glareThreshold           {0.9};
-  float _glareAttenuation         {0.75};
+  float _glareThreshold           {2.};
+  float _glareAttenuation         {3.75};
 
   float _eyeHeightReflectionCutoff{FLT_MAX};
   float _eyeHeightRefractionCutoff{-FLT_MAX};
 
   float _surfaceHeight            {0};
 
+
+  // from scene type
   float      _aboveWaterFogDensity{0.01};
   osg::Vec4f _aboveWaterFogColor  {};
-
   float      _underwaterFogDensity{0.01};
   osg::Vec4f _underwaterFogColor  {0.2274509f, 0.4352941f, 0.7294117f, 1.f};
   osg::Vec4f _underwaterDiffuse   {};
   osg::Vec3f _underwaterAttenuation{0.015f, 0.0075f, 0.005f};
-
   osg::Vec3f _sunDirection        {0,0,-1};
 
   osg::ref_ptr<osg::MatrixTransform>  _oceanTransform{new osg::MatrixTransform};
@@ -129,25 +131,12 @@ private:
   osg::ref_ptr<osg::ClipNode> _siltClipNode;
   osg::ref_ptr<osg::ClipNode> _reflectionClipNode;
 
-
-
-  ViewSet                             _viewsWithRTTEffectsDisabled;
+  ViewSet _viewsWithRTTEffectsDisabled;
 
   struct ViewData : public osg::Referenced
   {
-    /// Simple constructor zeroing all variables.
-    ViewData()
-      : _dirty( true )
-      , _cv( NULL )
-      , _oceanScene( NULL )
-      , _reflectionCamera(NULL)
-      , _refractionCamera(NULL)
-      , _heightmapCamera(NULL)
-      , _fog(NULL)
-      , _eyeAboveWaterPreviousFrame(true)
-      , _globalStateSet(NULL)
-      , _surfaceStateSet(NULL)
-    { };
+    /// Default constructor
+    ViewData() { }
 
     /// Method called upon ViewData instance to initialize internal variables
     virtual void init( OceanScene* oceanScene, osgUtil::CullVisitor* cv );
@@ -156,7 +145,7 @@ private:
 
     /// Method called by OceanScene to allow ViewData
     /// do the hard work computing reflections/refractions for its associated view
-    virtual void cull( bool eyeAboveWater, bool surfaceVisible );
+    virtual void cull(bool surfaceVisible );
 
     /// Dirty is called by parent OceanScene to force
     /// update of resources after some of them were modified in parent scene
@@ -173,7 +162,7 @@ private:
     OpenThreads::Mutex _mutex;
 
     /// Dirty flag tells this instance to update its resources
-    bool _dirty;
+    bool _dirty= true;
 
     osg::Matrixf _reflectionMatrix;
     osg::ref_ptr<osg::Camera> _reflectionCamera;
@@ -181,7 +170,7 @@ private:
     osg::ref_ptr<osg::Camera> _heightmapCamera;
 
     osg::ref_ptr<osg::Fog> _fog;
-    bool _eyeAboveWaterPreviousFrame;
+    bool _eyeAboveWaterPreviousFrame = true;
 
     osg::ref_ptr<osg::StateSet> _globalStateSet;
     osg::ref_ptr<osg::StateSet> _surfaceStateSet;
@@ -416,10 +405,7 @@ public:
 
   /// Sets the current screen size, needed to initialise the God Ray
   /// and DOF frame buffers. Default is 1024x768.
-  inline void setScreenDims( osg::Vec2s size ){
-    _screenDims = size;
-    _isDirty = true;
-  }
+  void setScreenDims(int width , int height);
 
   /// Set sun direction.
   inline void setSunDirection( const osg::Vec3f& sunDir ){
@@ -528,11 +514,6 @@ public:
     _isDirty = true;
   }
 
-  /// Get the luminance threshold for glare.
-  inline float getGlareThreshold() const{
-    return _glareThreshold;
-  }
-
   /// Set the glare attenuation.
   /// Controls the rate at which the glare drops off.
   /// Typical range: 0.75 < attenuation < 0.95
@@ -540,11 +521,6 @@ public:
   {
     _glareAttenuation = attenuation;
     _isDirty = true;
-  }
-
-  /// Get the glare attenuation.
-  inline float getGlareAttenuation() const{
-    return _glareAttenuation;
   }
 
   /// Enable underwater distortion.
@@ -747,32 +723,6 @@ public:
     osgDB::Registry::instance()->getDataFilePathList().push_back(path);
   }
 
-  /// Base class for the OceanScene event handler. Subclasses of
-  /// OceanScene can subclass this to provide support for
-  /// manipulating their particular properties, calling the base class
-  /// handle() to inherit the base class's events (or not as desired).
-  /// If subclasses subclass this handler, they need to override
-  /// getEventHandler() in order for it to return the right concrete
-  /// event handler instance.
-  class EventHandler : public osgGA::GUIEventHandler
-  {
-  public:
-    EventHandler(OceanScene* oceanScene);
-    virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, osg::Object*, osg::NodeVisitor*);
-    virtual void getUsage(osg::ApplicationUsage& usage) const;
-  protected:
-    OceanScene* _oceanScene;
-  };
-
-  /// Virtual constructor for OceanScene::EventHandler - override in
-  /// derived classes to return subclass-specific handler if needed.
-  virtual EventHandler* getEventHandler()
-  {
-    if (!_eventHandler.valid())
-      _eventHandler = new EventHandler(this);
-    return _eventHandler.get();
-  }
-
     osg::Program* createDefaultSceneShader( void );
 
 private:
@@ -790,7 +740,7 @@ private:
   void preRenderCull( osgUtil::CullVisitor& cv, bool eyeAboveWater, bool surfaceVisible );
 
   /// Post render passes for DOF/god rays.
-  void postRenderCull( osgUtil::CullVisitor& cv, bool eyeAboveWater, bool surfaceVisible );
+  void postRenderCull(osgUtil::CullVisitor& cv, bool eyeAboveWater);
 
   /// Update god ray geometry and screen quad.
   void update(osg::NodeVisitor& nv);
@@ -848,7 +798,6 @@ private:
 
 
 protected:
-  osg::ref_ptr<EventHandler> _eventHandler;
 
   ~OceanScene( void ) {}
 

@@ -12,6 +12,7 @@
 #include <coral/scene_params.h>
 #include <coral/scene_type.h>
 #include <osg/Version>
+#include <mutex>
 namespace coral
 {
 
@@ -27,10 +28,12 @@ class Scene : public osg::Referenced
 private:
 
     SceneType scene_type;
+    SceneParams params;
+    std::mutex scene_mtx;
 
     bool useVBO;
 
-    osg::ref_ptr<osg::Group> scene;
+    osg::ref_ptr<osg::Group> scene, root;
 
     osg::ref_ptr<osgOcean::OceanScene> ocean_scene;
     osg::ref_ptr<osgOcean::FFTOceanTechnique> ocean_surface;
@@ -38,41 +41,40 @@ private:
     osg::ref_ptr<SkyDome> skyDome;
     osg::ref_ptr<osg::Light> light;
 
-    osg::ref_ptr<osg::Switch> island_switch;
-
 public:
-    Scene(const SceneParams &params, const std::string& terrain_shader_basename );
+    Scene(const SceneParams &params);
+
+    const SceneParams & parameters() const {return params;}
+    inline std::mutex* mutex() {return &scene_mtx;}
+
+    inline void lock() {scene_mtx.lock();}
+    inline void unlock() {scene_mtx.unlock();}
 
     void changeScene( SceneType::SCENE_TYPE type);
 
-    // Load the islands model
-    // Here we attach a custom shader to the model.
-    // This shader overrides the default shader applied by OceanScene but uses uniforms applied by OceanScene.
-    // The custom shader is needed to add multi-texturing and bump mapping to the terrain.
-    osg::Node* loadIslands(const std::string& terrain_shader_basename);
-
     osg::ref_ptr<osg::TextureCubeMap> loadCubeMapTextures( const std::string& dir );
 
-    osg::Geode* sunDebug( const osg::Vec3f& position );
-
-
-    inline osgOcean::OceanScene::EventHandler* getOceanSceneEventHandler()
-    {
-        return ocean_scene->getEventHandler();
-    }
+    osg::Geode* sunDebug( const osg::Vec3f& position);
 
     inline osgOcean::OceanTechnique* oceanSurface()
     {
         return ocean_surface.get();
     }
 
-    inline osg::Group* fullScene(void){
-        return scene.get();
+    inline osg::Group* fullScene(){
+        return root.get();
     }
 
     inline osgOcean::OceanScene* oceanScene()
     {
         return ocean_scene.get();
+    }
+
+    inline void setupMeshNode(osg::Node *mesh)
+    {
+      mesh->setNodeMask(ocean_scene->getNormalSceneMask() |
+                        ocean_scene->getReflectedSceneMask() |
+                        ocean_scene->getRefractedSceneMask());
     }
 
     osg::Light* getLight() { return light.get(); }

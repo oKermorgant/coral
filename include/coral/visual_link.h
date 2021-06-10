@@ -8,6 +8,8 @@
 #include <urdf_model/link.h>
 #include <tf2_ros/buffer.h>
 
+#include <coral/Scene.h>
+
 namespace coral
 {
 
@@ -24,14 +26,13 @@ public:
 
   VisualLink(std::string name, urdf::LinkSharedPtr link = nullptr);
 
-
   void addVisual(const std::string &mesh, osg::Vec3d t, osg::Quat q, osg::Vec3d scale);
   void addVisual(const std::string &mesh, const std::vector<double> &xyz, const std::vector<double> &rpy, const std::vector<double> &scale);
 
   inline bool hasVisuals() const {return !visuals.empty();}
-  void attachTo(osg::Group * parent);
+  void attachTo(coral::Scene *scene);
 
-  void refreshFrom(tf2_ros::Buffer &tf_buffer);
+  void refreshFrom(tf2_ros::Buffer &tf_buffer, const std::vector<std::string> &tf_links);
 
 private:
 
@@ -40,7 +41,6 @@ private:
 
   void parseVisual(urdf::VisualSharedPtr visual);
   std::vector<Visual> visuals;
-  //  S, T, Rx, Ry, Rz, transform;
 };
 
 }
