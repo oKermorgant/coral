@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
 {
   rclcpp::init(argc, argv);
 
-  osg::setNotifyLevel(osg::FATAL); 
+  osg::setNotifyLevel(osg::FATAL);
 
   auto node(std::make_shared<CoralNode>());
 

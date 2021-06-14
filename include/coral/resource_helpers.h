@@ -15,17 +15,7 @@ inline void addResourcePath(const std::string &path)
     paths.push_back(path);
 }
 
-inline void initCoralResources()
-{
-  const auto coral_resources(ament_index_cpp::get_package_share_directory("coral") + "/resources");
-  addResourcePath(coral_resources);
-  for(auto &p: std::filesystem::directory_iterator(coral_resources))
-  {
-    if(p.is_directory())
-      addResourcePath(p.path());
-  }
-}
-
+void initCoralResources();
 
 // resolve the path (package:// - compatible) and returns the corresponding node
 osg::Node *extractMesh(const std::string &path);

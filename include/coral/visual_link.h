@@ -18,16 +18,26 @@ class VisualLink
 public:
 
   struct Visual
-  {    
+  {
     osg::ref_ptr<osg::Node> mesh;
     osg::ref_ptr <osg::MatrixTransform > pose;
-    Visual(const std::string &mesh, const osg::Matrixd &M);
+    Visual(osg::Node *mesh, const osg::Matrixd &M);
   };
+
+  // some conversions
+  static osg::Matrixd osgMatFrom(const std::vector<double> &xyz,
+                                 const std::vector<double> &rpy,
+                                 const std::vector<double> &scale = {1,1,1});
+  static osg::Matrixd osgMatFrom(const urdf::Vector3 &t,
+                                 const urdf::Rotation &q,
+                                 const urdf::Vector3 &scale = {1,1,1});
 
   VisualLink(std::string name, urdf::LinkSharedPtr link = nullptr);
 
-  void addVisual(const std::string &mesh, osg::Vec3d t, osg::Quat q, osg::Vec3d scale);
-  void addVisual(const std::string &mesh, const std::vector<double> &xyz, const std::vector<double> &rpy, const std::vector<double> &scale);
+  void addVisualMesh(const std::string &mesh, const osg::Matrixd &M);
+  void addVisualBox(const osg::Vec3d &dim, const osg::Matrixd &M, const urdf::Material &mat);
+  void addVisualSphere(double radius, const osg::Matrixd &M, const urdf::Material &mat);
+  void addVisualCylinder(double radius, double length, const osg::Matrixd &M, const urdf::Material &mat);
 
   inline bool hasVisuals() const {return !visuals.empty();}
   void attachTo(coral::Scene *scene);
@@ -39,9 +49,15 @@ private:
   const std::string name;
   osg::ref_ptr < osg::MatrixTransform > pose;
 
-  void parseVisual(urdf::VisualSharedPtr visual);
+  void addVisual(urdf::VisualSharedPtr visual);
+  inline void addVisualNode(osg::Node* node, const osg::Matrixd &M)
+  {
+    visuals.emplace_back(node, M);
+  }
+
   std::vector<Visual> visuals;
 };
 
 }
 #endif
+

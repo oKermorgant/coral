@@ -49,10 +49,19 @@ Viewer::Viewer(Scene &scene)
 
 void Viewer::frame()
 {
+  static bool prev_above_water(true);
   scene_mutex->lock();
 
   if(windowWasResized())
     ocean_scene->setScreenDims(width, height);
+
+  const auto above_water(viewer->getCameraManipulator()->getMatrix().getTrans().z() > 0.);
+  if(above_water != prev_above_water)
+  {
+    if(above_water) ocean_scene->setOceanSurfaceHeight(0.);
+    else            ocean_scene->setOceanSurfaceHeight(-0.05f);
+    prev_above_water = above_water;
+  }
 
   viewer->frame();
   scene_mutex->unlock();

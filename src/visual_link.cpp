@@ -8,36 +8,40 @@ namespace fs = std::filesystem;
 namespace coral
 {
 
-osg::Vec3d osgVecFrom(const std::vector<double> &xyz)
-{
-  return {xyz[0], xyz[1], xyz[2]};
-}
-
-osg::Vec3d osgVecFrom(const urdf::Vector3 &v)
-{
-  return {v.x, v.y, v.z};
-}
-
-osg::Quat osgQuatFrom(const std::vector<double> &rpy)
-{
-  static const osg::Vec3d X(1,0,0);
-  static const osg::Vec3d Y(0,1,0);
-  static const osg::Vec3d Z(0,0,1);
-  return {rpy[0], X, rpy[1], Y, rpy[2], Z};
-}
-
-osg::Quat osgQuatFrom(const urdf::Rotation &q)
-{
-  return {q.x, q.y, q.z, q.w};
-}
-
-VisualLink::Visual::Visual(const std::string &mesh, const osg::Matrixd &M)
-  : mesh(extractMesh(mesh)), pose(new osg::MatrixTransform(M))
+VisualLink::Visual::Visual(osg::Node *mesh, const osg::Matrixd &M)
+  : mesh(mesh), pose(new osg::MatrixTransform(M))
 {
   pose->setDataVariance(osg::Object::STATIC);
   pose->addChild(this->mesh);
 }
 
+osg::Vec3 osgVecFrom(const std::vector<double> &xyz)
+{
+  return osg::Vec3(xyz[0], xyz[1], xyz[2]);
+}
+osg::Vec3 osgVecFrom(const urdf::Vector3 &t)
+{
+  return osg::Vec3(t.x, t.y, t.z);
+}
+
+osg::Matrixd VisualLink::osgMatFrom(const std::vector<double> &xyz, const std::vector<double> &rpy, const std::vector<double> &scale)
+{
+  static const osg::Vec3d X(1,0,0);
+  static const osg::Vec3d Y(0,1,0);
+  static const osg::Vec3d Z(0,0,1);
+  osg::Matrixd M(-osg::Quat(rpy[0], X, rpy[1], Y, rpy[2], Z));
+  M.setTrans(osgVecFrom(xyz));
+  M.preMultScale(osgVecFrom(scale));
+  return M;
+}
+
+osg::Matrixd VisualLink::osgMatFrom(const urdf::Vector3 &t, const urdf::Rotation &q, const urdf::Vector3 &scale)
+{
+  osg::Matrixd M(-osg::Quat{q.x, q.y, q.z, q.w});
+  M.setTrans(osgVecFrom(t));
+  M.preMultScale(osgVecFrom(scale));
+  return M;
+}
 
 VisualLink::VisualLink(std::string name, urdf::LinkSharedPtr link) : name(name)
 {
@@ -45,43 +49,76 @@ VisualLink::VisualLink(std::string name, urdf::LinkSharedPtr link) : name(name)
     return;
 
   for(const auto &visual: link->visual_array)
-    parseVisual(visual);
+    addVisual(visual);
 }
 
-void VisualLink::parseVisual(urdf::VisualSharedPtr visual)
+void VisualLink::addVisual(urdf::VisualSharedPtr visual)
 {
   // for now only considers meshed visuals
-  // TODO deal with geometric ones (one day...)
+
   if(visual->geometry->type == visual->geometry->MESH)
   {
     const auto mesh_info = static_cast<urdf::Mesh*>(visual->geometry.get());
-    addVisual(mesh_info->filename,
-              osgVecFrom(visual->origin.position),
-              osgQuatFrom(visual->origin.rotation),
-              osgVecFrom(mesh_info->scale));
+    addVisualMesh(mesh_info->filename,
+                  osgMatFrom(visual->origin.position,visual->origin.rotation,mesh_info->scale)
+                  );
+    return;
+  }
+
+  auto mat(visual->material);
+  if(mat == nullptr)
+    return;
+
+  const auto pose(osgMatFrom(visual->origin.position, visual->origin.rotation));
+
+  if(visual->geometry->type == visual->geometry->BOX)
+  {
+    const auto info = static_cast<urdf::Box*>(visual->geometry.get());
+    addVisualBox(osgVecFrom(info->dim), pose, *mat);
+  }
+  else if(visual->geometry->type == visual->geometry->SPHERE)
+  {
+    const auto info = static_cast<urdf::Sphere*>(visual->geometry.get());
+    addVisualSphere(info->radius, pose, *mat);
+  }
+  else
+  {
+    const auto info = static_cast<urdf::Cylinder*>(visual->geometry.get());
+    addVisualCylinder(info->radius, info->length, pose, *mat);
   }
 }
 
-void VisualLink::addVisual(const std::string &mesh, const std::vector<double> &xyz, const std::vector<double> &rpy, const std::vector<double> &scale)
+
+void VisualLink::addVisualMesh(const std::string &mesh, const osg::Matrixd &M)
 {
-  addVisual(mesh,
-            osgVecFrom(xyz),
-            osgQuatFrom(rpy),
-            osgVecFrom(scale));
+  addVisualNode(extractMesh(mesh), M);
 }
 
-void VisualLink::addVisual(const std::string &mesh, osg::Vec3d t, osg::Quat q, osg::Vec3d scale)
+void VisualLink::addVisualBox([[maybe_unused]] const osg::Vec3d &dim,
+[[maybe_unused]] const osg::Matrixd &M,
+[[maybe_unused]] const urdf::Material &mat)
 {
-  osg::Matrixd M(-q);
-  M.setTrans(t);
-  M.preMultScale(scale);
-  visuals.emplace_back(mesh, M);
+  // TODO
 }
+
+void VisualLink::addVisualSphere([[maybe_unused]] double radius, [[maybe_unused]] const osg::Matrixd &M, [[maybe_unused]] const urdf::Material &mat)
+{
+  // TODO
+}
+
+void VisualLink::addVisualCylinder([[maybe_unused]] double radius,
+[[maybe_unused]] double length,
+[[maybe_unused]] const osg::Matrixd &M,
+[[maybe_unused]] const urdf::Material &mat)
+{
+  // TODO
+}
+
 
 void VisualLink::attachTo(coral::Scene *scene)
 {
   // build tree from parent to visuals
-  pose = new osg::MatrixTransform(); 
+  pose = new osg::MatrixTransform();
   pose->setDataVariance(osg::Object::DYNAMIC);
 
   for(const auto &visual: visuals)

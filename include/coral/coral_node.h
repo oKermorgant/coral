@@ -16,6 +16,8 @@ using std_msgs::msg::String;
 
 class CoralNode : public rclcpp::Node
 {
+ using GeometryType = decltype(urdf::Geometry::MESH);
+
 public:
   CoralNode();
   inline void manage(Scene &scene, Viewer &viewer)
@@ -42,9 +44,10 @@ private:
   std::vector<std::string> parsed_links;
   std::vector<VisualLink> visual_links;
   VisualLink world_link;
-  bool parseLink(const std::string &link);
-  bool parseModel(const std::string &model);
-  bool parseWorld();
+  void parseLink(const std::string &link);
+  void parseModel(const std::string &model);
+  void parseWorld();
+  void addWorldVisual(rclcpp::SyncParametersClient::SharedPtr pwm_client, const std::string &name, GeometryType geometry);
 
   // camera view point
   const std::string coral_cam_link = "coral_cam_view";

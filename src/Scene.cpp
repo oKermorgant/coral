@@ -191,12 +191,6 @@ Scene::Scene(const SceneParams &params) : params(params)
 
     {
       ScopedTimer lightingTimer("  . Setting up shaders: ", osg::notify(osg::NOTICE));
-
-      static const char model_vertex[] = "coral_scene.vert";
-      static const char model_fragment[] = "coral_scene.frag";
-      auto program = osgOcean::ShaderManager::instance().createProgram("object_shader", model_vertex,model_fragment, "", "");
-      ocean_scene->setDefaultSceneShader(program);
-
       root = scene; //new osg::Group;
 
       root->getOrCreateStateSet()->addUniform(new osg::Uniform("uOverlayMap", 1));

@@ -10,6 +10,8 @@ void EventHandler::getUsage(osg::ApplicationUsage& usage) const
   usage.addKeyboardMouseBinding("2","Select scene \"Dusk\"");
   usage.addKeyboardMouseBinding("3","Select scene \"Pacific Cloudy\"");
 
+  usage.addKeyboardMouseBinding("0","Toggle ocean surface");
+
   usage.addKeyboardMouseBinding("r","Toggle reflections (above water)");
   usage.addKeyboardMouseBinding("R","Toggle refractions (underwater)");
   usage.addKeyboardMouseBinding("o","Toggle Depth of Field (DOF) (underwater)");
@@ -26,6 +28,7 @@ void EventHandler::getUsage(osg::ApplicationUsage& usage) const
 bool EventHandler::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapter&)
 {
   static auto oceanScene(scene->oceanScene());
+  static bool surface0(true);
 
   if(ea.getEventType() == osgGA::GUIEventAdapter::KEYUP)
   {
@@ -107,6 +110,11 @@ bool EventHandler::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapt
       oceanScene->setOceanSurfaceHeight(oceanScene->getOceanSurfaceHeight() - 1.0);
       osg::notify(osg::NOTICE) << "Ocean surface is now at z = " << oceanScene->getOceanSurfaceHeight() << std::endl;
       return true;
+    }
+    if (key == '0')
+    {
+      surface0 = !surface0;
+      oceanScene->setOceanSurfaceHeight(surface0 ? 0. : -1000.);
     }
   }
 

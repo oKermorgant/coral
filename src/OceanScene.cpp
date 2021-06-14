@@ -47,7 +47,7 @@ public:
     {
       osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
 
-     // if (nv->getTraversalNumber() > _traversalNumber)
+      // if (nv->getTraversalNumber() > _traversalNumber)
       {
         // Rendering new frame, reuse matrices used in the last frame.
         _currentMatrix = 0;
@@ -149,7 +149,6 @@ public:
 
 }
 
-
 OceanScene::OceanScene( OceanTechnique* surface )  : _oceanSurface( surface )
 {
   if(surface==nullptr)
@@ -176,11 +175,8 @@ OceanScene::OceanScene( OceanTechnique* surface )  : _oceanSurface( surface )
   _oceanTransform->setNodeMask( _normalSceneMask | _surfaceMask );
   addChild( _oceanTransform.get() );
 
-  if(surface)
-  {
-    _oceanSurface->setNodeMask( _surfaceMask );
-    _oceanTransform->addChild( _oceanSurface.get() );
-  }
+  _oceanSurface->setNodeMask( _surfaceMask );
+  _oceanTransform->addChild( _oceanSurface.get() );
 
   setNumChildrenRequiringUpdateTraversal(1);
 
@@ -726,7 +722,8 @@ void OceanScene::enableRTTEffectsForView(osg::View* view, bool enable)
 }
 
 void OceanScene::traverse( osg::NodeVisitor& nv )
-{
+{  
+
   if( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
   {
     if( _isDirty )
@@ -1294,8 +1291,8 @@ osg::Geode* OceanScene::createScreenQuad( const osg::Vec2s& dims, const osg::Vec
 
 osg::Program* OceanScene::createDefaultSceneShader(void)
 {
-  static const char osgOcean_ocean_scene_vert_file[] = "osgOcean_ocean_scene.vert";
-  static const char osgOcean_ocean_scene_frag_file[] = "osgOcean_ocean_scene.frag";
+  static const char osgOcean_ocean_scene_vert_file[] = "coral_scene.vert";
+  static const char osgOcean_ocean_scene_frag_file[] = "coral_scene.frag";
 
   return ShaderManager::instance().createProgram("scene_shader",
                                                  osgOcean_ocean_scene_vert_file, osgOcean_ocean_scene_frag_file,
@@ -1334,7 +1331,7 @@ void OceanScene::PrerenderCameraCullCallback::operator()(osg::Node*, osg::NodeVi
 }
 
 REGISTER_DOTOSGWRAPPER(OceanScene)
-(
+(    
     new osgOcean::OceanScene,
     "OceanScene",
     "Object Node OceanScene Group",

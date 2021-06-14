@@ -96,10 +96,14 @@ install(TARGETS osgOcean
   RUNTIME DESTINATION bin)
 endif()
 
+install(DIRECTORY launch DESTINATION share/${PROJECT_NAME}) 
+
 # common osgocean resources
-install(DIRECTORY osgocean/shaders DESTINATION share/${PROJECT_NAME}) 
 install(DIRECTORY ${OSGOCEAN_SRC}/resources DESTINATION share/${PROJECT_NAME}) 
 install(DIRECTORY ${OSGOCEAN_SRC}/demo/island ${OSGOCEAN_SRC}/demo/textures DESTINATION share/${PROJECT_NAME}/resources)
+
+# override some shaders if needed
+install(DIRECTORY osgocean/shaders DESTINATION share/${PROJECT_NAME}/resources) 
 
 ament_export_libraries(osgOcean)
 ament_package()

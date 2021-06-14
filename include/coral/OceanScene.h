@@ -52,7 +52,7 @@ public:
   typedef std::set< osg::observer_ptr<osg::View> > ViewSet;
 
 private:
-  static constexpr float OCEAN_CYLINDER_HEIGHT = 4000.f;
+  static constexpr float OCEAN_CYLINDER_HEIGHT = 0.f;//4000.f;
 
   osg::ref_ptr<OceanTechnique> _oceanSurface{nullptr};
 

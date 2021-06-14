@@ -33,7 +33,7 @@ struct SceneParams
   bool useVBO                     {false};
   bool godrays                    {false};  // godrays do not work on Intel GPUs
   bool glare                      {true};
-  bool underwaterDof              {true};
+  bool underwaterDof              {false};  // do not work on Intel GPUs
   osg::Vec3 initialCameraPosition {0,0,20};
 
   int width         {1024};
