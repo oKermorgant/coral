@@ -26,9 +26,8 @@ enum DrawMask
 class Scene : public osg::Referenced
 {
 private:
-
-    SceneType scene_type;
     SceneParams params;
+    SceneType scene_type;    
     std::mutex scene_mtx;
 
     bool useVBO;
@@ -50,7 +49,7 @@ public:
     inline void lock() {scene_mtx.lock();}
     inline void unlock() {scene_mtx.unlock();}
 
-    void changeScene( SceneType::SCENE_TYPE type);
+    void changeScene( SceneType::Type type);
 
     osg::ref_ptr<osg::TextureCubeMap> loadCubeMapTextures( const std::string& dir );
 
@@ -61,23 +60,24 @@ public:
         return ocean_surface.get();
     }
 
-    inline osg::Group* fullScene(){
+    inline osg::Group* fullScene() const
+    {
         return root.get();
     }
 
-    inline osgOcean::OceanScene* oceanScene()
+    inline osgOcean::OceanScene* oceanScene() const
     {
         return ocean_scene.get();
     }
 
-    inline void setupMeshNode(osg::Node *mesh)
+    inline void setupMeshNode(osg::Node *mesh) const
     {
       mesh->setNodeMask(ocean_scene->getNormalSceneMask() |
                         ocean_scene->getReflectedSceneMask() |
                         ocean_scene->getRefractedSceneMask());
     }
 
-    osg::Light* getLight() { return light.get(); }
+    osg::Light* getLight() const { return light.get(); }
 };
 
 }

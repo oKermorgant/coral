@@ -11,8 +11,10 @@ set(CMAKE_BUILD_TYPE Debug)
 
 find_package(ament_cmake REQUIRED)
 find_package(ament_index_cpp REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(image_transport REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(urdf REQUIRED)
 find_package(geometry_msgs REQUIRED)
@@ -38,10 +40,11 @@ if(OSGOCEAN_EXTERNAL)
         
     if(NOT EXISTS ${OSGOCEAN_LIBRARIES})
         file(MAKE_DIRECTORY ${OSGOCEAN_BUILD_DIR})
-        execute_process(COMMAND cmake .. WORKING_DIRECTORY ${OSGOCEAN_BUILD_DIR})
-        execute_process(COMMAND make WORKING_DIRECTORY ${OSGOCEAN_BUILD_DIR})
+        execute_process(COMMAND cmake .. WORKING_DIRECTORY ${OSGOCEAN_BUILD_DIR})        
     endif()
-
+    
+    execute_process(COMMAND make WORKING_DIRECTORY ${OSGOCEAN_BUILD_DIR})
+    
     # manual install, ament-wise
     if(NOT EXISTS ${CMAKE_INSTALL_PREFIX}/lib/libosgOcean.so)
         file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX})
@@ -69,7 +72,10 @@ add_executable(coral
 src/coral_main.cpp
 src/coral_node.cpp
 src/event_handler.cpp
-src/visual_link.cpp
+src/camera.cpp
+src/link.cpp
+src/link_visual.cpp
+src/urdf_parser.cpp
 src/resource_helpers.cpp
 src/viewer.cpp
 # from osgOcean + example
@@ -82,7 +88,7 @@ src/SphereSegment.cpp
 target_include_directories(coral SYSTEM PRIVATE include ${OPENSCENEGRAPH_INCLUDE_DIR} ${OSGOCEAN_INCLUDE_DIRS} ${OPENGL_INCLUDE_DIR})
 target_include_directories(coral PRIVATE include)
 target_link_libraries(coral osgOcean ${OPENSCENEGRAPH_LIBRARIES} ${OPENGL_LIBRARY})
-ament_target_dependencies(coral rclcpp sensor_msgs geometry_msgs nav_msgs urdf ament_index_cpp tf2_ros)
+ament_target_dependencies(coral rclcpp sensor_msgs geometry_msgs nav_msgs urdf ament_index_cpp tf2_ros image_transport std_srvs)
 
 
 install(TARGETS 

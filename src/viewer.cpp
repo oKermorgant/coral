@@ -72,10 +72,7 @@ void Viewer::freeCamera()
   if(!cam_is_free)
   {
     cam_is_free = true;
-    //free_manip->setHomePosition(tracking_manip->getHomePosition())
-
-    viewer->setCameraManipulator(free_manip, true);
-
+    viewer->setCameraManipulator(free_manip, false);
   }
 }
 
@@ -91,8 +88,6 @@ void Viewer::lockCamera(osg::Vec3d trans, osg::Quat q)
     cam_is_free = false;
     viewer->setCameraManipulator(tracking_manip);
   }
-
-
 }
 
 bool Viewer::windowWasResized()
@@ -121,30 +116,3 @@ bool Viewer::windowWasResized()
   }
   return false;
 }
-
-
-/*
-    if (first.valid())
-    {
-      //target to track found
-      osg::ref_ptr < osg::Node > emptyNode = new osg::Node;
-      osg::ref_ptr < osgGA::NodeTrackerManipulator > ntm = new osgGA::NodeTrackerManipulator;
-      first->asGroup()->addChild(emptyNode);
-      ntm->setTrackNode(emptyNode);
-      ntm->setTrackerMode(osgGA::NodeTrackerManipulator::NODE_CENTER_AND_ROTATION);
-      ntm->setHomePosition(osg::Vec3d(config.camPosition[0], config.camPosition[1], config.camPosition[2]),
-                           osg::Vec3d(config.camLookAt[0], config.camLookAt[1], config.camLookAt[2]),
-                           osg::Vec3d(0, 0, 1));
-      viewer->setCameraManipulator(ntm);
-    }
-    else
-    {
-      //Target object not found, free camera
-      osg::ref_ptr < osgGA::TrackballManipulator > tb = new osgGA::TrackballManipulator;
-      tb->setHomePosition(osg::Vec3f(config.camPosition[0], config.camPosition[1], config.camPosition[2]),
-                          osg::Vec3f(config.camLookAt[0], config.camLookAt[1], config.camLookAt[2]),
-                          osg::Vec3f(0, 0, 1));
-      viewer->setCameraManipulator(tb);
-    }
-
-    */

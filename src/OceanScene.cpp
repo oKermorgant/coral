@@ -37,7 +37,7 @@ public:
   CameraTrackCallback(OceanScene* oceanScene)
     : _oceanScene (oceanScene)
     , _currentMatrix(0)
-    , _traversalNumber(-1)
+    , _traversalNumber(0)
   {
   }
 
@@ -47,7 +47,7 @@ public:
     {
       osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
 
-      // if (nv->getTraversalNumber() > _traversalNumber)
+      if (nv->getTraversalNumber() >= _traversalNumber)
       {
         // Rendering new frame, reuse matrices used in the last frame.
         _currentMatrix = 0;
@@ -165,8 +165,8 @@ OceanScene::OceanScene( OceanTechnique* surface )  : _oceanSurface( surface )
   cylinderGeode->addDrawable( _oceanCylinder.get() );
 
   _oceanCylinderMT->setMatrix( osg::Matrix::translate(0, 0, -OCEAN_CYLINDER_HEIGHT) );
-  _oceanCylinderMT->setDataVariance( osg::Object::DYNAMIC ),
-      _oceanCylinderMT->setCullCallback( new CameraTrackCallback(this) );
+  _oceanCylinderMT->setDataVariance( osg::Object::DYNAMIC );
+  _oceanCylinderMT->setCullCallback( new CameraTrackCallback(this) );
   _oceanCylinderMT->setNodeMask( getNormalSceneMask() | getRefractedSceneMask() );
   _oceanCylinderMT->addChild( cylinderGeode );
 
@@ -1291,8 +1291,8 @@ osg::Geode* OceanScene::createScreenQuad( const osg::Vec2s& dims, const osg::Vec
 
 osg::Program* OceanScene::createDefaultSceneShader(void)
 {
-  static const char osgOcean_ocean_scene_vert_file[] = "coral_scene.vert";
-  static const char osgOcean_ocean_scene_frag_file[] = "coral_scene.frag";
+  static const char osgOcean_ocean_scene_vert_file[] = "default_scene.vert";
+  static const char osgOcean_ocean_scene_frag_file[] = "default_scene.frag";
 
   return ShaderManager::instance().createProgram("scene_shader",
                                                  osgOcean_ocean_scene_vert_file, osgOcean_ocean_scene_frag_file,

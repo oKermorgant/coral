@@ -1,18 +1,19 @@
-#ifndef CORALNODE_H
-#define CORALNODE_H
+#ifndef CORAL_NODE_H
+#define CORAL_NODE_H
 
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/node.hpp>
-#include <coral/Scene.h>
-#include <coral/viewer.h>
+#include <image_transport/image_transport.hpp>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
-#include <coral/visual_link.h>
-#include <std_msgs/msg/string.hpp>
+
+#include <coral/Scene.h>
+#include <coral/viewer.h>
+#include <coral/link.h>
+#include <coral/camera.h>
 
 namespace coral
 {
-using std_msgs::msg::String;
 
 class CoralNode : public rclcpp::Node
 {
@@ -28,10 +29,14 @@ public:
 
   SceneParams parameters();
 
+  image_transport::ImageTransport& image_transport() const {return *it;}
+
 private:
   Scene * scene;
   Viewer * viewer;
 
+  // tf interface
+  void guessSimTime();
   rclcpp::TimerBase::SharedPtr tree_parser_timer, pose_update_timer;
   void parseTFTree();
   void refreshLinkPoses();
@@ -40,11 +45,14 @@ private:
 
   // links and their meshes
   bool world_is_parsed = false;
-  std::vector<std::string> tf_links;
-  std::vector<std::string> parsed_links;
-  std::vector<VisualLink> visual_links;
-  VisualLink world_link;
-  void parseLink(const std::string &link);
+  Link world_link;
+  std::set<std::string> parsed_links;
+  std::vector<Link> links;
+  std::vector<Camera> cameras;
+  std::unique_ptr<image_transport::ImageTransport> it;
+
+  // how to get them
+  void parseModelFromLink(const std::string &link);
   void parseModel(const std::string &model);
   void parseWorld();
   void addWorldVisual(rclcpp::SyncParametersClient::SharedPtr pwm_client, const std::string &name, GeometryType geometry);
@@ -56,4 +64,4 @@ private:
 
 }
 
-#endif // CORALNODE_H
+#endif // CORAL_NODE_H

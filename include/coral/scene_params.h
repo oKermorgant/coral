@@ -4,6 +4,7 @@
 #include <osg/Vec2f>
 #include <osg/Vec3>
 #include <vector>
+#include <string>
 
 namespace coral
 {
@@ -40,6 +41,8 @@ struct SceneParams
   int height        {768};
 
   inline bool isChoppy() const {return std::abs(choppyFactor) > 1e-3;}
+
+  std::string scene_type;
 
   // hard-coded to default values in osgocean demo
 

@@ -12,6 +12,8 @@
   <depend>urdfdom</depend>
   <depend>ament_index_cpp</depend>
   <depend>tf2_ros</depend>
+  <depend>image_transport</depend>
+  <depend>std_srvs</depend>
   <export>
     <build_type>ament_cmake</build_type>
   </export>

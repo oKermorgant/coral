@@ -35,17 +35,17 @@ bool EventHandler::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapt
     const auto key(ea.getKey());
     if(key == '1')
     {
-      scene->changeScene( SceneType::CLEAR );
+      scene->changeScene( SceneType::Type::CLEAR );
       return false;
     }
     else if(key == '2')
     {
-      scene->changeScene( SceneType::DUSK );
+      scene->changeScene( SceneType::Type::DUSK );
       return false;
     }
     else if(key == '3' )
     {
-      scene->changeScene( SceneType::CLOUDY );
+      scene->changeScene( SceneType::Type::CLOUDY );
       return false;
     }
     // Reflections

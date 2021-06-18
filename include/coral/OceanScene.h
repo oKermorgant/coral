@@ -52,7 +52,7 @@ public:
   typedef std::set< osg::observer_ptr<osg::View> > ViewSet;
 
 private:
-  static constexpr float OCEAN_CYLINDER_HEIGHT = 0.f;//4000.f;
+  static constexpr float OCEAN_CYLINDER_HEIGHT = 4000.f;
 
   osg::ref_ptr<OceanTechnique> _oceanSurface{nullptr};
 
@@ -101,7 +101,7 @@ private:
 
 
   // from scene type
-  float      _aboveWaterFogDensity{0.01};
+  float      _aboveWaterFogDensity{0.0012f};
   osg::Vec4f _aboveWaterFogColor  {};
   float      _underwaterFogDensity{0.01};
   osg::Vec4f _underwaterFogColor  {0.2274509f, 0.4352941f, 0.7294117f, 1.f};
@@ -501,7 +501,8 @@ public:
   }
 
   /// Check if glare is enabled.
-  inline bool isGlareEnabled() const{
+  inline bool isGlareEnabled() const
+  {
     return _enableGlare;
   }
 
@@ -531,7 +532,8 @@ public:
   }
 
   /// Check if underwater distortion is enabled.
-  inline bool isDistortionEnabled() const{
+  inline bool isDistortionEnabled() const
+  {
     return _enableDistortion;
   }
 
@@ -543,7 +545,8 @@ public:
   }
 
   /// Check whether underwater scattering is enabled.
-  inline bool isUnderwaterScatteringEnabled() const{
+  inline bool isUnderwaterScatteringEnabled() const
+  {
     return _enableUnderwaterScattering;
   }
 
@@ -566,7 +569,8 @@ public:
   }
 
   /// Get the current ocean technique.
-  inline OceanTechnique* getOceanTechnique( void ) {
+  inline OceanTechnique* getOceanTechnique( void ) const
+  {
     return _oceanSurface.get();
   }
 
@@ -576,22 +580,26 @@ public:
   }
 
   /// Get the node mask for the refracted scene.
-  inline unsigned int getRefractedSceneMask( void ) const{
+  inline unsigned int getRefractedSceneMask( void ) const
+  {
     return _refractionSceneMask;
   }
 
   /// Get the node mask for the height map (generally terrain).
-  inline unsigned int getHeightmapMask( void ) const{
+  inline unsigned int getHeightmapMask( void ) const
+  {
     return _heightmapMask;
   }
 
   /// Get the node mask for the ocean surface.
-  inline unsigned int getOceanSurfaceMask( void ) const{
+  inline unsigned int getOceanSurfaceMask( void ) const
+  {
     return _surfaceMask;
   }
 
   /// Get the node mask for the scene.
-  inline unsigned int getNormalSceneMask( void ) const{
+  inline unsigned int getNormalSceneMask( void ) const
+  {
     return _normalSceneMask;
   }
 

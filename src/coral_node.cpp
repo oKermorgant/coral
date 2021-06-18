@@ -1,8 +1,7 @@
 #include <coral/coral_node.h>
-#include <coral/visual_link.h>
+#include <coral/link.h>
 #include <urdf_parser/urdf_parser.h>
-
-#include <osgUtil/Optimizer>
+#include <std_srvs/srv/empty.hpp>
 
 using namespace coral;
 using namespace std::chrono_literals;
@@ -15,42 +14,6 @@ CoralNode::CoralNode()
 {
   tree_parser_timer = create_wall_timer(1s, [&](){parseTFTree();});
   pose_update_timer = create_wall_timer(50ms, [&](){refreshLinkPoses();});
-}
-
-void CoralNode::parseTFTree()
-{
-  if(scene == nullptr || viewer == nullptr)
-    return;
-
-  tf_buffer._getFrameStrings(tf_links);
-  for(const auto &link: tf_links)
-  {
-    if(std::find(parsed_links.begin(), parsed_links.end(), link) == parsed_links.end())
-      parseLink(link);
-  }
-
-  if(!world_is_parsed)
-    parseWorld();
-}
-
-void CoralNode::refreshLinkPoses()
-{
-  tf_buffer._getFrameStrings(tf_links);
-  for(auto &link: visual_links)
-    link.refreshFrom(tf_buffer, tf_links);
-
-  if(has_cam_view)
-  {
-    auto tr = tf_buffer.lookupTransform("world", "coral_cam_view", tf2::TimePointZero, 10ms);
-    if((now() - tr.header.stamp).seconds() < 1)
-    {
-      const auto &t(tr.transform.translation);
-      const auto &q(tr.transform.rotation);
-      viewer->lockCamera({t.x,t.y,t.z}, {q.x,q.y,q.z,q.w});
-    }
-    else
-      viewer->freeCamera();
-  }
 }
 
 SceneParams CoralNode::parameters()
@@ -69,6 +32,7 @@ SceneParams CoralNode::parameters()
   params.initialCameraPosition.set(cam[0], cam[1], cam[2]);
 
   // weather
+  updateParam("scene_type", params.scene_type);
   auto wind(params.asVector(params.windDirection));
   updateParam("wind.direction", wind);
   params.windDirection.set(wind[0], wind[1]);
@@ -93,28 +57,78 @@ SceneParams CoralNode::parameters()
 }
 
 
-void CoralNode::parseLink(const string &link)
+
+void CoralNode::parseTFTree()
 {
-  // by convention link == "namespace/link" else we do not care
+  if(scene == nullptr || viewer == nullptr)
+    return;
+
+  if(!get_parameter("use_sim_time").as_bool())
+    guessSimTime();
+
+  vector<string> tf_links;
+  tf_buffer._getFrameStrings(tf_links);
+
+  for(const auto &link: tf_links)
+  {
+    if(parsed_links.find(link) == parsed_links.end())
+      parseModelFromLink(link);
+  }
+
+  if(!world_is_parsed)
+    parseWorld();
+}
+
+void CoralNode::guessSimTime()
+{
+ const auto gz_physics = create_client<std_srvs::srv::Empty>("/gazebo/pause_physics");
+ if(gz_physics->service_is_ready())
+   set_parameter(rclcpp::Parameter("use_sim_time", true));
+}
+
+void CoralNode::refreshLinkPoses()
+{
+  vector<string> tf_links;
+  tf_buffer._getFrameStrings(tf_links);
+  for(auto &link: links)
+    link.refreshFrom(tf_buffer, tf_links);
+
+  if(has_cam_view && tf_buffer.canTransform("world", "coral_cam_view", tf2::TimePointZero, 10ms))
+  {
+    auto tr = tf_buffer.lookupTransform("world", "coral_cam_view", tf2::TimePointZero, 10ms);    
+    if((now() - tr.header.stamp).seconds() < 1)
+    {
+      const auto &t(tr.transform.translation);
+      const auto &q(tr.transform.rotation);
+      viewer->lockCamera({t.x,t.y,t.z}, {q.x,q.y,q.z,q.w});
+    }
+    else
+      viewer->freeCamera();
+  }
+}
+
+
+void CoralNode::parseModelFromLink(const string &link)
+{
+  parsed_links.insert(link);
+
+  // by convention link is shaped as "namespace/link" else we do not care
   const auto slash = link.find('/');
   if(slash == link.npos)
   {
-    // not a visual link
-    parsed_links.push_back(link);
-
+    // not an object link, maybe camera setpoint?
     if(link == coral_cam_link)
       has_cam_view = true;
     return;
   }
 
-  // go up full model through robot_state_publisher
+  // retrieve full model through robot_state_publisher
   auto rsp_node(std::make_shared<Node>("coral_rsp"));
   auto rsp_param_srv = std::make_shared<rclcpp::SyncParametersClient>
                        (rsp_node, link.substr(0, slash) + "/robot_state_publisher");
   if(!rsp_param_srv->service_is_ready() || !rsp_param_srv->has_parameter("robot_description"))
   {
-    // not a robot_state_publisher
-    parsed_links.push_back(link);
+    // cannot get the model anyway
     return;
   }
 
@@ -124,17 +138,36 @@ void CoralNode::parseLink(const string &link)
 void CoralNode::parseModel(const string &description)
 {
   const auto model(urdf::parseURDF(description));
+  const auto cameras(CameraInfo::extractFrom(description));
 
-  for(const auto &[name,link]: model->links_)
+  // check if Gazebo is already publishing images, if any
+  const auto current_topics = cameras.empty()
+                              ? decltype (get_topic_names_and_types()){}
+                              : get_topic_names_and_types();
+
+  for(const auto &[name,urdf]: model->links_)
   {
-    parsed_links.push_back(name);
+    parsed_links.insert(name);
 
-    VisualLink visual(name, link);
+    Link link(name, urdf);
 
-    if(visual.hasVisuals())
+    bool has_cam(false);
+    for(const auto &cam: cameras)
     {
-      visual.attachTo(scene);
-      visual_links.push_back(visual);
+      if(cam.link_name == name)
+      {
+        if(current_topics.find(cam.topic) != current_topics.end())
+          RCLCPP_WARN(get_logger(), "Image topic " + cam.topic + " seems already advertized by Gazebo, use `unset DISPLAY` in the Gazebo terminal");
+        has_cam = true;
+        if(!it) it = std::make_unique<image_transport::ImageTransport>(shared_from_this());
+        this->cameras.emplace_back(this, cam.attachedTo(link.frame()));
+      }
+    }
+
+    if(link.hasVisuals() || has_cam)
+    {
+      link.attachTo(scene);
+      links.push_back(link);
     }
   }
 }
@@ -188,18 +221,18 @@ void CoralNode::addWorldVisual(rclcpp::SyncParametersClient::SharedPtr pwm_clien
   {
     const auto scale(getParam(".scale", vector<double>{1,1,1}));
     const auto mesh_file(getParam(".mesh", std::string{}));
-    world_link.addVisualMesh(mesh_file, VisualLink::osgMatFrom(xyz, rpy, scale));
+    world_link.addVisualMesh(mesh_file,
+                             Link::osgMatFrom(xyz, rpy, scale),
+                             Link::uuvMaterial(mesh_file).get());
     return;
   }
   else if(geometry == GeometryType::BOX)
   {
     const auto dim(getParam("", vector<double>{0,0,0}));
-    // world boxes are sand
-    urdf::Material mat;
-    mat.texture_filename = "soil_sand_0045_01.jpg";
+    // uuvMaterial defaults to sand
     world_link.addVisualBox({dim[0], dim[1], dim[2]},
-                            VisualLink::osgMatFrom(xyz, rpy),
-                            mat);
+                            Link::osgMatFrom(xyz, rpy),
+                            Link::uuvMaterial().get());
   }
 }
 

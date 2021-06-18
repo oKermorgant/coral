@@ -40,7 +40,7 @@ public:
 //                       Scene 
 // ----------------------------------------------------
 
-Scene::Scene(const SceneParams &params) : params(params)
+Scene::Scene(const SceneParams &params) : params(params), scene_type(params.scene_type)
 {
   initCoralResources();
 
@@ -110,7 +110,7 @@ Scene::Scene(const SceneParams &params) : params(params)
       // This cylinder prevents the clear from being visible past the far plane
       // instead it will be the fog color.
       // The size of the cylinder should be changed according the size of the ocean surface.
-      ocean_scene->setCylinderSize( 1900.f, 4000.f );
+      ocean_scene->setCylinderSize( 1900.f, 4000.f );            
 
       ocean_scene->setAboveWaterFog(0.0012f, scene_type.fogColor );
       ocean_scene->setUnderwaterFog(0.002f,  scene_type.waterFogColor );
@@ -211,7 +211,7 @@ Scene::Scene(const SceneParams &params) : params(params)
   }
 }
 
-void Scene::changeScene( SceneType::SCENE_TYPE type )
+void Scene::changeScene( SceneType::Type type )
 {
   scene_type.switchTo(type);
 

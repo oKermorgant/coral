@@ -19,9 +19,14 @@ void initCoralResources()
       addResourcePath(p.path());
   }
 
-  // also textures from uuv_gazebo_worlds
-  const auto uuv_resources(ament_index_cpp::get_package_share_directory("uuv_gazebo_worlds") + "/media/materials/textures");
-  addResourcePath(uuv_resources);
+  // also textures from uuv_gazebo_worlds, if present
+  try
+  {
+    const auto uuv_resources(ament_index_cpp::get_package_share_directory("uuv_gazebo_worlds") + "/media/materials/textures");
+    addResourcePath(uuv_resources);
+  }
+  catch (...) {}
+
 }
 
 
@@ -67,12 +72,6 @@ osg::Node * extractMesh(const std::string &mesh)
   {
     OSG_FATAL << "Cannot find mesh file '"
               << fullpath << "'\n";
-  }
-  else if (node->asGroup() == nullptr)
-  {
-    osg::Node * aux = node;
-    node = new osg::Group();
-    node->asGroup()->addChild(aux);
   }
   return node;
 }
