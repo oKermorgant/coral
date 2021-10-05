@@ -1,12 +1,10 @@
 #include <coral/coral_node.h>
-#include <coral/link.h>
-#include <urdf_parser/urdf_parser.h>
+#include <coral/urdf_parser.h>
 #include <std_srvs/srv/empty.hpp>
 
 using namespace coral;
 using namespace std::chrono_literals;
-using std::vector;
-using std::string;
+using std::vector, std::string;
 
 CoralNode::CoralNode()
   : rclcpp::Node("coral"), tf_buffer(get_clock()), tf_listener(tf_buffer),
@@ -14,6 +12,8 @@ CoralNode::CoralNode()
 {
   tree_parser_timer = create_wall_timer(1s, [&](){parseTFTree();});
   pose_update_timer = create_wall_timer(50ms, [&](){refreshLinkPoses();});
+
+  display_thrusters = declare_parameter("with_thrusters", false);
 }
 
 SceneParams CoralNode::parameters()
@@ -81,9 +81,9 @@ void CoralNode::parseTFTree()
 
 void CoralNode::guessSimTime()
 {
- const auto gz_physics = create_client<std_srvs::srv::Empty>("/gazebo/pause_physics");
- if(gz_physics->service_is_ready())
-   set_parameter(rclcpp::Parameter("use_sim_time", true));
+  const auto gz_physics = create_client<std_srvs::srv::Empty>("/gazebo/pause_physics");
+  if(gz_physics->service_is_ready())
+    set_parameter(rclcpp::Parameter("use_sim_time", true));
 }
 
 void CoralNode::refreshLinkPoses()
@@ -95,7 +95,7 @@ void CoralNode::refreshLinkPoses()
 
   if(has_cam_view && tf_buffer.canTransform("world", "coral_cam_view", tf2::TimePointZero, 10ms))
   {
-    auto tr = tf_buffer.lookupTransform("world", "coral_cam_view", tf2::TimePointZero, 10ms);    
+    const auto tr = tf_buffer.lookupTransform("world", "coral_cam_view", tf2::TimePointZero, 10ms);
     if((now() - tr.header.stamp).seconds() < 1)
     {
       const auto &t(tr.transform.translation);
@@ -121,54 +121,54 @@ void CoralNode::parseModelFromLink(const string &link)
       has_cam_view = true;
     return;
   }
+  const auto model_ns{link.substr(0, slash)};
+  if(parsed_models.find(model_ns) != parsed_models.end())
+    return;
 
   // retrieve full model through robot_state_publisher
-  auto rsp_node(std::make_shared<Node>("coral_rsp"));
-  auto rsp_param_srv = std::make_shared<rclcpp::SyncParametersClient>
-                       (rsp_node, link.substr(0, slash) + "/robot_state_publisher");
+  const auto rsp_node(std::make_shared<Node>("coral_rsp"));
+  const auto rsp_param_srv = std::make_shared<rclcpp::SyncParametersClient>
+                             (rsp_node, model_ns + "/robot_state_publisher");
   if(!rsp_param_srv->service_is_ready() || !rsp_param_srv->has_parameter("robot_description"))
   {
     // cannot get the model anyway
+    std::cout << "cannot get model " << model_ns << std::endl;
     return;
   }
 
+  parsed_models.insert(model_ns);
   parseModel(rsp_param_srv->get_parameter<string>("robot_description"));
 }
 
 void CoralNode::parseModel(const string &description)
 {
-  const auto model(urdf::parseURDF(description));
-  const auto cameras(CameraInfo::extractFrom(description));
+  const auto &[names, new_links, new_cams] = urdf_parser::parse(description, display_thrusters); {}
 
-  // check if Gazebo is already publishing images, if any
-  const auto current_topics = cameras.empty()
-                              ? decltype (get_topic_names_and_types()){}
-                              : get_topic_names_and_types();
+  // names are now known
+  std::copy(names.begin(), names.end(), std::inserter(parsed_links, parsed_links.begin()));
 
-  for(const auto &[name,urdf]: model->links_)
+  // add cameras
+  if(!new_cams.empty())
   {
-    parsed_links.insert(name);
-
-    Link link(name, urdf);
-
-    bool has_cam(false);
-    for(const auto &cam: cameras)
+    if(!it) it = std::make_unique<image_transport::ImageTransport>(shared_from_this());
+    // check if Gazebo is already publishing images, if any
+    const auto current_topics{get_topic_names_and_types()};
+    for(const auto &cam: new_cams)
     {
-      if(cam.link_name == name)
-      {
-        if(current_topics.find(cam.topic) != current_topics.end())
-          RCLCPP_WARN(get_logger(), "Image topic " + cam.topic + " seems already advertized by Gazebo, use `unset DISPLAY` in the Gazebo terminal");
-        has_cam = true;
-        if(!it) it = std::make_unique<image_transport::ImageTransport>(shared_from_this());
-        this->cameras.emplace_back(this, cam.attachedTo(link.frame()));
-      }
-    }
 
-    if(link.hasVisuals() || has_cam)
-    {
-      link.attachTo(scene);
-      links.push_back(link);
+      if(current_topics.find(cam.topic) != current_topics.end())
+        RCLCPP_WARN(get_logger(),
+                    "Image topic " + cam.topic + " seems already advertized by Gazebo, use `unset DISPLAY` in the Gazebo terminal and run without GUI");
+
+      cameras.emplace_back(this, cam);
     }
+  }
+
+  // add links
+  for(const auto &link: new_links)
+  {
+    link.attachTo(scene);
+    links.push_back(link);
   }
 }
 

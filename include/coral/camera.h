@@ -6,6 +6,8 @@
 #include <osg/Camera>
 #include <osg/MatrixTransform>
 #include <image_transport/image_transport.hpp>
+#include <tinyxml.h>
+
 namespace coral
 {
 
@@ -16,19 +18,14 @@ class CoralNode;
 struct CameraInfo
 {
   int height, width;
-  float fov;
-  float clip_near, clip_far;
+  double fov;
+  double clip_near, clip_far;
   std::string topic;
   std::string link_name;
-  osg::Matrixd pose;
   int period_ms;
-  mutable osg::MatrixTransform* parent_node;
+  osg::MatrixTransform* pose = new osg::MatrixTransform;
 
-  inline const CameraInfo& attachedTo(osg::MatrixTransform* parent) const
-  {
-    parent_node = parent;
-    return *this;
-  }
+  CameraInfo(std::string link, const TiXmlElement* sensor_elem);
 
   static std::vector<CameraInfo> extractFrom(const std::string &description);
 
@@ -45,11 +42,14 @@ public:
 
 private:
   osg::ref_ptr<osg::Camera> cam;
+  osg::ref_ptr<osg::Image> image;
   osg::ref_ptr<osg::MatrixTransform> pose;
+
+  sensor_msgs::msg::Image msg;
   image_transport::Publisher publisher;
   rclcpp::TimerBase::SharedPtr publish_timer;
 
-  void publish();
+  void publish(CoralNode *node);
 
 
 };

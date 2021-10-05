@@ -47,15 +47,16 @@ osg::Matrixd Link::osgMatFrom(const urdf::Vector3 &t, const urdf::Rotation &q, c
 }
 
 
-void Link::addVisual(urdf::VisualSharedPtr visual)
+void Link::addVisual(urdf::VisualSharedPtr visual, const osg::Matrixd &M)
 {
   const auto mat(visual->material.get());
 
   if(visual->geometry->type == visual->geometry->MESH)
   {
     const auto mesh_info = static_cast<urdf::Mesh*>(visual->geometry.get());
-    const auto M(osgMatFrom(visual->origin.position,visual->origin.rotation,mesh_info->scale));
-    addVisualMesh(mesh_info->filename, M, mat);
+    auto Mm(osgMatFrom(visual->origin.position,visual->origin.rotation, mesh_info->scale)*M);
+
+    addVisualMesh(mesh_info->filename, Mm, mat);
     return;
   }
 
@@ -63,22 +64,22 @@ void Link::addVisual(urdf::VisualSharedPtr visual)
   if(mat == nullptr)
     return;
 
-  const auto pose(osgMatFrom(visual->origin.position, visual->origin.rotation));
+  const auto Mm(osgMatFrom(visual->origin.position, visual->origin.rotation) *M);
 
   if(visual->geometry->type == visual->geometry->BOX)
   {
     const auto info = static_cast<urdf::Box*>(visual->geometry.get());
-    addVisualBox(osgVecFrom(info->dim), pose, mat);
+    addVisualBox(osgVecFrom(info->dim), Mm, mat);
   }
   else if(visual->geometry->type == visual->geometry->SPHERE)
   {
     const auto info = static_cast<urdf::Sphere*>(visual->geometry.get());
-    addVisualSphere(info->radius, pose, mat);
+    addVisualSphere(info->radius, Mm, mat);
   }
   else
   {
     const auto info = static_cast<urdf::Cylinder*>(visual->geometry.get());
-    addVisualCylinder(info->radius, info->length, pose, mat);
+    addVisualCylinder(info->radius, info->length, Mm, mat);
   }
 }
 

@@ -24,8 +24,14 @@ public:
                                  const urdf::Rotation &q,
                                  const urdf::Vector3 &scale = {1,1,1});
 
-  Link(std::string name, urdf::LinkSharedPtr link = nullptr);
-  void attachTo(coral::Scene *scene);
+  Link(const std::string &name, osg::MatrixTransform* pose = new osg::MatrixTransform) : name(name), pose(pose) {}
+
+  void attachTo(coral::Scene *scene) const;
+  void setParent(const Link &parent)
+  {
+    this->parent = parent.name;
+    parent.pose->addChild(pose);
+  }
   void refreshFrom(tf2_ros::Buffer &tf_buffer, const std::vector<std::string> &tf_links);
   auto frame() const {return pose.get();}
 
@@ -36,8 +42,10 @@ public:
     osg::ref_ptr <osg::MatrixTransform > pose;
     Visual(osg::Node *mesh, const osg::Matrixd &M);
   };
+
   inline bool hasVisuals() const {return !visuals.empty();}
   static urdf::MaterialSharedPtr uuvMaterial(const std::string &mesh_file = "");
+  void addVisual(urdf::VisualSharedPtr visual, const osg::Matrixd &M);
   void addVisualMesh(const std::string &mesh, const osg::Matrixd &M, const urdf::Material* mat);
   void addVisualBox(const osg::Vec3d &dim, const osg::Matrixd &M, const urdf::Material* mat);
   void addVisualSphere(double radius, const osg::Matrixd &M, const urdf::Material* mat);
@@ -46,9 +54,9 @@ public:
 private:
 
   const std::string name;
+  std::string parent = "world";
   osg::ref_ptr < osg::MatrixTransform > pose;
 
-  void addVisual(urdf::VisualSharedPtr visual);
   inline void addVisualNode(osg::Node* frame, const osg::Matrixd &M, const urdf::Material* mat);
 
   std::vector<Visual> visuals;

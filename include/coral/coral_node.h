@@ -44,9 +44,10 @@ private:
   tf2_ros::TransformListener tf_listener;
 
   // links and their meshes
+  bool display_thrusters = false;
   bool world_is_parsed = false;
   Link world_link;
-  std::set<std::string> parsed_links;
+  std::set<std::string> parsed_links, parsed_models;
   std::vector<Link> links;
   std::vector<Camera> cameras;
   std::unique_ptr<image_transport::ImageTransport> it;
