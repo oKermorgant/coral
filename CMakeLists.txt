@@ -19,7 +19,9 @@ find_package(nav_msgs REQUIRED)
 find_package(urdf REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
 
+rosidl_generate_interfaces(${PROJECT_NAME} "srv/Spawn.srv")
 
 set(OSGOCEAN_SRC ${PROJECT_SOURCE_DIR}/osgocean/osgocean)
 
@@ -68,7 +70,7 @@ find_package(OpenSceneGraph COMPONENTS osgSim osgUtil osgDB osgFX osgGA osgTerra
 set(OpenGL_GL_PREFERENCE GLVND)
 find_package (OpenGL REQUIRED)
 
-add_executable(coral
+add_executable(coral_sim
 src/coral_main.cpp
 src/coral_node.cpp
 src/event_handler.cpp
@@ -85,14 +87,19 @@ src/SkyDome.cpp
 src/SphereSegment.cpp
 )
 
-target_include_directories(coral SYSTEM PRIVATE include ${OPENSCENEGRAPH_INCLUDE_DIR} ${OSGOCEAN_INCLUDE_DIRS} ${OPENGL_INCLUDE_DIR})
-target_include_directories(coral PRIVATE include)
-target_link_libraries(coral osgOcean ${OPENSCENEGRAPH_LIBRARIES} ${OPENGL_LIBRARY})
-ament_target_dependencies(coral rclcpp sensor_msgs geometry_msgs nav_msgs urdf ament_index_cpp tf2_ros image_transport std_srvs)
+target_include_directories(coral_sim SYSTEM PRIVATE include ${OPENSCENEGRAPH_INCLUDE_DIR} ${OSGOCEAN_INCLUDE_DIRS} ${OPENGL_INCLUDE_DIR})
+target_include_directories(coral_sim PRIVATE include)
+target_link_libraries(coral_sim osgOcean ${OPENSCENEGRAPH_LIBRARIES} ${OPENGL_LIBRARY})
+ament_target_dependencies(coral_sim rclcpp sensor_msgs geometry_msgs nav_msgs urdf ament_index_cpp tf2_ros image_transport std_srvs)
+rosidl_target_interfaces(coral_sim ${PROJECT_NAME} "rosidl_typesupport_cpp")
+
+add_executable(spawn src/spawn.cpp)
+ament_target_dependencies(spawn rclcpp)
+rosidl_target_interfaces(spawn ${PROJECT_NAME} "rosidl_typesupport_cpp")
 
 
 install(TARGETS 
-coral
+coral_sim spawn
 DESTINATION lib/${PROJECT_NAME})
 
 FILE(GLOB SCRIPTS scripts/*.py)
@@ -105,7 +112,7 @@ if(NOT OSGOCEAN_EXTERNAL)
 install(TARGETS osgOcean
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
-  RUNTIME DESTINATION bin)
+  RUNTIME DESTINATION lib/${PROJECT_NAME})
 endif()
 
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME}) 

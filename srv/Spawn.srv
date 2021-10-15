@@ -1,0 +1,6 @@
+# tells Coral to listen to a robot_description in this namespace
+# if pose_topic is empty, will listen to the transform world -> base_link
+# otherwise will use the <robot_namespace>/<pose_topic> Odometry topic instead
+string robot_namespace
+string pose_topic "pose_gt"
+---

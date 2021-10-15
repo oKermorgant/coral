@@ -76,11 +76,8 @@ void Viewer::freeCamera()
   }
 }
 
-void Viewer::lockCamera(osg::Vec3d trans, osg::Quat q)
+void Viewer::lockCamera(const osg::Matrixd &M)
 {
-  osg::Matrixd M(q);
-  M.setTrans(trans);
-
   cam_pose->setMatrix(M);
 
   if(cam_is_free)

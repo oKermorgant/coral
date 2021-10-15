@@ -35,7 +35,7 @@ struct LinkInfo
     parent.has_children |= has_children;
 
     for(const auto &[visual, M]: visuals)
-      parent.visuals.push_back({visual ,pose->getMatrix()*M});
+      parent.visuals.push_back({visual, pose->getMatrix()*M});
 
     for(auto &cam: cameras)
     {
@@ -55,18 +55,16 @@ struct LinkInfo
 };
 
 
-std::tuple<vector<string>, vector<Link>, vector<CameraInfo>> parse(const string &description, bool with_thrusters)
+std::tuple<string, vector<Link>, vector<CameraInfo>> parse(const string &description, bool with_thrusters)
 {
   const auto cameras(CameraInfo::extractFrom(description));
 
   const auto model(urdf::parseURDF(description));
   map<string, LinkInfo> tree;
-  vector<string> link_names;
 
   // extract all links
   for(const auto &[name, link]: model->links_)
   {
-    link_names.push_back(name);
 
     if(!with_thrusters && name.find("thruster_") != name.npos)
       continue;
@@ -124,11 +122,8 @@ std::tuple<vector<string>, vector<Link>, vector<CameraInfo>> parse(const string 
     links.push_back(link);
   }
 
-  return {link_names, links, cameras};
+  return {model->getRoot()->name, links, cameras};
 }
-
-
-
 
 }
 }

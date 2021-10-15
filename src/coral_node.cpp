@@ -9,11 +9,18 @@ using std::vector, std::string;
 CoralNode::CoralNode()
   : rclcpp::Node("coral"), tf_buffer(get_clock()), tf_listener(tf_buffer),
     world_link("world")
-{
-  tree_parser_timer = create_wall_timer(1s, [&](){parseTFTree();});
+{  
+  world_sim_timer = create_wall_timer(1s, [&](){refreshWorldParams();});
   pose_update_timer = create_wall_timer(50ms, [&](){refreshLinkPoses();});
 
   display_thrusters = declare_parameter("with_thrusters", false);
+
+  spawn_srv = create_service<Spawn>
+              ("/coral/spawn", [&](const Spawn::Request::SharedPtr request, Spawn::Response::SharedPtr response)
+  {
+    spawnModel(request->robot_namespace, request->pose_topic);
+    (void) response;
+  });
 }
 
 SceneParams CoralNode::parameters()
@@ -56,96 +63,131 @@ SceneParams CoralNode::parameters()
   return params;
 }
 
+void CoralNode::odomCallback(const std::string &link_name, const geometry_msgs::msg::Pose &pose)
+{
+  for(auto &link: abs_links)
+  {
+    if(link.get_name() == link_name)
+    {
+      link.setPose(Link::osgMatFrom(pose.position, pose.orientation));
+      return;
+    }
+  }
+}
 
-
-void CoralNode::parseTFTree()
+void CoralNode::refreshWorldParams()
 {
   if(scene == nullptr || viewer == nullptr)
     return;
 
-  if(!get_parameter("use_sim_time").as_bool())
-    guessSimTime();
-
-  vector<string> tf_links;
-  tf_buffer._getFrameStrings(tf_links);
-
-  for(const auto &link: tf_links)
+  const auto gazebo_detected{get_parameter("use_sim_time").as_bool()};
+  if(!gazebo_detected)
   {
-    if(parsed_links.find(link) == parsed_links.end())
-      parseModelFromLink(link);
+    const auto gz_physics = create_client<std_srvs::srv::Empty>("/gazebo/pause_physics");
+    if(gz_physics->service_is_ready())
+      set_parameter(rclcpp::Parameter("use_sim_time", true));
   }
 
   if(!world_is_parsed)
     parseWorld();
+
+  if(gazebo_detected && world_is_parsed)
+    world_sim_timer.reset();
 }
 
-void CoralNode::guessSimTime()
+Link* CoralNode::getKnownCamParent()
 {
-  const auto gz_physics = create_client<std_srvs::srv::Empty>("/gazebo/pause_physics");
-  if(gz_physics->service_is_ready())
-    set_parameter(rclcpp::Parameter("use_sim_time", true));
+  static Link* prev_link{};
+
+  std::string parent;
+  tf_buffer._getParent(coral_cam_link, tf2::TimePointZero, parent);
+  if(prev_link != nullptr && parent == prev_link->get_name())
+    return prev_link;
+
+  prev_link = nullptr;
+
+  // have to find it
+  while(true)
+  {
+    // if we have reached the world frame
+    if(parent == world_link.get_name())
+    {
+      prev_link = &world_link;
+      break;
+    }
+    // if we have reached a link that moves without TF knowing
+    const auto root{std::find(abs_links.begin(), abs_links.end(), parent)};
+    if(root != abs_links.end())
+    {
+      prev_link = root.base();
+      break;
+    }
+    // continue parenting
+    if(!tf_buffer._getParent(parent, tf2::TimePointZero, parent))
+      break;
+  }
+  return prev_link;
 }
 
 void CoralNode::refreshLinkPoses()
 {
   vector<string> tf_links;
   tf_buffer._getFrameStrings(tf_links);
-  for(auto &link: links)
-    link.refreshFrom(tf_buffer, tf_links);
-
-  if(has_cam_view && tf_buffer.canTransform("world", "coral_cam_view", tf2::TimePointZero, 10ms))
+  for(auto &link: rel_links)
   {
-    const auto tr = tf_buffer.lookupTransform("world", "coral_cam_view", tf2::TimePointZero, 10ms);
+    if(hasLink(link.get_name(), tf_links))
+      link.refreshFrom(tf_buffer);
+  }
+
+  if(hasLink(world_link.get_name(), tf_links) && hasLink(coral_cam_link, tf_links))
+  {
+    const auto parent{getKnownCamParent()};
+
+    if(parent == nullptr)
+      return;
+
+    const auto tr = tf_buffer.lookupTransform(parent->get_name(), coral_cam_link, tf2::TimePointZero, 10ms);
     if((now() - tr.header.stamp).seconds() < 1)
     {
-      const auto &t(tr.transform.translation);
-      const auto &q(tr.transform.rotation);
-      viewer->lockCamera({t.x,t.y,t.z}, {q.x,q.y,q.z,q.w});
+      auto M = Link::osgMatFrom(tr.transform.translation, tr.transform.rotation);
+
+      if(parent->get_name() != world_link.get_name())
+        M = parent->frame()->getMatrix() * M;
+      viewer->lockCamera(M);
     }
     else
       viewer->freeCamera();
   }
 }
 
-
-void CoralNode::parseModelFromLink(const string &link)
+void CoralNode::spawnModel(const std::string &model_ns, const std::string &pose_topic)
 {
-  parsed_links.insert(link);
-
-  // by convention link is shaped as "namespace/link" else we do not care
-  const auto slash = link.find('/');
-  if(slash == link.npos)
-  {
-    // not an object link, maybe camera setpoint?
-    if(link == coral_cam_link)
-      has_cam_view = true;
-    return;
-  }
-  const auto model_ns{link.substr(0, slash)};
-  if(parsed_models.find(model_ns) != parsed_models.end())
-    return;
-
   // retrieve full model through robot_state_publisher
   const auto rsp_node(std::make_shared<Node>("coral_rsp"));
   const auto rsp_param_srv = std::make_shared<rclcpp::SyncParametersClient>
                              (rsp_node, model_ns + "/robot_state_publisher");
-  if(!rsp_param_srv->service_is_ready() || !rsp_param_srv->has_parameter("robot_description"))
+  rsp_param_srv->wait_for_service();
+  if(!rsp_param_srv->has_parameter("robot_description"))
   {
     // cannot get the model anyway
     std::cout << "cannot get model " << model_ns << std::endl;
     return;
   }
 
-  parsed_models.insert(model_ns);
-  parseModel(rsp_param_srv->get_parameter<string>("robot_description"));
+  const auto moving{!pose_topic.empty()};
+
+  parseModel(rsp_param_srv->get_parameter<string>("robot_description"), moving);
+
+  if(moving)
+  {
+    odom_subs.push_back(create_subscription<Odometry>(model_ns + "/" + pose_topic, 1, [&](Odometry::UniquePtr msg)
+    {odomCallback(msg->child_frame_id, msg->pose.pose);}));
+  }
 }
 
-void CoralNode::parseModel(const string &description)
+void CoralNode::parseModel(const string &description, bool moving)
 {
-  const auto &[names, new_links, new_cams] = urdf_parser::parse(description, display_thrusters); {}
-
-  // names are now known
-  std::copy(names.begin(), names.end(), std::inserter(parsed_links, parsed_links.begin()));
+  const auto [root_link, new_links, new_cams] = urdf_parser::parse(description, display_thrusters); {}
 
   // add cameras
   if(!new_cams.empty())
@@ -168,7 +210,10 @@ void CoralNode::parseModel(const string &description)
   for(const auto &link: new_links)
   {
     link.attachTo(scene);
-    links.push_back(link);
+    if(moving && link == root_link)
+      abs_links.push_back(link);
+    else
+      rel_links.push_back(link);
   }
 }
 

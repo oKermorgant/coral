@@ -97,11 +97,15 @@ class CamViewPublisher(QWidget):
         link = self.links.currentText()
         if link == '':
             return
+                
+        R = Rotation.from_euler('xyz',[self.axes[axis].value() for axis in ('roll','pitch','yaw')]).inv()
         
-        for axis in 'xyz':
-            setattr(self.transform.transform.translation, axis, self.axes[axis].value())
+        t = R.apply([self.axes[axis].value() for axis in 'xyz'])        
+        
+        for i,axis in enumerate('xyz'):
+            setattr(self.transform.transform.translation, axis, t[i])
             
-        q = Rotation.from_euler('xyz',[self.axes[axis].value() for axis in ('roll','pitch','yaw')]).as_quat()
+        q = R.as_quat()
         for i,axis in enumerate('xyzw'):
             setattr(self.transform.transform.rotation, axis, q[i])
             
@@ -118,8 +122,7 @@ class CamViewPublisher(QWidget):
         if self.running:
             self.node.destroy_node()
             rclpy.shutdown()
-            
-            
+                        
 
 if __name__ == '__main__':
     app = QApplication(['cam_view'])    

@@ -18,7 +18,7 @@ public:
   inline bool done() const {return viewer->done();}
   void frame();
 
-  void lockCamera(osg::Vec3d trans, osg::Quat q);
+  void lockCamera(const osg::Matrixd &M);
   void freeCamera();
 
 private:

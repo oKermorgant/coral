@@ -30,26 +30,18 @@ void Link::attachTo(coral::Scene *scene) const
 }
 
 
-void Link::refreshFrom(tf2_ros::Buffer &tf_buffer, const vector<string> &tf_links)
+void Link::refreshFrom(tf2_ros::Buffer &tf_buffer)
 {
-  if(std::find(tf_links.begin(), tf_links.end(), name) == tf_links.end())
-    return;
-
   static geometry_msgs::msg::TransformStamped tr;
-  static osg::Matrixd M;
+
   static const auto timeout(std::chrono::milliseconds(10));
 
   if(!tf_buffer.canTransform(parent, name, tf2::TimePointZero, timeout))
     return;
 
   tr = tf_buffer.lookupTransform(parent, name, tf2::TimePointZero, timeout);
-  const auto &t(tr.transform.translation);
-  const auto &q(tr.transform.rotation);
 
-  M.setRotate({q.x, q.y, q.z, q.w});
-  M.setTrans(t.x, t.y, t.z);
-
-  pose->setMatrix(M);
+  setPose(osgMatFrom(tr.transform.translation, tr.transform.rotation));
 }
 
 }

@@ -10,9 +10,7 @@ namespace coral
 namespace urdf_parser
 {
 
-
-
-std::tuple<std::vector<std::string>, std::vector<Link>, std::vector<CameraInfo>> parse(const std::string &description, bool with_thrusters);
+std::tuple<std::string, std::vector<Link>, std::vector<CameraInfo> > parse(const std::string &description, bool with_thrusters);
 
 }
 
