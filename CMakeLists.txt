@@ -28,7 +28,7 @@ set(OSGOCEAN_SRC ${PROJECT_SOURCE_DIR}/osgocean/osgocean)
 OPTION(OSGOCEAN_EXTERNAL "Compile osgOcean as external lib" ON)
 
 # get osgocean if not here
-if(NOT EXISTS ${OSGOCEAN_SRC})
+if(NOT EXISTS ${OSGOCEAN_SRC}/CMakeLists.txt)
 message("getting osgocean submodule...")
 execute_process(COMMAND git submodule update --init
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
