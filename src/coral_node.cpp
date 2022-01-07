@@ -67,7 +67,7 @@ void CoralNode::odomCallback(const std::string &link_name, const geometry_msgs::
 {
   for(auto &link: abs_links)
   {
-    if(link.get_name() == link_name)
+    if(link.getName() == link_name)
     {
       link.setPose(Link::osgMatFrom(pose.position, pose.orientation));
       return;
@@ -101,7 +101,7 @@ Link* CoralNode::getKnownCamParent()
 
   std::string parent;
   tf_buffer._getParent(coral_cam_link, tf2::TimePointZero, parent);
-  if(prev_link != nullptr && parent == prev_link->get_name())
+  if(prev_link != nullptr && parent == prev_link->getName())
     return prev_link;
 
   prev_link = nullptr;
@@ -110,7 +110,7 @@ Link* CoralNode::getKnownCamParent()
   while(true)
   {
     // if we have reached the world frame
-    if(parent == world_link.get_name())
+    if(parent == world_link.getName())
     {
       prev_link = &world_link;
       break;
@@ -135,23 +135,23 @@ void CoralNode::refreshLinkPoses()
   tf_buffer._getFrameStrings(tf_links);
   for(auto &link: rel_links)
   {
-    if(hasLink(link.get_name(), tf_links))
+    if(hasLink(link.getName(), tf_links))
       link.refreshFrom(tf_buffer);
   }
 
-  if(hasLink(world_link.get_name(), tf_links) && hasLink(coral_cam_link, tf_links))
+  if(hasLink(world_link.getName(), tf_links) && hasLink(coral_cam_link, tf_links))
   {
     const auto parent{getKnownCamParent()};
 
     if(parent == nullptr)
       return;
 
-    const auto tr = tf_buffer.lookupTransform(parent->get_name(), coral_cam_link, tf2::TimePointZero, 10ms);
+    const auto tr = tf_buffer.lookupTransform(parent->getName(), coral_cam_link, tf2::TimePointZero, 10ms);
     if((now() - tr.header.stamp).seconds() < 1)
     {
       auto M = Link::osgMatFrom(tr.transform.translation, tr.transform.rotation);
 
-      if(parent->get_name() != world_link.get_name())
+      if(parent->getName() != world_link.getName())
         M = parent->frame()->getMatrix() * M;
       viewer->lockCamera(M);
     }

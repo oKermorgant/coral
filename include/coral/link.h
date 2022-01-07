@@ -36,7 +36,7 @@ public:
 
 
   void attachTo(coral::Scene *scene) const;
-  inline std::string get_name() const {return name;}
+  inline std::string getName() const {return name;}
   void refreshFrom(tf2_ros::Buffer &tf_buffer);
   auto frame() const {return pose.get();}
 
