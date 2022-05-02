@@ -31,9 +31,6 @@ struct CameraInfo
 
 };
 
-
-
-
 class Camera
 {
 public:

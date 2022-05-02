@@ -201,6 +201,7 @@ private:
 public:
   //OceanScene( void );
   OceanScene(OceanTechnique* surface=nullptr);
+
   //OceanScene( const OceanScene& copy, const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY );
 
   virtual const char* libraryName() const { return "osgOcean"; }

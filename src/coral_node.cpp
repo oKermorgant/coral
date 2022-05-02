@@ -16,10 +16,13 @@ CoralNode::CoralNode()
   display_thrusters = declare_parameter("with_thrusters", false);
 
   spawn_srv = create_service<Spawn>
-              ("/coral/spawn", [&](const Spawn::Request::SharedPtr request, Spawn::Response::SharedPtr response)
+              ("/coral/spawn",
+               [&](const Spawn::Request::SharedPtr request, [[maybe_unused]] Spawn::Response::SharedPtr response)
   {
-    spawnModel(request->robot_namespace, request->pose_topic);
-    (void) response;
+    if(request->robot_namespace.empty())
+      findModels();
+    else
+      spawnModel(request->robot_namespace, request->pose_topic);
   });
 }
 
@@ -160,8 +163,45 @@ void CoralNode::refreshLinkPoses()
   }
 }
 
+void CoralNode::findModels()
+{
+  const auto topics{get_topic_names_and_types()};
+  const std::string description{"robot_description"};
+  const auto isDescription{[description](const std::string &topic)
+  {
+      return topic.size() >= description.size()
+          && 0 == topic.compare(topic.size()-description.size(), description.size(), description);
+  }};
+
+  // find all robot_description's
+  for(const auto &[topic, msg]: topics)
+  {
+    if(isDescription(topic))
+    {
+      const auto ns{topic.substr(0, topic.size() - description.size()-1)};
+      const auto isSameNS{[&ns](const std::string &topic)
+      {
+        return topic.size() >= ns.size() && 0 == topic.compare(0, ns.size(), ns);
+      }};
+
+      std::string pose_topic;
+      for(const auto &[topic, msg]: topics)
+      {
+        if(isSameNS(topic) && msg[0] == "nav_msgs/msg/Odometry")
+        {
+          pose_topic = topic.substr(ns.size()+1);
+          break;
+        }
+      }
+      spawnModel(ns, pose_topic);
+    }
+  }
+}
+
 void CoralNode::spawnModel(const std::string &model_ns, const std::string &pose_topic)
 {
+  if(hasModel(model_ns))
+    return;
   // retrieve full model through robot_state_publisher
   const auto rsp_node(std::make_shared<Node>("coral_rsp"));
   const auto rsp_param_srv = std::make_shared<rclcpp::SyncParametersClient>
@@ -177,12 +217,14 @@ void CoralNode::spawnModel(const std::string &model_ns, const std::string &pose_
   const auto moving{!pose_topic.empty()};
 
   parseModel(rsp_param_srv->get_parameter<string>("robot_description"), moving);
-
   if(moving)
   {
+    std::cout << model_ns << " moving: " << std::boolalpha << moving << std::endl;
     odom_subs.push_back(create_subscription<Odometry>(model_ns + "/" + pose_topic, 1, [&](Odometry::UniquePtr msg)
     {odomCallback(msg->child_frame_id, msg->pose.pose);}));
   }
+
+  models.push_back(model_ns);
 }
 
 void CoralNode::parseModel(const string &description, bool moving)
@@ -200,7 +242,8 @@ void CoralNode::parseModel(const string &description, bool moving)
 
       if(current_topics.find(cam.topic) != current_topics.end())
         RCLCPP_WARN(get_logger(),
-                    "Image topic " + cam.topic + " seems already advertized by Gazebo, use `unset DISPLAY` in the Gazebo terminal and run without GUI");
+                    "Image topic %s seems already advertized by Gazebo, use `unset DISPLAY` in the Gazebo terminal and run without GUI",
+                    cam.topic.c_str());
 
       cameras.emplace_back(this, cam);
     }

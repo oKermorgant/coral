@@ -34,7 +34,7 @@ namespace
 class CameraTrackCallback: public osg::NodeCallback
 {
 public:
-  CameraTrackCallback(OceanScene* oceanScene)
+  explicit CameraTrackCallback(OceanScene* oceanScene)
     : _oceanScene (oceanScene)
     , _currentMatrix(0)
     , _traversalNumber(0)
@@ -1291,8 +1291,8 @@ osg::Geode* OceanScene::createScreenQuad( const osg::Vec2s& dims, const osg::Vec
 
 osg::Program* OceanScene::createDefaultSceneShader(void)
 {
-  static const char osgOcean_ocean_scene_vert_file[] = "default_scene.vert";
-  static const char osgOcean_ocean_scene_frag_file[] = "default_scene.frag";
+  static const char osgOcean_ocean_scene_vert_file[] = "coral_scene.vert";//"default_scene.vert";
+  static const char osgOcean_ocean_scene_frag_file[] = "coral_scene.frag";//"default_scene.frag";
 
   return ShaderManager::instance().createProgram("scene_shader",
                                                  osgOcean_ocean_scene_vert_file, osgOcean_ocean_scene_frag_file,

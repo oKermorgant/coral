@@ -56,8 +56,6 @@ void SphereSegment::compute( float radius,
     osg::Vec3Array* vertices = new osg::Vec3Array();
     osg::Vec2Array* texcoords = new osg::Vec2Array();
 
-    double x, y, z, t, p, sin_t, cos_t;
-
     double longInc = (longEnd - longStart) / (double)longitudeSteps;
     double latInc  = (latEnd  - latStart ) / (double)lattitudeSteps;
 
@@ -68,17 +66,17 @@ void SphereSegment::compute( float radius,
 
     for( unsigned int i = 0; i <= longitudeSteps; ++i)
     {
-        t = osg::DegreesToRadians( theta );
-        sin_t = sin(t);
-        cos_t = cos(t);
+        const auto t{osg::DegreesToRadians(theta)};
+        const auto sin_t{sin(t)};
+        const auto cos_t{cos(t)};
 
         for( unsigned int j = 0; j <= lattitudeSteps; ++j)
         {        
-            p = osg::DegreesToRadians( phi );
+            const auto p{osg::DegreesToRadians( phi )};
 
-            x = radius * sin_t * cos(p);
-            y = radius * sin_t * sin(p);
-            z = radius * cos_t;
+            const auto x{radius * sin_t * cos(p)};
+            const auto y{radius * sin_t * sin(p)};
+            const auto z{radius * cos_t};
 
             vertices->push_back( osg::Vec3( x, y, z ) );
             texcoords->push_back( osg::Vec2( j*vScale, i*uScale ) );

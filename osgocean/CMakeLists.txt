@@ -8,7 +8,7 @@ project (osgOcean)
 SET(OSGOCEAN_SRC ${PROJECT_SOURCE_DIR}/osgocean)
 # remove warnings from osgOcean / not my code
 add_compile_options(-w)
-set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE RelWithDebInfo)
 
 # Work around for building an xcode project. It seems XCode projects that
 # built with CMake are not compatible with relative paths.

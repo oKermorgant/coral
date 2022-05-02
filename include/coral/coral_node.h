@@ -37,6 +37,8 @@ public:
 
   image_transport::ImageTransport& image_transport() const {return *it;}
 
+  void findModels();
+
 private:
   Scene * scene;
   Viewer * viewer;
@@ -56,6 +58,11 @@ private:
   void odomCallback(const std::string &link_name, const geometry_msgs::msg::Pose &pose);
 
   // links and their meshes
+  std::vector<std::string> models;
+  inline bool hasModel(const std::string &model) const
+  {
+    return std::find(models.begin(), models.end(), model) != models.end();
+  }
   bool display_thrusters = false;
   bool world_is_parsed = false;
   Link world_link;
@@ -64,7 +71,7 @@ private:
   std::unique_ptr<image_transport::ImageTransport> it;
 
   // how to get them
-  rclcpp::Service<Spawn>::SharedPtr spawn_srv;
+  rclcpp::Service<Spawn>::SharedPtr spawn_srv;  
   void spawnModel(const std::string &model_ns, const std::string &pose_topic);
   void parseModel(const std::string &model, bool moving);
   void parseWorld();

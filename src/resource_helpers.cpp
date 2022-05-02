@@ -8,9 +8,11 @@ namespace coral
 namespace fs = std::filesystem;
 
 // try to find similar mesh file with OSG extension
-fs::path toOSGMesh(fs::path path)
+fs::path toOSGMesh(const fs::path &path)
 {
   const std::vector<std::string> osg_ext{".ive", ".osg",".osgb", ".osgt"};
+
+  static std::vector<std::string> done;
 
   // already OSG mesh?
   if(std::find(osg_ext.begin(), osg_ext.end(), path.extension())
@@ -18,11 +20,20 @@ fs::path toOSGMesh(fs::path path)
      return path;
 
   // find if any
-  const std::string base{path.stem().string()};
+  auto new_path{path};
+
   for(const auto &ext: osg_ext)
   {
-    if(fs::exists(base + ext))
-      return base+ext;
+    new_path.replace_extension(ext);
+    if(fs::exists(new_path))
+    {
+      if(std::find(done.begin(), done.end(), new_path.string()) == done.end())
+      {
+        done.push_back(new_path.string());
+        std::cout << "Using extension " << ext.substr(1) << " for " << path.filename() << std::endl;
+      }
+      return new_path;
+    }
   }
   return path;
 }
@@ -78,7 +89,7 @@ osg::Node * extractMesh(const std::string &mesh)
   if(mesh.find("sea_surface") != mesh.npos)
     return nullptr;
 
-  const auto fullpath(toOSGMesh(resolvePath(mesh)));
+  const auto fullpath{toOSGMesh(resolvePath(mesh))};
   const auto filename(fullpath.filename());
   const auto path(fullpath.parent_path());
 

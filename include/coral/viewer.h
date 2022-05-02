@@ -21,6 +21,8 @@ public:
   void lockCamera(const osg::Matrixd &M);
   void freeCamera();
 
+  inline osgViewer::Viewer* osg() const {return viewer.get();}
+
 private:
   osg::ref_ptr<osgViewer::Viewer> viewer;
   osg::ref_ptr<osgWidget::WindowManager> wm;

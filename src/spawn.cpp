@@ -14,15 +14,6 @@ int main(int argc, char** argv)
   auto request = std::make_shared<Spawn::Request>();
 
   request->robot_namespace = node->declare_parameter("namespace", "");
-  if(request->robot_namespace.empty())
-    request->robot_namespace = node->get_namespace();
-
-  // wait for this robot description
-  const auto rsp_node(std::make_shared<rclcpp::Node>("coral_rsp"));
-  const auto rsp_param_srv = std::make_shared<rclcpp::SyncParametersClient>
-                             (rsp_node, request->robot_namespace + "/robot_state_publisher");
-  rsp_param_srv->wait_for_service();
-
   request->pose_topic = node->declare_parameter("pose_topic", "pose_gt");
 
   auto client = node->create_client<Spawn>("/coral/spawn");
@@ -36,8 +27,11 @@ int main(int argc, char** argv)
     RCLCPP_ERROR(node->get_logger(), "service call failed :(");
     return 1;
   }
-  auto result = result_future.get();
-  RCLCPP_INFO(node->get_logger(), "successfully spawned robot in namespace ", request->robot_namespace.c_str());
+  [[maybe_unused]] auto result = result_future.get();
+  if(request->robot_namespace.empty())
+    RCLCPP_INFO(node->get_logger(), "successfully spawned new descriptions");
+  else
+    RCLCPP_INFO(node->get_logger(), "successfully spawned robot in namespace ", request->robot_namespace.c_str());
   rclcpp::shutdown();
   return 0;
 }

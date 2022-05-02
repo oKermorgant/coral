@@ -11,7 +11,7 @@ namespace coral
 
 struct SceneType
 {
-  enum class Type{ CLEAR, DUSK, CLOUDY };
+  enum class Type{ CLEAR, DUSK, CLOUDY, NIGHT };
 
   std::string cubemap;
   osg::Vec4f lightColor = intColor( 105,138,174 );
@@ -28,6 +28,8 @@ struct SceneType
       switchTo(Type::CLOUDY);
     else if(type == "dusk")
       switchTo(Type::DUSK);
+    else if(type == "night")
+      switchTo(Type::NIGHT);
     else
       switchTo(Type::CLEAR);
   }
@@ -68,6 +70,15 @@ struct SceneType
       sunPosition = osg::Vec3f(-1056.89f, -771.886f, 1221.18f );
       sunDiffuse =  intColor( 191, 191, 191 );
       waterFogColor = intColor(84,135,172 );
+      break;
+    case Type::NIGHT:
+      cubemap = "sky_night";
+      fogColor = intColor(20,20,50);
+      underwaterAttenuation = osg::Vec3f(0.008f, 0.003f, 0.002f);
+      underwaterDiffuse = intColor(10, 10, 30);
+      sunPosition = osg::Vec3f(0.f, 0.f, -100.f );
+      sunDiffuse =  intColor( 10, 10, 30 );
+      waterFogColor = underwaterDiffuse;
     }
   }
 };

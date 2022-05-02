@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
 {
   rclcpp::init(argc, argv);
 
-  osg::setNotifyLevel(osg::FATAL);
+  osg::setNotifyLevel(osg::WARN);
 
   auto node(std::make_shared<CoralNode>());
 
@@ -17,8 +17,14 @@ int main(int argc, char *argv[])
 
   node->manage(scene, viewer);
 
-  rclcpp::executors::SingleThreadedExecutor exec;
+  rclcpp::executors::MultiThreadedExecutor exec;
   exec.add_node(node);
+
+  [[maybe_unused]] auto future = std::async([&node]()
+  {
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    node->findModels();
+  });
 
   while(rclcpp::ok() && !viewer.done())
   {

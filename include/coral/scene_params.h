@@ -35,7 +35,7 @@ struct SceneParams
   bool godrays                    {false};  // godrays do not work on Intel GPUs
   bool glare                      {true};
   bool underwaterDof              {false};  // do not work on Intel GPUs
-  osg::Vec3 initialCameraPosition {0,0,20};
+  osg::Vec3 initialCameraPosition {-10.,0.,10.};
 
   int width         {1024};
   int height        {768};
@@ -43,8 +43,6 @@ struct SceneParams
   inline bool isChoppy() const {return std::abs(choppyFactor) > 1e-3;}
 
   std::string scene_type;
-
-  // hard-coded to default values in osgocean demo
 
 };
 

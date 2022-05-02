@@ -7,7 +7,7 @@
 #include <osgGA/DriveManipulator>
 
 #include <coral/Scene.h>
-#include <osgViewer/Viewer>
+#include <coral/viewer.h>
 
 namespace coral
 {
@@ -15,7 +15,7 @@ namespace coral
 class EventHandler : public osgGA::GUIEventHandler
 {
 public:
-  EventHandler(Scene* scene, osgViewer::Viewer* view) : scene(scene), view(view)
+  EventHandler(Scene* scene, Viewer* viewer) : scene{scene}, viewer{viewer}
   {  }
 
   void getUsage(osg::ApplicationUsage& usage) const;
@@ -23,7 +23,7 @@ public:
 
 private:
   Scene*                scene;
-  osgViewer::Viewer*      view;     
+  Viewer*                 viewer;
 };
 
 

@@ -9,6 +9,7 @@ void EventHandler::getUsage(osg::ApplicationUsage& usage) const
   usage.addKeyboardMouseBinding("1","Select scene \"Clear Blue Sky\"");
   usage.addKeyboardMouseBinding("2","Select scene \"Dusk\"");
   usage.addKeyboardMouseBinding("3","Select scene \"Pacific Cloudy\"");
+  usage.addKeyboardMouseBinding("4","Select scene \"Night\"");
 
   usage.addKeyboardMouseBinding("0","Toggle ocean surface");
 
@@ -27,8 +28,7 @@ void EventHandler::getUsage(osg::ApplicationUsage& usage) const
 
 bool EventHandler::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapter&)
 {
-  static auto oceanScene(scene->oceanScene());
-  static bool surface0(true);
+  static auto oceanScene(scene->oceanScene());  
 
   if(ea.getEventType() == osgGA::GUIEventAdapter::KEYUP)
   {
@@ -46,6 +46,11 @@ bool EventHandler::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapt
     else if(key == '3' )
     {
       scene->changeScene( SceneType::Type::CLOUDY );
+      return false;
+    }
+    else if(key == '4' )
+    {
+      scene->changeScene( SceneType::Type::NIGHT);
       return false;
     }
     // Reflections
@@ -113,6 +118,7 @@ bool EventHandler::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapt
     }
     if (key == '0')
     {
+      static bool surface0(true);
       surface0 = !surface0;
       oceanScene->setOceanSurfaceHeight(surface0 ? 0. : -1000.);
     }

@@ -19,7 +19,7 @@ struct LinkInfo
   std::vector<CameraInfo> cameras;
   bool has_children = false;
   LinkBase base = LinkBase::FLOATING;
-  osg::MatrixTransform* pose = new osg::MatrixTransform;
+  osg::ref_ptr <osg::MatrixTransform> pose = new osg::MatrixTransform;
 
   LinkInfo *merged = nullptr;
 
@@ -52,6 +52,24 @@ struct LinkInfo
   {
     return base != LinkBase::FLOATING || (!has_children && visuals.empty() && cameras.empty());
   }
+
+  static bool isFixed(const std::pair<std::string, LinkInfo> &info)
+  {
+    return info.second.base == LinkBase::FIXED;
+  }
+
+  Link toNamedLink(const std::string &name, osg::MatrixTransform* pose) const
+  {
+
+    auto link{Link(name, pose)};
+
+    for(const auto &[visual,M]: visuals)
+      link.addVisual(visual, M);
+    for(auto &cam: cameras)
+      link.frame()->addChild(cam.pose);
+
+    return link;
+  }
 };
 
 
@@ -65,6 +83,8 @@ std::tuple<string, vector<Link>, vector<CameraInfo>> parse(const string &descrip
   // extract all links
   for(const auto &[name, link]: model->links_)
   {
+    if(name == "world")
+      continue;
 
     if(!with_thrusters && name.find("thruster_") != name.npos)
       continue;
@@ -86,6 +106,8 @@ std::tuple<string, vector<Link>, vector<CameraInfo>> parse(const string &descrip
   for(const auto &[name,joint]: model->joints_)
   {
     auto &link{tree[joint->child_link_name]};
+    if(joint->parent_link_name == "world")
+      continue;
     link.parent = joint->parent_link_name;
     tree[link.parent].has_children = true;
     link.pose->setMatrix(Link::osgMatFrom(joint->parent_to_joint_origin_transform.position, joint->parent_to_joint_origin_transform.rotation));
@@ -99,7 +121,7 @@ std::tuple<string, vector<Link>, vector<CameraInfo>> parse(const string &descrip
   // recursive merge until no more fixed links
   while(true)
   {
-    const auto link = std::find_if(tree.begin(), tree.end(), [](const auto &link){return link.second.base == LinkBase::FIXED;});
+    const auto link = std::find_if(tree.begin(), tree.end(), LinkInfo::isFixed);
     if(link == tree.end())
       break;
     link->second.mergeInto(tree[link->second.parent]);
@@ -107,19 +129,12 @@ std::tuple<string, vector<Link>, vector<CameraInfo>> parse(const string &descrip
 
   // build actual osg links from floating joints with either visuals or cameras
   vector<Link> links;
-  for(auto &[name, info]: tree)
+  for(const auto &[name, info]: tree)
   {
     if(name == "world" || info.empty())
       continue;
 
-    auto link = info.relative() ? Link(name, tree[info.parent].pose) : Link(name);
-
-    for(const auto &[visual,M]: info.visuals)
-      link.addVisual(visual, M);
-    for(auto &cam: info.cameras)
-      link.frame()->addChild(cam.pose);
-
-    links.push_back(link);
+    links.push_back(info.toNamedLink(name, info.relative() ? tree[info.parent].pose.get() : new osg::MatrixTransform));
   }
 
   return {model->getRoot()->name, links, cameras};

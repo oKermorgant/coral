@@ -70,7 +70,7 @@ private:
 
   const std::string name;
   std::string parent = "world";
-  osg::ref_ptr < osg::MatrixTransform > pose;
+  osg::ref_ptr <osg::MatrixTransform> pose;
 
   inline void addVisualNode(osg::Node* frame, const osg::Matrixd &M, const urdf::Material* mat);
 

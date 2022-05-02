@@ -11,7 +11,7 @@ namespace coral
 struct NestedXML
 {
   const TiXmlElement* root;
-  NestedXML(const TiXmlElement* root) : root(root) {}
+  explicit NestedXML(const TiXmlElement* root) : root(root) {}
 
   static const TiXmlElement* getNested(const TiXmlElement* root, const vector<string> &keys)
   {
@@ -156,7 +156,7 @@ Camera::Camera(CoralNode* node, const CameraInfo &info)
                                           [&](){publish(node);});
 }
 
-void Camera::publish(CoralNode *node)
+void Camera::publish([[maybe_unused]] CoralNode *node)
 {
   //msg.header.stamp = node->now();
   const auto &height(msg.height);

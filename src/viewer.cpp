@@ -3,6 +3,7 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
 #include <chrono>
+#include <coral/debug_msg.h>
 
 using namespace coral;
 using std::chrono::system_clock;
@@ -22,7 +23,7 @@ Viewer::Viewer(Scene &scene)
   viewer->addEventHandler( new osgViewer::StatsHandler );
   viewer->addEventHandler( new osgGA::StateSetManipulator( viewer->getCamera()->getOrCreateStateSet() ) );
 
-  viewer->addEventHandler(new EventHandler(&scene, viewer));
+  viewer->addEventHandler(new EventHandler(&scene, this));
   viewer->addEventHandler(scene.oceanSurface()->getEventHandler());
 
   viewer->addEventHandler( new osgViewer::HelpHandler );
@@ -31,6 +32,7 @@ Viewer::Viewer(Scene &scene)
   // init free-flying cam + default
   osg::Vec3 eye(scene.parameters().initialCameraPosition);
   free_manip->setHomePosition( eye, eye + osg::Vec3(0,20,0), osg::Vec3f(0,0,1) );
+  free_manip->setVerticalAxisFixed(true);
   cam_is_free = true;
   viewer->setCameraManipulator(free_manip);
 
@@ -62,8 +64,11 @@ void Viewer::frame()
     else            ocean_scene->setOceanSurfaceHeight(-0.05f);
     prev_above_water = above_water;
   }
-
+  {
+    //auto debug{DebugMsg("viewer:frame()")};
   viewer->frame();
+  }
+
   scene_mutex->unlock();
 }
 

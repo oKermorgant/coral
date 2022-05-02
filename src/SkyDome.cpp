@@ -37,15 +37,11 @@ SkyDome::SkyDome( float radius, unsigned int longSteps, unsigned int latSteps, o
     setupStateSet(cubemap);
 }
 
-SkyDome::~SkyDome(void)
-{
-}
-
-void SkyDome::create( float radius, unsigned int latSteps, unsigned int longSteps, osg::TextureCubeMap* cubemap )
+/*void SkyDome::create( float radius, unsigned int latSteps, unsigned int longSteps, osg::TextureCubeMap* cubemap )
 {
     compute( radius, longSteps, latSteps, 90.f, 180.f, 0.f, 360.f );
     setupStateSet(cubemap);
-}
+}*/
 
 void SkyDome::setupStateSet( osg::TextureCubeMap* cubemap )
 {
