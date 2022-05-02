@@ -21,7 +21,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
-if("$ENV{ROS_DISTRO}" STRGREATER "galactic" OR "$ENV{ROS_DISTRO}" STRGREATER "foxy")
+if("$ENV{ROS_DISTRO}" STREQUAL "galactic" OR "$ENV{ROS_DISTRO}" STREQUAL "foxy")
     set(LEGACY_IDL TRUE)
 else()
     set(LEGACY_IDL FALSE)
