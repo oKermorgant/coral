@@ -66,6 +66,12 @@ public:
     return this->name == name;
   }
 
+  inline void setParent(const Link &root)
+  {
+      root.pose->addChild(pose);
+      parent = root.name;
+  }
+
 private:
 
   const std::string name;

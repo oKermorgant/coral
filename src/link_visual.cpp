@@ -164,24 +164,5 @@ void Link::addVisualNode(osg::Node* node, const osg::Matrixd &M, const urdf::Mat
   visuals.emplace_back(node, M);
 }
 
-urdf::MaterialSharedPtr Link::uuvMaterial(const std::string &mesh_file)
-{
-  auto mat(std::make_shared<urdf::Material>());
-
-  // TODO automagically resolve mesh dependency on a texture
-  // will have to identify the mesh is part of a Gazebo model and parse the sdf file
-  const std::vector<std::string> sanded_meshes
-  {"LakeBottom.dae", "herkules_seabed.dae", "heightmap.dae", "seabed.dae"};
-
-  if(mesh_file == "" ||
-     std::any_of(sanded_meshes.begin(), sanded_meshes.end(), [&mesh_file](const auto &name)
-  {return mesh_file.find(name) != mesh_file.npos && mesh_file.find("uuv_gazebo_worls") != mesh_file.npos;}))
-    mat->texture_filename = "soil_sand_0045_01.jpg";
-
-  return mat;
-}
-
-
-
 
 }

@@ -8,6 +8,7 @@
 #include <coral/srv/spawn.hpp>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
+#include <rosgraph_msgs/msg/clock.hpp>
 
 #include <coral/Scene.h>
 #include <coral/viewer.h>
@@ -31,6 +32,7 @@ public:
   {
     this->scene = &scene;
     this->viewer = &viewer;
+    world_link.attachTo(this->scene);
   }
 
   SceneParams parameters();
@@ -44,7 +46,7 @@ private:
   Viewer * viewer;
 
   // tf interface
-  rclcpp::TimerBase::SharedPtr world_sim_timer, pose_update_timer;
+  rclcpp::TimerBase::SharedPtr pose_update_timer;
   void refreshWorldParams();
   void refreshLinkPoses();
   tf2_ros::Buffer tf_buffer;
@@ -64,8 +66,6 @@ private:
     return std::find(models.begin(), models.end(), model) != models.end();
   }
   bool display_thrusters = false;
-  bool world_is_parsed = false;
-  Link world_link;
   std::vector<Link> abs_links, rel_links;
   std::vector<Camera> cameras;
   std::unique_ptr<image_transport::ImageTransport> it;
@@ -74,10 +74,10 @@ private:
   rclcpp::Service<Spawn>::SharedPtr spawn_srv;  
   void spawnModel(const std::string &model_ns, const std::string &pose_topic);
   void parseModel(const std::string &model, bool moving);
-  void parseWorld();
-  void addWorldVisual(rclcpp::SyncParametersClient::SharedPtr pwm_client, const std::string &name, GeometryType geometry);
+  rclcpp::Subscription<rosgraph_msgs::msg::Clock>::SharedPtr clock_pub;
 
   // camera view point
+  Link world_link{"world"};
   const std::string coral_cam_link = "coral_cam_view";
   bool has_cam_view = false;
   Link* getKnownCamParent();

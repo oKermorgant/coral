@@ -73,7 +73,7 @@ struct LinkInfo
 };
 
 
-std::tuple<string, vector<Link>, vector<CameraInfo>> parse(const string &description, bool with_thrusters)
+std::tuple<vector<Link>, vector<CameraInfo>> parse(const string &description, bool with_thrusters)
 {
   const auto cameras(CameraInfo::extractFrom(description));
 
@@ -86,7 +86,7 @@ std::tuple<string, vector<Link>, vector<CameraInfo>> parse(const string &descrip
     if(name == "world")
       continue;
 
-    if(!with_thrusters && name.find("thruster_") != name.npos)
+    if(!with_thrusters && name.find("thruster") != name.npos)
       continue;
 
     auto &info(tree[name]);
@@ -128,16 +128,37 @@ std::tuple<string, vector<Link>, vector<CameraInfo>> parse(const string &descrip
   }
 
   // build actual osg links from floating joints with either visuals or cameras
+  // find a root link to attach others
+  // in standard robots there should be 1
   vector<Link> links;
+  const auto root_frame{std::find_if(tree.begin(), tree.end(), [](const auto &elem)
+    {
+      return elem.first != "world" && !elem.second.empty() && !elem.second.relative();
+    })};
+  const auto root_link = root_frame == tree.end() ? "" : root_frame->first;
+
+  // root link is the first in the list
+  if(!root_link.empty())
+  {
+    links.push_back(root_frame->second.toNamedLink(root_link, new osg::MatrixTransform));
+  }
+
   for(const auto &[name, info]: tree)
   {
-    if(name == "world" || info.empty())
+    if(name == "world" || info.empty() || name == root_link)
       continue;
 
     links.push_back(info.toNamedLink(name, info.relative() ? tree[info.parent].pose.get() : new osg::MatrixTransform));
   }
 
-  return {model->getRoot()->name, links, cameras};
+  // register all links with regards to root
+  for(auto &link: links)
+  {
+    if(!(link == root_link))
+      link.setParent(links.front());
+  }
+
+  return {links, cameras};
 }
 
 }

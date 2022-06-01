@@ -22,6 +22,14 @@ find_package(tf2_ros REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME} "srv/Spawn.srv")
+if("$ENV{ROS_DISTRO}" STREQUAL "galactic" OR "$ENV{ROS_DISTRO}" STREQUAL "foxy")
+    set(LEGACY_IDL TRUE)
+else()
+    set(LEGACY_IDL FALSE)
+endif()
+if(NOT ${LEGACY_IDL})
+  rosidl_get_typesupport_target(cpp_typesupport_target "${PROJECT_NAME}" "rosidl_typesupport_cpp")
+endif()
 
 set(OSGOCEAN_SRC ${PROJECT_SOURCE_DIR}/osgocean/osgocean)
 
@@ -87,24 +95,33 @@ src/SkyDome.cpp
 src/SphereSegment.cpp
 )
 
-target_include_directories(coral_sim SYSTEM PRIVATE include ${OPENSCENEGRAPH_INCLUDE_DIR} ${OSGOCEAN_INCLUDE_DIRS} ${OPENGL_INCLUDE_DIR})
-target_include_directories(coral_sim PRIVATE include)
-target_link_libraries(coral_sim osgOcean ${OPENSCENEGRAPH_LIBRARIES} ${OPENGL_LIBRARY})
-ament_target_dependencies(coral_sim rclcpp sensor_msgs geometry_msgs nav_msgs urdf ament_index_cpp tf2_ros image_transport std_srvs)
-rosidl_target_interfaces(coral_sim ${PROJECT_NAME} "rosidl_typesupport_cpp")
 
+include_directories(SYSTEM include ${OPENSCENEGRAPH_INCLUDE_DIR} ${OSGOCEAN_INCLUDE_DIRS} ${OPENGL_INCLUDE_DIR})
+include_directories(include)
+target_link_libraries(coral_sim osgOcean ${OPENSCENEGRAPH_LIBRARIES} ${OPENGL_LIBRARY} "${cpp_typesupport_target}")
+ament_target_dependencies(coral_sim rclcpp sensor_msgs geometry_msgs nav_msgs urdf ament_index_cpp tf2_ros image_transport std_srvs)
+
+# spawn service wrapper
 add_executable(spawn src/spawn.cpp)
 ament_target_dependencies(spawn rclcpp)
-rosidl_target_interfaces(spawn ${PROJECT_NAME} "rosidl_typesupport_cpp")
 
 
-install(TARGETS 
-coral_sim spawn
+
+if(${LEGACY_IDL})
+    rosidl_target_interfaces(coral_sim ${PROJECT_NAME} "rosidl_typesupport_cpp")
+    rosidl_target_interfaces(spawn ${PROJECT_NAME} "rosidl_typesupport_cpp")
+else()
+    target_link_libraries(coral_sim "${cpp_typesupport_target}")
+    target_link_libraries(spawn "${cpp_typesupport_target}")
+endif()
+
+
+
+install(TARGETS coral_sim spawn
 DESTINATION lib/${PROJECT_NAME})
 
 FILE(GLOB SCRIPTS scripts/*.py)
-install(PROGRAMS
-  ${SCRIPTS}
+install(PROGRAMS ${SCRIPTS}
   DESTINATION lib/${PROJECT_NAME}
 )
 

@@ -30,7 +30,7 @@ fs::path toOSGMesh(const fs::path &path)
       if(std::find(done.begin(), done.end(), new_path.string()) == done.end())
       {
         done.push_back(new_path.string());
-        std::cout << "Using extension " << ext.substr(1) << " for " << path.filename() << std::endl;
+        std::cout << "Found file with extension " << ext.substr(1) << " for " << path.filename() << std::endl;
       }
       return new_path;
     }
