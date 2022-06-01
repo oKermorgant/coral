@@ -22,6 +22,7 @@ find_package(tf2_ros REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME} "srv/Spawn.srv")
+
 if("$ENV{ROS_DISTRO}" STREQUAL "galactic" OR "$ENV{ROS_DISTRO}" STREQUAL "foxy")
     set(LEGACY_IDL TRUE)
 else()
@@ -67,9 +68,7 @@ if(OSGOCEAN_EXTERNAL)
     set_target_properties(osgOcean PROPERTIES IMPORTED_LOCATION ${CMAKE_INSTALL_PREFIX}/lib/libosgOcean.so)
 
 else()
-
-add_subdirectory(osgocean)
-
+    add_subdirectory(osgocean)
 endif()
 
 set(OSGOCEAN_INCLUDE_DIRS ${OSGOCEAN_SRC}/include)
@@ -95,25 +94,27 @@ src/SkyDome.cpp
 src/SphereSegment.cpp
 )
 
-
-include_directories(SYSTEM include ${OPENSCENEGRAPH_INCLUDE_DIR} ${OSGOCEAN_INCLUDE_DIRS} ${OPENGL_INCLUDE_DIR})
-include_directories(include)
-target_link_libraries(coral_sim osgOcean ${OPENSCENEGRAPH_LIBRARIES} ${OPENGL_LIBRARY} "${cpp_typesupport_target}")
+target_include_directories(coral_sim SYSTEM PRIVATE include ${OPENSCENEGRAPH_INCLUDE_DIR} ${OSGOCEAN_INCLUDE_DIRS} ${OPENGL_INCLUDE_DIR})
+target_include_directories(coral_sim PRIVATE include)
+target_link_libraries(coral_sim osgOcean ${OPENSCENEGRAPH_LIBRARIES} ${OPENGL_LIBRARY})
 ament_target_dependencies(coral_sim rclcpp sensor_msgs geometry_msgs nav_msgs urdf ament_index_cpp tf2_ros image_transport std_srvs)
+if(${LEGACY_IDL})
+    rosidl_target_interfaces(coral_sim ${PROJECT_NAME} "rosidl_typesupport_cpp")
+else()
+    target_link_libraries(coral_sim "${cpp_typesupport_target}")
+endif()
+
+
 
 # spawn service wrapper
 add_executable(spawn src/spawn.cpp)
 ament_target_dependencies(spawn rclcpp)
-
-
-
 if(${LEGACY_IDL})
-    rosidl_target_interfaces(coral_sim ${PROJECT_NAME} "rosidl_typesupport_cpp")
     rosidl_target_interfaces(spawn ${PROJECT_NAME} "rosidl_typesupport_cpp")
 else()
-    target_link_libraries(coral_sim "${cpp_typesupport_target}")
     target_link_libraries(spawn "${cpp_typesupport_target}")
 endif()
+
 
 
 
