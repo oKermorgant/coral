@@ -129,7 +129,7 @@ std::tuple<vector<Link>, vector<CameraInfo>> parse(const string &description, bo
 
   // build actual osg links from floating joints with either visuals or cameras
   // find a root link to attach others
-  // in standard robots there should be 1
+  // in standard robots there should be only 1
   vector<Link> links;
   const auto root_frame{std::find_if(tree.begin(), tree.end(), [](const auto &elem)
     {

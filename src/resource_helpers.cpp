@@ -85,6 +85,7 @@ fs::path resolvePath(const std::string &file)
 
 osg::Node * extractMesh(const std::string &mesh)
 {
+  static std::map<std::string, osg::Node*> cache;
   // do not deal with surface meshes from Plankton / UUV
   if(mesh.find("sea_surface") != mesh.npos)
     return nullptr;
@@ -96,14 +97,16 @@ osg::Node * extractMesh(const std::string &mesh)
   // TODO detect and add texture to sea bottom meshes from Plankton / UUV    
 
   addResourcePath(path);
+  
+  auto copy{cache[fullpath]};
+  if(copy == nullptr)
+      copy = osgDB::readNodeFile(filename);
 
-  auto node = osgDB::readNodeFile(filename);
-
-  if(node == nullptr)
+  if(copy == nullptr)
   {
     OSG_FATAL << "Cannot find mesh file '"
               << fullpath << "'\n";
   }
-  return node;
+  return copy;
 }
 }

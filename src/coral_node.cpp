@@ -14,8 +14,8 @@ CoralNode::CoralNode()
   display_thrusters = declare_parameter("with_thrusters", false);
 
   spawn_srv = create_service<Spawn>
-      ("/coral/spawn",
-       [&](const Spawn::Request::SharedPtr request, [[maybe_unused]] Spawn::Response::SharedPtr response)
+              ("/coral/spawn",
+               [&](const Spawn::Request::SharedPtr request, [[maybe_unused]] Spawn::Response::SharedPtr response)
   {
     if(request->robot_namespace.empty())
       findModels();
@@ -25,9 +25,10 @@ CoralNode::CoralNode()
 
   clock_pub = create_subscription<rosgraph_msgs::msg::Clock>("/clock", 1, [&]([[maybe_unused]] rosgraph_msgs::msg::Clock::SharedPtr msg)
   {
-      set_parameter(rclcpp::Parameter("use_sim_time", true));
-      clock_pub.reset();
-});
+    // use_sim_time as soon as 1 message is received here
+    set_parameter(rclcpp::Parameter("use_sim_time", true));
+    clock_pub.reset();
+  });
 }
 
 SceneParams CoralNode::parameters()
@@ -35,7 +36,7 @@ SceneParams CoralNode::parameters()
   SceneParams params;
 
   auto updateParam = [&](const string &description,
-      auto & val)
+                     auto & val)
   {val = declare_parameter(description, val);};
 
   // display
@@ -70,18 +71,6 @@ SceneParams CoralNode::parameters()
   return params;
 }
 
-void CoralNode::odomCallback(const std::string &link_name, const geometry_msgs::msg::Pose &pose)
-{
-  for(auto &link: abs_links)
-  {
-    if(link.getName() == link_name)
-    {
-      link.setPose(Link::osgMatFrom(pose.position, pose.orientation));
-      return;
-    }
-  }
-}
-
 Link* CoralNode::getKnownCamParent()
 {
   static Link* prev_link{};
@@ -103,8 +92,8 @@ Link* CoralNode::getKnownCamParent()
       break;
     }
     // if we have reached a link that moves without TF knowing
-    const auto root{std::find(abs_links.begin(), abs_links.end(), parent)};
-    if(root != abs_links.end())
+    const auto root{std::find(links.begin(), links.end(), parent)};
+    if(root != links.end())
     {
       prev_link = root.base();
       break;
@@ -120,7 +109,7 @@ void CoralNode::refreshLinkPoses()
 {
   vector<string> tf_links;
   tf_buffer._getFrameStrings(tf_links);
-  for(auto &link: rel_links)
+  for(auto &link: links)
   {
     if(hasLink(link.getName(), tf_links))
       link.refreshFrom(tf_buffer);
@@ -168,10 +157,11 @@ void CoralNode::findModels()
           return topic.size() >= ns.size() && 0 == topic.compare(0, ns.size(), ns);
         }};
 
+      // pose_topic should be a geometry_msgs/Pose, published by Gazebo as ground truth
       std::string pose_topic;
       for(const auto &[topic, msg]: topics)
       {
-        if(isSameNS(topic) && msg[0] == "nav_msgs/msg/Odometry")
+        if(isSameNS(topic) && msg[0] == "geometry_msgs/msg/Pose")
         {
           pose_topic = topic.substr(ns.size()+1);
           break;
@@ -189,7 +179,7 @@ void CoralNode::spawnModel(const std::string &model_ns, const std::string &pose_
   // retrieve full model through robot_state_publisher
   const auto rsp_node(std::make_shared<Node>("coral_rsp"));
   const auto rsp_param_srv = std::make_shared<rclcpp::SyncParametersClient>
-      (rsp_node, model_ns + "/robot_state_publisher");
+                             (rsp_node, model_ns + "/robot_state_publisher");
   rsp_param_srv->wait_for_service();
   if(!rsp_param_srv->has_parameter("robot_description"))
   {
@@ -200,18 +190,31 @@ void CoralNode::spawnModel(const std::string &model_ns, const std::string &pose_
 
   const auto moving{!pose_topic.empty()};
 
-  parseModel(rsp_param_srv->get_parameter<string>("robot_description"), moving);
+  const auto root_link_idx{links.size()};
+
+  parseModel(rsp_param_srv->get_parameter<string>("robot_description"));
   if(moving)
   {
-    std::cout << model_ns << " moving: " << std::boolalpha << moving << std::endl;
-    odom_subs.push_back(create_subscription<Odometry>(model_ns + "/" + pose_topic, 1, [&](Odometry::UniquePtr msg)
-                        {odomCallback(msg->child_frame_id, msg->pose.pose);}));
+    if(root_link_idx == links.size())
+    {
+      // no new links were added for this robot
+      RCLCPP_WARN(get_logger(),
+                  "No link was found in description from namespace %s",
+                  model_ns.c_str());
+    }
+    else
+    {
+      std::cout << model_ns << " seems to have its pose published on " << pose_topic << std::endl;
+      pose_subs.push_back(create_subscription<Pose>(model_ns + "/" + pose_topic, 1, [&,root_link_idx](Pose::SharedPtr msg)
+      {
+        links[root_link_idx].setPose(Link::osgMatFrom(msg->position, msg->orientation));
+      }));
+    }
   }
-
   models.push_back(model_ns);
 }
 
-void CoralNode::parseModel(const string &description, bool moving)
+void CoralNode::parseModel(const string &description)
 {
   const auto [new_links, new_cams] = urdf_parser::parse(description, display_thrusters); {}
 
@@ -234,17 +237,10 @@ void CoralNode::parseModel(const string &description, bool moving)
   }
 
   // add links
-  auto root{true};
   for(const auto &link: new_links)
   {
     link.attachTo(scene);
-    if(moving && root)
-    {
-      abs_links.push_back(link);
-      root = false;
-    }
-    else
-      rel_links.push_back(link);
+    links.push_back(link);
   }
 }
 

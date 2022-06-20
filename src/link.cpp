@@ -30,7 +30,7 @@ void Link::attachTo(coral::Scene *scene) const
 }
 
 
-void Link::refreshFrom(tf2_ros::Buffer &tf_buffer)
+void Link::refreshFrom(const tf2_ros::Buffer &tf_buffer)
 {
   static geometry_msgs::msg::TransformStamped tr;
 

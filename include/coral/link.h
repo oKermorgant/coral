@@ -34,10 +34,9 @@ public:
 
   Link(const std::string &name, osg::MatrixTransform* pose = new osg::MatrixTransform) : name(name), pose(pose) {}
 
-
   void attachTo(coral::Scene *scene) const;
   inline std::string getName() const {return name;}
-  void refreshFrom(tf2_ros::Buffer &tf_buffer);
+  void refreshFrom(const tf2_ros::Buffer &tf_buffer);
   auto frame() const {return pose.get();}
 
   inline void setPose(const osg::Matrixd &M)
@@ -72,11 +71,14 @@ public:
       parent = root.name;
   }
 
+  inline void updatedFromTopic() {pose_from_tf = false;}
+
 private:
 
   const std::string name;
   std::string parent = "world";
   osg::ref_ptr <osg::MatrixTransform> pose;
+  bool pose_from_tf{true};
 
   inline void addVisualNode(osg::Node* frame, const osg::Matrixd &M, const urdf::Material* mat);
 

@@ -4,12 +4,12 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/node.hpp>
 #include <image_transport/image_transport.hpp>
-#include <nav_msgs/msg/odometry.hpp>
-#include <coral/srv/spawn.hpp>
+#include <geometry_msgs/msg/pose.hpp>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
 #include <rosgraph_msgs/msg/clock.hpp>
 
+#include <coral/srv/spawn.hpp>
 #include <coral/Scene.h>
 #include <coral/viewer.h>
 #include <coral/link.h>
@@ -18,7 +18,7 @@
 namespace coral
 {
 
-using nav_msgs::msg::Odometry;
+using geometry_msgs::msg::Pose;
 using coral::srv::Spawn;
 
 class CoralNode : public rclcpp::Node
@@ -56,8 +56,8 @@ private:
     return std::find(tf_links.begin(), tf_links.end(), name) != tf_links.end();
   }
 
-  std::vector<rclcpp::Subscription<Odometry>::SharedPtr> odom_subs;  
-  void odomCallback(const std::string &link_name, const geometry_msgs::msg::Pose &pose);
+  // ground truth subscribers from Gazebo
+  std::vector<rclcpp::Subscription<Pose>::SharedPtr> pose_subs;
 
   // links and their meshes
   std::vector<std::string> models;
@@ -66,14 +66,14 @@ private:
     return std::find(models.begin(), models.end(), model) != models.end();
   }
   bool display_thrusters = false;
-  std::vector<Link> abs_links, rel_links;
+  std::vector<Link> links;
   std::vector<Camera> cameras;
   std::unique_ptr<image_transport::ImageTransport> it;
 
   // how to get them
   rclcpp::Service<Spawn>::SharedPtr spawn_srv;  
   void spawnModel(const std::string &model_ns, const std::string &pose_topic);
-  void parseModel(const std::string &model, bool moving);
+  void parseModel(const std::string &model);
   rclcpp::Subscription<rosgraph_msgs::msg::Clock>::SharedPtr clock_pub;
 
   // camera view point
