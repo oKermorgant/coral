@@ -10,6 +10,7 @@
 #include <rosgraph_msgs/msg/clock.hpp>
 
 #include <coral/srv/spawn.hpp>
+#include <coral/srv/surface.hpp>
 #include <coral/Scene.h>
 #include <coral/viewer.h>
 #include <coral/link.h>
@@ -20,6 +21,7 @@ namespace coral
 
 using geometry_msgs::msg::Pose;
 using coral::srv::Spawn;
+using coral::srv::Surface;
 
 class CoralNode : public rclcpp::Node
 {
@@ -81,6 +83,10 @@ private:
   const std::string coral_cam_link = "coral_cam_view";
   bool has_cam_view = false;
   Link* getKnownCamParent();
+
+  // surface height
+  rclcpp::Service<Surface>::SharedPtr surface_srv;
+  void computeSurface(const Surface::Request &req, Surface::Response &res);
 };
 
 }

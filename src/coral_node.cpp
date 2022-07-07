@@ -23,6 +23,12 @@ CoralNode::CoralNode()
       spawnModel(request->robot_namespace, request->pose_topic);
   });
 
+  surface_srv = create_service<Surface>("/coral/surface",
+                                        [&](const Surface::Request::SharedPtr req, Surface::Response::SharedPtr res)
+  {
+    computeSurface(*req, *res);
+  });
+
   clock_pub = create_subscription<rosgraph_msgs::msg::Clock>("/clock", 1, [&]([[maybe_unused]] rosgraph_msgs::msg::Clock::SharedPtr msg)
   {
     // use_sim_time as soon as 1 message is received here
@@ -246,3 +252,28 @@ void CoralNode::parseModel(const string &description)
   }
 }
 
+void CoralNode::computeSurface(const Surface::Request &req, Surface::Response &res)
+{
+  const auto surface{scene->oceanSurface()};
+
+  // compute local frame
+  res.dim = req.size/req.resolution + 1;
+  res.surface.reserve(res.dim*res.dim);
+  const auto c{cos(req.theta)};
+  const auto s{sin(req.theta)};
+  const auto start{-req.size/2};
+
+  for(int ix = 0; ix < res.dim; ix++)
+  {
+    const auto dx{start+ix*req.resolution};
+
+    for(int iy = 0; iy < res.dim; iy++)
+    {
+      const auto dy{start+iy*req.resolution};
+      res.surface.push_back(
+            surface->getSurfaceHeightAt(
+              req.x + dx*c - dy*s,
+              req.y + dx*s + dy*c));
+    }
+  }
+}
