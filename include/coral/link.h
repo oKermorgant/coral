@@ -34,10 +34,10 @@ public:
 
   Link(const std::string &name, osg::MatrixTransform* pose = new osg::MatrixTransform) : name(name), pose(pose) {}
 
+  auto frame() const {return pose.get();}
   void attachTo(coral::Scene *scene) const;
   inline std::string getName() const {return name;}
   void refreshFrom(const tf2_ros::Buffer &tf_buffer);
-  auto frame() const {return pose.get();}
 
   inline void setPose(const osg::Matrixd &M)
   {
@@ -49,13 +49,11 @@ public:
   {
     osg::ref_ptr<osg::Node> mesh;
     osg::ref_ptr <osg::MatrixTransform > pose;
-    Visual(osg::Node *mesh, const osg::Matrixd &M);
+    Visual(osg::ref_ptr<osg::Node> mesh, const osg::Matrixd &M);
   };
 
   inline bool hasVisuals() const {return !visuals.empty();}
-  static urdf::MaterialSharedPtr uuvMaterial(const std::string &mesh_file = "");
   void addVisual(urdf::VisualSharedPtr visual, const osg::Matrixd &M);
-  void addVisualMesh(const std::string &mesh, const osg::Matrixd &M, const urdf::Material* mat);
   void addVisualBox(const osg::Vec3d &dim, const osg::Matrixd &M, const urdf::Material* mat);
   void addVisualSphere(double radius, const osg::Matrixd &M, const urdf::Material* mat);
   void addVisualCylinder(double radius, double length, const osg::Matrixd &M, const urdf::Material* mat);
@@ -71,16 +69,17 @@ public:
       parent = root.name;
   }
 
-  inline void updatedFromTopic() {pose_from_tf = false;}
+  inline void ignoreTF() {pose_from_topic = true;}
+  inline bool updatedFromTopic() const {return pose_from_topic;}
 
 private:
 
   const std::string name;
   std::string parent = "world";
   osg::ref_ptr <osg::MatrixTransform> pose;
-  bool pose_from_tf{true};
+  bool pose_from_topic{false};
 
-  inline void addVisualNode(osg::Node* frame, const osg::Matrixd &M, const urdf::Material* mat);
+  inline void addVisualNode(osg::ref_ptr<osg::Node> frame, const osg::Matrixd &M, const urdf::Material* mat);
 
   std::vector<Visual> visuals;
 

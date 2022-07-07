@@ -7,8 +7,6 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-set(CMAKE_BUILD_TYPE RelWithDebInfo)
-
 find_package(ament_cmake REQUIRED)
 find_package(ament_index_cpp REQUIRED)
 find_package(std_srvs REQUIRED)
@@ -42,6 +40,8 @@ message("getting osgocean submodule...")
 execute_process(COMMAND git submodule update --init
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
 endif()
+
+set(CMAKE_BUILD_TYPE Debug)
 
 if(OSGOCEAN_EXTERNAL)
 
@@ -136,11 +136,11 @@ endif()
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME}) 
 
 # common osgocean resources
-install(DIRECTORY ${OSGOCEAN_SRC}/resources DESTINATION share/${PROJECT_NAME}) 
-install(DIRECTORY ${OSGOCEAN_SRC}/demo/island ${OSGOCEAN_SRC}/demo/textures DESTINATION share/${PROJECT_NAME}/resources)
+install(DIRECTORY ${OSGOCEAN_SRC}/resources/shaders DESTINATION share/${PROJECT_NAME}/resources)
+install(DIRECTORY ${OSGOCEAN_SRC}/demo/island DESTINATION share/${PROJECT_NAME}/resources)
 
 # override some shaders if needed
-install(DIRECTORY osgocean/shaders osgocean/textures DESTINATION share/${PROJECT_NAME}/resources) 
+install(DIRECTORY osgocean/resources DESTINATION share/${PROJECT_NAME}) 
 
 ament_export_libraries(osgOcean)
 ament_package()

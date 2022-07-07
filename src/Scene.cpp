@@ -169,7 +169,6 @@ Scene::Scene(const SceneParams &params) : params(params), scene_type(params.scen
 
   scene->addChild( lightSource );
   scene->addChild( ocean_scene.get() );
-  //_scene->addChild( sunDebug(_sunPositions[CLOUDY]) );
 
 
   root = scene; //new osg::Group;

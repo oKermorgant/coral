@@ -1,6 +1,8 @@
+#include <ament_index_cpp/get_package_share_directory.hpp>
 #include <coral/resource_helpers.h>
 #include <filesystem>
 #include <osgDB/ReadFile>
+
 
 namespace coral
 {
@@ -12,12 +14,10 @@ fs::path toOSGMesh(const fs::path &path)
 {
   const std::vector<std::string> osg_ext{".ive", ".osg",".osgb", ".osgt"};
 
-  static std::vector<std::string> done;
-
   // already OSG mesh?
   if(std::find(osg_ext.begin(), osg_ext.end(), path.extension())
      != osg_ext.end())
-     return path;
+    return path;
 
   // find if any
   auto new_path{path};
@@ -27,11 +27,7 @@ fs::path toOSGMesh(const fs::path &path)
     new_path.replace_extension(ext);
     if(fs::exists(new_path))
     {
-      if(std::find(done.begin(), done.end(), new_path.string()) == done.end())
-      {
-        done.push_back(new_path.string());
-        std::cout << "Found file with extension " << ext.substr(1) << " for " << path.filename() << std::endl;
-      }
+      std::cout << "Found " << new_path.filename() << " to display " << path.filename() << std::endl;
       return new_path;
     }
   }
@@ -49,15 +45,6 @@ void initCoralResources()
     if(p.is_directory())
       addResourcePath(p.path());
   }
-
-  // also textures from uuv_gazebo_worlds, if present
-  try
-  {
-    const auto uuv_resources(ament_index_cpp::get_package_share_directory("uuv_gazebo_worlds") + "/media/materials/textures");
-    addResourcePath(uuv_resources);
-  }
-  catch (...) {}
-  
 }
 
 
@@ -83,30 +70,21 @@ fs::path resolvePath(const std::string &file)
   return abs_path;
 }
 
-osg::Node * extractMesh(const std::string &mesh)
+osg::ref_ptr<osg::Node> extractMesh(const std::string &mesh)
 {
-  static std::map<std::string, osg::Node*> cache;
-  // do not deal with surface meshes from Plankton / UUV
-  if(mesh.find("sea_surface") != mesh.npos)
-    return nullptr;
-
   const auto fullpath{toOSGMesh(resolvePath(mesh))};
   const auto filename(fullpath.filename());
   const auto path(fullpath.parent_path());
 
-  // TODO detect and add texture to sea bottom meshes from Plankton / UUV    
-
   addResourcePath(path);
-  
-  auto copy{cache[fullpath]};
-  if(copy == nullptr)
-      copy = osgDB::readNodeFile(filename);
+  osg::ref_ptr<osg::Node> node{osgDB::readNodeFile(filename)};
 
-  if(copy == nullptr)
+  if(!node.valid())
   {
     OSG_FATAL << "Cannot find mesh file '"
               << fullpath << "'\n";
+    return nullptr;
   }
-  return copy;
+  return node.release();
 }
 }

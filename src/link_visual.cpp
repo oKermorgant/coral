@@ -6,12 +6,10 @@
 #include <osg/Material>
 #include <osg/ShapeDrawable>
 
-
-
 namespace coral
 {
 
-Link::Visual::Visual(osg::Node *mesh, const osg::Matrixd &M)
+Link::Visual::Visual(osg::ref_ptr<osg::Node> mesh, const osg::Matrixd &M)
   : mesh(mesh), pose(new osg::MatrixTransform(M))
 {
   pose->setDataVariance(osg::Object::STATIC);
@@ -46,7 +44,6 @@ osg::Matrixd Link::osgMatFrom(const urdf::Vector3 &t, const urdf::Rotation &q, c
   return M;
 }
 
-
 void Link::addVisual(urdf::VisualSharedPtr visual, const osg::Matrixd &M)
 {
   const auto mat(visual->material.get());
@@ -55,8 +52,7 @@ void Link::addVisual(urdf::VisualSharedPtr visual, const osg::Matrixd &M)
   {
     const auto mesh_info = static_cast<urdf::Mesh*>(visual->geometry.get());
     auto Mm(osgMatFrom(visual->origin.position,visual->origin.rotation, mesh_info->scale)*M);
-
-    addVisualMesh(mesh_info->filename, Mm, mat);
+    addVisualNode(extractMesh(mesh_info->filename), Mm, mat);
     return;
   }
 
@@ -83,17 +79,12 @@ void Link::addVisual(urdf::VisualSharedPtr visual, const osg::Matrixd &M)
   }
 }
 
-void Link::addVisualMesh(const std::string &mesh, const osg::Matrixd &M, const urdf::Material* mat = nullptr)
-{
-  addVisualNode(extractMesh(mesh), M, mat);
-}
-
 void Link::addVisualBox(const osg::Vec3d &dim, const osg::Matrixd &M, const urdf::Material* mat)
 {
-  osg::Box *box = new osg::Box({}, dim.x(), dim.y(), dim.z());
+  osg::Box *box = new osg::Box({}, dim.x(), dim.y(), dim.z());  
 
   osg::ShapeDrawable *shape = new osg::ShapeDrawable(box);
-  osg::Geode *geode = new osg::Geode();
+  osg::ref_ptr<osg::Geode> geode = new osg::Geode();
   geode->addDrawable(shape);
   addVisualNode(geode, M, mat);
 }
@@ -103,7 +94,7 @@ void Link::addVisualSphere(double radius, const osg::Matrixd &M, const urdf::Mat
   osg::Sphere *sphere = new osg::Sphere({}, radius);
 
   osg::ShapeDrawable *shape = new osg::ShapeDrawable(sphere);
-  osg::Geode *geode = new osg::Geode();
+  osg::ref_ptr<osg::Geode> geode = new osg::Geode();
   geode->addDrawable(shape);
   addVisualNode(geode, M, mat);
 }
@@ -113,12 +104,12 @@ void Link::addVisualCylinder(double radius, double length, const osg::Matrixd &M
   osg::Cylinder *cylinder = new osg::Cylinder({}, radius, length);
 
   osg::ShapeDrawable *shape = new osg::ShapeDrawable(cylinder);
-  osg::Geode *geode = new osg::Geode();
+    osg::ref_ptr<osg::Geode> geode = new osg::Geode();
   geode->addDrawable(shape);
   addVisualNode(geode, M, mat);
 }
 
-void Link::addVisualNode(osg::Node* node, const osg::Matrixd &M, const urdf::Material *mat)
+void Link::addVisualNode(osg::ref_ptr<osg::Node> node, const osg::Matrixd &M, const urdf::Material *mat)
 {
   if(mat)
   {
@@ -137,7 +128,7 @@ void Link::addVisualNode(osg::Node* node, const osg::Matrixd &M, const urdf::Mat
       stateset->setTextureMode(0,GL_TEXTURE_GEN_T,osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE);
       node->setStateSet(stateset);
     }
-    else if(mat->color.b + mat->color.r + mat->color.g > 0.f)
+    else
     {
       osg::ref_ptr < osg::StateSet > stateset = new osg::StateSet();
       osg::ref_ptr < osg::Material > material = new osg::Material();
@@ -154,15 +145,13 @@ void Link::addVisualNode(osg::Node* node, const osg::Matrixd &M, const urdf::Mat
     }
   }
 
-  if(node->asGroup() == nullptr)
+  /*if(node->asGroup() == nullptr)
   {
     osg::Node * aux = node;
     node = new osg::Group();
     node->asGroup()->addChild(aux);
-  }
+  }*/
 
   visuals.emplace_back(node, M);
 }
-
-
 }

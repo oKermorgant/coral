@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<robot name="islands">    
+  
+<link name="world"/>
+
+<link name="islands/base_link"> 
+    <visual>
+    <geometry>
+        <mesh filename="package://coral/resources/island/islands.ive"  scale=".2 .2 .2"/>
+    </geometry>
+    </visual>
+</link>
+
+<joint name="base" type="fixed">
+    <parent link="world"/>
+    <child link="islands/base_link"/>
+    <origin xyz="40. 100. 7."/>
+</joint>
+
+
+</robot>

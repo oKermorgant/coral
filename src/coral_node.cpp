@@ -123,12 +123,15 @@ void CoralNode::refreshLinkPoses()
       return;
 
     const auto tr = tf_buffer.lookupTransform(parent->getName(), coral_cam_link, tf2::TimePointZero, 10ms);
-    if((now() - tr.header.stamp).seconds() < 1)
+    const auto delay{(now() - tr.header.stamp).seconds()};
+    if(delay < 1 || delay > 1e8)
     {
       auto M = Link::osgMatFrom(tr.transform.translation, tr.transform.rotation);
 
       if(parent->getName() != "world")
-        M = parent->frame()->getMatrix() * M;
+      {
+        M = M*parent->frame()->getMatrix();
+      }
       viewer->lockCamera(M);
     }
     else
@@ -188,12 +191,10 @@ void CoralNode::spawnModel(const std::string &model_ns, const std::string &pose_
     return;
   }
 
-  const auto moving{!pose_topic.empty()};
-
   const auto root_link_idx{links.size()};
 
   parseModel(rsp_param_srv->get_parameter<string>("robot_description"));
-  if(moving)
+  if(!pose_topic.empty())
   {
     if(root_link_idx == links.size())
     {
@@ -204,6 +205,7 @@ void CoralNode::spawnModel(const std::string &model_ns, const std::string &pose_
     }
     else
     {
+      links[root_link_idx].updatedFromTopic();
       std::cout << model_ns << " seems to have its pose published on " << pose_topic << std::endl;
       pose_subs.push_back(create_subscription<Pose>(model_ns + "/" + pose_topic, 1, [&,root_link_idx](Pose::SharedPtr msg)
       {

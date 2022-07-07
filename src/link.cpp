@@ -32,6 +32,7 @@ void Link::attachTo(coral::Scene *scene) const
 
 void Link::refreshFrom(const tf2_ros::Buffer &tf_buffer)
 {
+  if(pose_from_topic) return;
   static geometry_msgs::msg::TransformStamped tr;
 
   static const auto timeout(std::chrono::milliseconds(10));
@@ -43,5 +44,4 @@ void Link::refreshFrom(const tf2_ros::Buffer &tf_buffer)
 
   setPose(osgMatFrom(tr.transform.translation, tr.transform.rotation));
 }
-
 }
