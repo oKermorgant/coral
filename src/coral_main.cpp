@@ -1,6 +1,4 @@
 #include <coral/coral_node.h>
-#include <coral/Scene.h>
-#include <coral/viewer.h>
 
 using namespace coral;
 
@@ -11,11 +9,7 @@ int main(int argc, char *argv[])
   osg::setNotifyLevel(osg::WARN);
 
   auto node(std::make_shared<CoralNode>());
-
-  Scene scene(node->parameters());
-  Viewer viewer(scene);
-
-  node->manage(scene, viewer);
+  auto viewer{node->createViewer()};
 
   rclcpp::executors::MultiThreadedExecutor exec;
   exec.add_node(node);
@@ -26,14 +20,16 @@ int main(int argc, char *argv[])
     node->findModels();
   });
 
-  while(rclcpp::ok() && !viewer.done())
+  std::thread ros([&](){exec.spin();});
+
+  while(!viewer->done() && rclcpp::ok())
   {
-    exec.spin_once();
-    viewer.frame();
+    viewer->frame();
   }
 
   if(rclcpp::ok())
     rclcpp::shutdown();
+  ros.join();
 
   return 0;
 }

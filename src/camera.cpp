@@ -174,5 +174,4 @@ void Camera::publish([[maybe_unused]] CoralNode *node)
   publisher.publish(msg);
 }
 
-
 }

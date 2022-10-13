@@ -17,10 +17,10 @@ CoralNode::CoralNode()
               ("/coral/spawn",
                [&](const Spawn::Request::SharedPtr request, [[maybe_unused]] Spawn::Response::SharedPtr response)
   {
-    if(request->robot_namespace.empty())
+    if(request->robot_namespace.empty() && request->urdf_model.empty())
       findModels();
     else
-      spawnModel(request->robot_namespace, request->pose_topic);
+      spawnModel(request->robot_namespace, request->pose_topic, request->urdf_model);
   });
 
   surface_srv = create_service<Surface>("/coral/surface",
@@ -29,12 +29,16 @@ CoralNode::CoralNode()
     computeSurface(*req, *res);
   });
 
-  clock_pub = create_subscription<rosgraph_msgs::msg::Clock>("/clock", 1, [&]([[maybe_unused]] rosgraph_msgs::msg::Clock::SharedPtr msg)
+  clock_sub = create_subscription<rosgraph_msgs::msg::Clock>("/clock", 1, [&]([[maybe_unused]] rosgraph_msgs::msg::Clock::SharedPtr msg)
   {
     // use_sim_time as soon as 1 message is received here
     set_parameter(rclcpp::Parameter("use_sim_time", true));
-    clock_pub.reset();
+    clock_sub.reset();
   });
+
+  // create scene from declared params
+  scene = new coral::Scene(parameters());
+  scene->oceanScene()->addChild(world_link.frame());
 }
 
 SceneParams CoralNode::parameters()
@@ -117,7 +121,7 @@ void CoralNode::refreshLinkPoses()
   tf_buffer._getFrameStrings(tf_links);
   for(auto &link: links)
   {
-    if(hasLink(link.getName(), tf_links))
+    if(link.updatedFromTF() && hasLink(link.getName(), tf_links))
       link.refreshFrom(tf_buffer);
   }
 
@@ -168,11 +172,11 @@ void CoralNode::findModels()
 
       // pose_topic should be a geometry_msgs/Pose, published by Gazebo as ground truth
       std::string pose_topic;
-      for(const auto &[topic, msg]: topics)
+      for(const auto &[other_topic, other_msg]: topics)
       {
-        if(isSameNS(topic) && msg[0] == "geometry_msgs/msg/Pose")
+        if(isSameNS(other_topic) && other_msg[0] == "geometry_msgs/msg/Pose")
         {
-          pose_topic = topic.substr(ns.size()+1);
+          pose_topic = other_topic.substr(ns.size()+1);
           break;
         }
       }
@@ -181,8 +185,16 @@ void CoralNode::findModels()
   }
 }
 
-void CoralNode::spawnModel(const std::string &model_ns, const std::string &pose_topic)
+void CoralNode::spawnModel(const std::string &model_ns, const std::string &pose_topic, const std::string &model)
 {
+  if(!model.empty())
+  {
+    // some static URDF to spawn at a given pose
+    parseModel(model);
+    return;
+  }
+
+  // model from robot_description
   if(hasModel(model_ns))
     return;
   // retrieve full model through robot_state_publisher
@@ -193,7 +205,7 @@ void CoralNode::spawnModel(const std::string &model_ns, const std::string &pose_
   if(!rsp_param_srv->has_parameter("robot_description"))
   {
     // cannot get the model anyway
-    std::cout << "cannot get model " << model_ns << std::endl;
+    RCLCPP_WARN(get_logger(), "cannot get model %s", model_ns.substr(1).c_str());
     return;
   }
 
@@ -211,8 +223,9 @@ void CoralNode::spawnModel(const std::string &model_ns, const std::string &pose_
     }
     else
     {
-      links[root_link_idx].updatedFromTopic();
-      std::cout << model_ns << " seems to have its pose published on " << pose_topic << std::endl;
+      links[root_link_idx].ignoreTF();
+      RCLCPP_INFO(get_logger(), "%s seems to have its pose published on %s/%s",
+                  model_ns.substr(1).c_str(), model_ns.c_str(), pose_topic.c_str());
       pose_subs.push_back(create_subscription<Pose>(model_ns + "/" + pose_topic, 1, [&,root_link_idx](Pose::SharedPtr msg)
       {
         links[root_link_idx].setPose(Link::osgMatFrom(msg->position, msg->orientation));
@@ -224,7 +237,7 @@ void CoralNode::spawnModel(const std::string &model_ns, const std::string &pose_
 
 void CoralNode::parseModel(const string &description)
 {
-  const auto [new_links, new_cams] = urdf_parser::parse(description, display_thrusters); {}
+  const auto [new_links, new_cams] = urdf_parser::parse(description, display_thrusters, world_link); {}
 
   // add cameras
   if(!new_cams.empty())
@@ -243,13 +256,7 @@ void CoralNode::parseModel(const string &description)
       cameras.emplace_back(this, cam);
     }
   }
-
-  // add links
-  for(const auto &link: new_links)
-  {
-    link.attachTo(scene);
-    links.push_back(link);
-  }
+  std::copy(new_links.begin(), new_links.end(), std::back_inserter(links));
 }
 
 void CoralNode::computeSurface(const Surface::Request &req, Surface::Response &res)
@@ -257,23 +264,26 @@ void CoralNode::computeSurface(const Surface::Request &req, Surface::Response &r
   const auto surface{scene->oceanSurface()};
 
   // compute local frame
-  res.dim = req.size/req.resolution + 1;
-  res.surface.reserve(res.dim*res.dim);
+  res.dim_x = std::ceil(std::round(10*req.size_x/req.resolution)/10);
+  res.dim_y = std::ceil(std::round(10*req.size_y/req.resolution)/10);
+  res.surface.reserve(res.dim_x*res.dim_y);
   const auto c{cos(req.theta)};
   const auto s{sin(req.theta)};
-  const auto start{-req.size/2};
+  const auto x0{-req.size_x/2};
+  const auto y0{-req.size_y/2};
 
-  for(int ix = 0; ix < res.dim; ix++)
+  for(int ix = 0; ix < res.dim_x; ix++)
   {
-    const auto dx{start+ix*req.resolution};
+    const auto dx{x0+ix*req.resolution};
 
-    for(int iy = 0; iy < res.dim; iy++)
+    for(int iy = 0; iy < res.dim_y; iy++)
     {
-      const auto dy{start+iy*req.resolution};
+      const auto dy{y0+iy*req.resolution};
       res.surface.push_back(
             surface->getSurfaceHeightAt(
               req.x + dx*c - dy*s,
               req.y + dx*s + dy*c));
     }
   }
+  std::cout << "ok computing surface " << res.dim_x << " x " << res.dim_y << std::endl;
 }

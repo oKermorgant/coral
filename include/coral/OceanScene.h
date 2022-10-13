@@ -51,10 +51,30 @@ class OSGOCEAN_EXPORT OceanScene : public osg::Group
 public:
   typedef std::set< osg::observer_ptr<osg::View> > ViewSet;
 
+  class EventHandler : public osgGA::GUIEventHandler
+  {
+  public:
+    EventHandler(OceanScene* oceanScene) : _oceanScene{oceanScene} {}
+      virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, osg::Object*, osg::NodeVisitor*);
+      virtual void getUsage(osg::ApplicationUsage& usage) const;
+  protected:
+      OceanScene* _oceanScene;
+  };
+
+  /// Virtual constructor for OceanScene::EventHandler - override in
+  /// derived classes to return subclass-specific handler if needed.
+  virtual EventHandler* getEventHandler()
+  {
+      if (!_eventHandler.valid())
+          _eventHandler = new EventHandler(this);
+      return _eventHandler.get();
+  }
+
 private:
   static constexpr float OCEAN_CYLINDER_HEIGHT = 4000.f;
 
   osg::ref_ptr<OceanTechnique> _oceanSurface{nullptr};
+  osg::ref_ptr<EventHandler> _eventHandler;
 
   bool _isDirty                 {true};
 
@@ -78,12 +98,12 @@ private:
   int _refractionDepthUnit        {3};
   int _heightmapUnit              {7};
 
-  unsigned int _reflectionSceneMask {0x1};
-  unsigned int _refractionSceneMask {0x2};
-  unsigned int _heightmapMask       {0x20};
-  unsigned int _surfaceMask         {0x8};
-  unsigned int _normalSceneMask     {0x4};
-  unsigned int _siltMask            {0x10};
+  constexpr static unsigned int _reflectionSceneMask {0x1};
+  constexpr static unsigned int _refractionSceneMask {0x2};
+  constexpr static unsigned int _heightmapMask       {0x20};
+  constexpr static unsigned int _surfaceMask         {0x8};
+  constexpr static unsigned int _normalSceneMask     {0x4};
+  constexpr static unsigned int _siltMask            {0x10};
 
   unsigned int _lightID           {0};
 
@@ -567,6 +587,11 @@ public:
     }
 
     _isDirty = true;
+  }
+
+  static inline void setupMeshNode(osg::Node *mesh)
+  {
+    mesh->setNodeMask(_normalSceneMask | _reflectionSceneMask | _refractionSceneMask);
   }
 
   /// Get the current ocean technique.

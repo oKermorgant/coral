@@ -1,5 +1,4 @@
 #include <coral/Scene.h>
-//#include <coral/ScopedTimer.h>
 
 #include <osg/Shape>
 #include <osg/ShapeDrawable>
@@ -31,7 +30,6 @@ public:
       osg::MatrixTransform* mt = static_cast<osg::MatrixTransform*>(node);
       mt->setMatrix( osg::Matrix::translate( eye.x(), eye.y(), mt->getMatrix().getTrans().z() ) );
     }
-
     traverse(node, nv);
   }
 };
@@ -50,29 +48,14 @@ Scene::Scene(const SceneParams &params) : params(params), scene_type(params.scen
   cubemap = loadCubeMapTextures( scene_type.cubemap );
 
   // Set up surface
-
-  if (params.useVBO)
-  {
-    ocean_surface =
-        new osgOcean::FFTOceanSurfaceVBO(
-          64, 256, 17,
-          params.windDirection,
-          params.windSpeed, params.depth,
-          params.reflectionDamping,
-          params.waveScale, params.isChoppy(),
-          params.choppyFactor, 10.f, 256 );
-  }
-  else
-  {
-    ocean_surface =
-        new osgOcean::FFTOceanSurface(
-          64, 256, 17,
-          params.windDirection,
-          params.windSpeed, params.depth,
-          params.reflectionDamping,
-          params.waveScale, params.isChoppy(),
-          params.choppyFactor, 10.f, 256 );
-  }
+  ocean_surface =
+      new osgOcean::FFTOceanSurface(
+        64, 256, 17,
+        params.windDirection,
+        params.windSpeed, params.depth,
+        params.reflectionDamping,
+        params.waveScale, params.isChoppy(),
+        params.choppyFactor, 10.f, 256 );
 
   ocean_surface->setEnvironmentMap( cubemap.get() );
   ocean_surface->setFoamBottomHeight( 2.2f );
@@ -81,7 +64,7 @@ Scene::Scene(const SceneParams &params) : params(params), scene_type(params.scen
   ocean_surface->setLightColor( scene_type.lightColor );
   // Make the ocean surface track with the main camera position, giving the illusion
   // of an endless ocean surface.
-  ocean_surface->enableEndlessOcean(true);
+  ocean_surface->enableEndlessOcean(false);
 
   // Set up ocean scene, add surface
   osg::Vec3f sunDir = -scene_type.sunPosition;
@@ -119,9 +102,7 @@ Scene::Scene(const SceneParams &params) : params(params), scene_type(params.scen
   // create sky dome and add to ocean scene
   // set masks so it appears in reflected scene and normal scene
   skyDome = new SkyDome( 1900.f, 16, 16, cubemap.get() );
-  skyDome->setNodeMask( ocean_scene->getReflectedSceneMask() |
-                        ocean_scene->getNormalSceneMask()    |
-                        ocean_scene->getRefractedSceneMask());
+  osgOcean::OceanScene::setupMeshNode(skyDome);
 
   // add a pat to track the camera
   osg::MatrixTransform* transform = new osg::MatrixTransform;
@@ -146,14 +127,14 @@ Scene::Scene(const SceneParams &params) : params(params), scene_type(params.scen
   fakeTex->setFilter(osg::Texture2D::MIN_FILTER,osg::Texture2D::NEAREST);
   fakeTex->setFilter(osg::Texture2D::MAG_FILTER,osg::Texture2D::NEAREST);
 
-  osg::StateSet* stateset = ocean_scene->getOrCreateStateSet();
+  auto stateset = ocean_scene->getOrCreateStateSet();
   stateset->setTextureAttribute(0,fakeTex,osg::StateAttribute::ON);
   stateset->setTextureMode(0,GL_TEXTURE_1D,osg::StateAttribute::OFF);
   stateset->setTextureMode(0,GL_TEXTURE_2D,osg::StateAttribute::ON);
   stateset->setTextureMode(0,GL_TEXTURE_3D,osg::StateAttribute::OFF);
 
 
-  osg::LightSource* lightSource = new osg::LightSource;
+  auto lightSource = new osg::LightSource;
   lightSource->setNodeMask(lightSource->getNodeMask() & ~CAST_SHADOW & ~RECEIVE_SHADOW);
   lightSource->setLocalStateSetModes();
 
@@ -170,8 +151,8 @@ Scene::Scene(const SceneParams &params) : params(params), scene_type(params.scen
   scene->addChild( lightSource );
   scene->addChild( ocean_scene.get() );
 
-
-  root = scene; //new osg::Group;
+  //root = scene;
+  root = new osg::Group;
 
   root->getOrCreateStateSet()->addUniform(new osg::Uniform("uOverlayMap", 1));
   root->getStateSet()->addUniform(new osg::Uniform("uNormalMap", 2));
@@ -213,7 +194,7 @@ void Scene::changeScene( SceneType::Type type )
 
 osg::ref_ptr<osg::TextureCubeMap> Scene::loadCubeMapTextures( const std::string& dir )
 {
-  static const std::map<osg::TextureCubeMap::Face, std::string> filenames
+  const std::vector<std::pair<osg::TextureCubeMap::Face, std::string>> filenames
   {{osg::TextureCubeMap::NEGATIVE_X,"west.png"},
     {osg::TextureCubeMap::POSITIVE_X, "east.png"},
     {osg::TextureCubeMap::NEGATIVE_Y, "up.png"},
@@ -240,13 +221,50 @@ osg::ref_ptr<osg::TextureCubeMap> Scene::loadCubeMapTextures( const std::string&
 }
 
 
-osg::Geode* Scene::sunDebug( const osg::Vec3f& position )
+bool Scene::EventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter&, osg::Object*, osg::NodeVisitor*)
 {
-  osg::ShapeDrawable* sphereDraw = new osg::ShapeDrawable( new osg::Sphere( position, 15.f ) );
-  sphereDraw->setColor(osg::Vec4f(1.f,0.f,0.f,1.f));
+  if (ea.getHandled()) return false;
 
-  osg::Geode* sphereGeode = new osg::Geode;
-  sphereGeode->addDrawable( sphereDraw );
+  if(ea.getEventType() == osgGA::GUIEventAdapter::KEYUP)
+  {
+    const auto key(ea.getKey());
+    if(key == '1')
+    {
+      scene->changeScene( SceneType::Type::CLEAR );
+      return true;
+    }
+    else if(key == '2')
+    {
+      scene->changeScene( SceneType::Type::DUSK );
+      return true;
+    }
+    else if(key == '3' )
+    {
+      scene->changeScene( SceneType::Type::CLOUDY );
+      return true;
+    }
+    else if(key == '4' )
+    {
+      scene->changeScene( SceneType::Type::NIGHT);
+      return true;
+    }
+    else if (key == '0')
+    {
+      static bool surface0(true);
+      surface0 = !surface0;
+      scene->oceanScene()->setOceanSurfaceHeight(surface0 ? 0. : -1000.);
+      return true;
+    }
+  }
+  return false;
+}
 
-  return sphereGeode;
+/** Get the keyboard and mouse usage of this manipulator.*/
+void Scene::EventHandler::getUsage(osg::ApplicationUsage& usage) const
+{
+  usage.addKeyboardMouseBinding("1","Select scene \"Clear Blue Sky\"");
+  usage.addKeyboardMouseBinding("2","Select scene \"Dusk\"");
+  usage.addKeyboardMouseBinding("3","Select scene \"Pacific Cloudy\"");
+  usage.addKeyboardMouseBinding("4","Select scene \"Night\"");
+  usage.addKeyboardMouseBinding("0","Toggle ocean surface");
 }

@@ -30,11 +30,10 @@ class CoralNode : public rclcpp::Node
 
 public:
   CoralNode();
-  inline void manage(Scene &scene, Viewer &viewer)
+  Viewer* createViewer()
   {
-    this->scene = &scene;
-    this->viewer = &viewer;
-    world_link.attachTo(this->scene);
+    viewer = std::make_unique<coral::Viewer>(scene);
+    return viewer.get();
   }
 
   SceneParams parameters();
@@ -44,8 +43,8 @@ public:
   void findModels();
 
 private:
-  Scene * scene;
-  Viewer * viewer;
+  osg::ref_ptr<Scene> scene;
+  std::unique_ptr<Viewer> viewer;
 
   // tf interface
   rclcpp::TimerBase::SharedPtr pose_update_timer;
@@ -74,9 +73,9 @@ private:
 
   // how to get them
   rclcpp::Service<Spawn>::SharedPtr spawn_srv;  
-  void spawnModel(const std::string &model_ns, const std::string &pose_topic);
+  void spawnModel(const std::string &model_ns, const std::string &pose_topic, const std::string &model = "");
   void parseModel(const std::string &model);
-  rclcpp::Subscription<rosgraph_msgs::msg::Clock>::SharedPtr clock_pub;
+  rclcpp::Subscription<rosgraph_msgs::msg::Clock>::SharedPtr clock_sub;
 
   // camera view point
   Link world_link{"world"};

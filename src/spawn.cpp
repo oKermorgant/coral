@@ -15,6 +15,27 @@ int main(int argc, char** argv)
 
   request->robot_namespace = node->declare_parameter("namespace", "");
   request->pose_topic = node->declare_parameter("pose_topic", "pose_gt");
+  request->urdf_model = node->declare_parameter("urdf_model", "");
+
+  std::map<std::string, double> pose;
+  for(auto key: {"x","y","z","R","P","Y"})
+    pose[key] = node->declare_parameter(key, 0.);
+
+  request->urdf_pose.position.x = pose["x"];
+  request->urdf_pose.position.y = pose["y"];
+  request->urdf_pose.position.z = pose["z"];
+
+  const auto cy{cos(pose["Y"]/2)};
+  const auto sy{sin(pose["Y"]/2)};
+  const auto cp{cos(pose["P"]/2)};
+  const auto sp{sin(pose["P"]/2)};
+  const auto cr{cos(pose["R"]/2)};
+  const auto sr{sin(pose["R"]/2)};
+
+  request->urdf_pose.orientation.w = cr * cp * cy + sr * sp * sy;
+  request->urdf_pose.orientation.x = sr * cp * cy - cr * sp * sy;
+  request->urdf_pose.orientation.y = cr * sp * cy + sr * cp * sy;
+  request->urdf_pose.orientation.z = cr * cp * sy - sr * sp * cy;
 
   auto client = node->create_client<Spawn>("/coral/spawn");
 

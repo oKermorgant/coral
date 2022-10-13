@@ -19,7 +19,8 @@ find_package(geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
-rosidl_generate_interfaces(${PROJECT_NAME} "srv/Spawn.srv" "srv/Surface.srv")
+rosidl_generate_interfaces(${PROJECT_NAME} "srv/Spawn.srv" "srv/Surface.srv"
+DEPENDENCIES geometry_msgs)
 
 if("$ENV{ROS_DISTRO}" STREQUAL "galactic" OR "$ENV{ROS_DISTRO}" STREQUAL "foxy")
     set(LEGACY_IDL TRUE)
@@ -54,7 +55,7 @@ if(OSGOCEAN_EXTERNAL)
         execute_process(COMMAND cmake .. WORKING_DIRECTORY ${OSGOCEAN_BUILD_DIR})        
     endif()
     
-    execute_process(COMMAND make WORKING_DIRECTORY ${OSGOCEAN_BUILD_DIR})
+    execute_process(COMMAND cmake --build . WORKING_DIRECTORY ${OSGOCEAN_BUILD_DIR})
     
     # manual install, ament-wise
     if(NOT EXISTS ${CMAKE_INSTALL_PREFIX}/lib/libosgOcean.so)
@@ -73,38 +74,40 @@ endif()
 
 set(OSGOCEAN_INCLUDE_DIRS ${OSGOCEAN_SRC}/include)
 
-find_package(OpenSceneGraph COMPONENTS osgSim osgUtil osgDB osgFX osgGA osgTerrain osgViewer osgText osgWidget osg osgParticle osgManipulator)
+#find_package(OpenSceneGraph COMPONENTS osgSim osgUtil osgDB osgFX osgGA osgTerrain osgViewer osgText osgWidget osg osgParticle osgManipulator osgShadow)
+find_package(OpenSceneGraph COMPONENTS osgUtil osgDB osgGA osgViewer osgText osg osgShadow)
+find_package (OpenThreads REQUIRED)
+
 set(OpenGL_GL_PREFERENCE GLVND)
 find_package (OpenGL REQUIRED)
 
-add_executable(coral_sim
-src/coral_main.cpp
-src/coral_node.cpp
-src/event_handler.cpp
-src/camera.cpp
-src/link.cpp
-src/link_visual.cpp
-src/urdf_parser.cpp
-src/resource_helpers.cpp
-src/viewer.cpp
-# from osgOcean + example
-src/OceanScene.cpp
-src/Scene.cpp
-src/SkyDome.cpp
-src/SphereSegment.cpp
+add_executable(coral_gui
+                  src/coral_main.cpp
+                  src/coral_node.cpp
+                  #src/event_handler.cpp
+                  src/camera.cpp
+                  src/link.cpp
+                  src/link_visual.cpp
+                  src/urdf_parser.cpp
+                  src/resource_helpers.cpp
+                  src/viewer.cpp
+
+                  # from osgOcean + example
+                  src/OceanScene.cpp
+                  src/Scene.cpp
+                  src/SkyDome.cpp
+                  src/SphereSegment.cpp
 )
 
-target_include_directories(coral_sim SYSTEM PRIVATE include ${OPENSCENEGRAPH_INCLUDE_DIR} ${OSGOCEAN_INCLUDE_DIRS} ${OPENGL_INCLUDE_DIR})
-target_include_directories(coral_sim PRIVATE include)
-target_link_libraries(coral_sim osgOcean ${OPENSCENEGRAPH_LIBRARIES} ${OPENGL_LIBRARY})
-ament_target_dependencies(coral_sim rclcpp sensor_msgs geometry_msgs nav_msgs urdf ament_index_cpp tf2_ros image_transport std_srvs)
+target_include_directories(coral_gui SYSTEM PRIVATE include ${OPENSCENEGRAPH_INCLUDE_DIR} ${OSGOCEAN_INCLUDE_DIRS} ${OPENGL_INCLUDE_DIR})
+target_include_directories(coral_gui PRIVATE include)
+target_link_libraries(coral_gui osgOcean ${OPENSCENEGRAPH_LIBRARIES} ${OPENGL_LIBRARY})
+ament_target_dependencies(coral_gui rclcpp sensor_msgs geometry_msgs nav_msgs urdf ament_index_cpp tf2_ros image_transport std_srvs)
 if(${LEGACY_IDL})
-    rosidl_target_interfaces(coral_sim ${PROJECT_NAME} "rosidl_typesupport_cpp")
+    rosidl_target_interfaces(coral_gui ${PROJECT_NAME} "rosidl_typesupport_cpp")
 else()
-    target_link_libraries(coral_sim "${cpp_typesupport_target}")
+    target_link_libraries(coral_gui "${cpp_typesupport_target}")
 endif()
-
-
 
 # spawn service wrapper
 add_executable(spawn src/spawn.cpp)
@@ -115,16 +118,28 @@ else()
     target_link_libraries(spawn "${cpp_typesupport_target}")
 endif()
 
-
-
-
-install(TARGETS coral_sim spawn
-DESTINATION lib/${PROJECT_NAME})
+install(TARGETS coral_gui spawn DESTINATION lib/${PROJECT_NAME})
 
 FILE(GLOB SCRIPTS scripts/*.py)
 install(PROGRAMS ${SCRIPTS}
   DESTINATION lib/${PROJECT_NAME}
 )
+
+
+ADD_EXECUTABLE(
+
+  oceanExample
+  src/OceanScene.cpp
+  src/oceanExample/application.cpp
+  src/oceanExample/Scene.cpp
+  #src/oceanExample/SkyDome.cpp
+  src/SkyDome.cpp
+  src/SphereSegment.cpp
+  src/resource_helpers.cpp
+  )
+target_include_directories(oceanExample SYSTEM PRIVATE include ${OPENSCENEGRAPH_INCLUDE_DIR} ${OSGOCEAN_INCLUDE_DIRS} ${OPENGL_INCLUDE_DIR})
+target_link_libraries(oceanExample  osgOcean ${OPENSCENEGRAPH_LIBRARIES} ${OPENGL_LIBRARY})
+ament_target_dependencies(oceanExample ament_index_cpp)
 
 if(NOT OSGOCEAN_EXTERNAL)
 install(TARGETS osgOcean

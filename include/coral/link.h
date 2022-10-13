@@ -32,10 +32,12 @@ public:
     return M;
   }
 
-  Link(const std::string &name, osg::MatrixTransform* pose = new osg::MatrixTransform) : name(name), pose(pose) {}
+  Link(const std::string &name, osg::MatrixTransform* pose = new osg::MatrixTransform) : name(name), pose(pose)
+  {
+    pose->setDataVariance(osg::Object::DYNAMIC);
+  }
 
   auto frame() const {return pose.get();}
-  void attachTo(coral::Scene *scene) const;
   inline std::string getName() const {return name;}
   void refreshFrom(const tf2_ros::Buffer &tf_buffer);
 
@@ -63,6 +65,11 @@ public:
     return this->name == name;
   }
 
+  inline std::string describe() const
+  {
+    return name + " (" + parent + ")";
+  }
+
   inline void setParent(const Link &root)
   {
       root.pose->addChild(pose);
@@ -70,12 +77,12 @@ public:
   }
 
   inline void ignoreTF() {pose_from_topic = true;}
-  inline bool updatedFromTopic() const {return pose_from_topic;}
+  inline bool updatedFromTF() const {return !pose_from_topic;}
 
 private:
 
   const std::string name;
-  std::string parent = "world";
+  std::string parent;
   osg::ref_ptr <osg::MatrixTransform> pose;
   bool pose_from_topic{false};
 

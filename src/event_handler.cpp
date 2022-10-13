@@ -10,10 +10,9 @@ void EventHandler::getUsage(osg::ApplicationUsage& usage) const
   usage.addKeyboardMouseBinding("2","Select scene \"Dusk\"");
   usage.addKeyboardMouseBinding("3","Select scene \"Pacific Cloudy\"");
   usage.addKeyboardMouseBinding("4","Select scene \"Night\"");
-
   usage.addKeyboardMouseBinding("0","Toggle ocean surface");
 
-  usage.addKeyboardMouseBinding("r","Toggle reflections (above water)");
+  /* usage.addKeyboardMouseBinding("r","Toggle reflections (above water)");
   usage.addKeyboardMouseBinding("R","Toggle refractions (underwater)");
   usage.addKeyboardMouseBinding("o","Toggle Depth of Field (DOF) (underwater)");
   usage.addKeyboardMouseBinding("g","Toggle glare (above water)");
@@ -21,18 +20,18 @@ void EventHandler::getUsage(osg::ApplicationUsage& usage) const
   usage.addKeyboardMouseBinding("T","Toggle scattering (underwater)");
   usage.addKeyboardMouseBinding("H","Toggle Height lookup for shoreline foam and sine shape (above water)");
   usage.addKeyboardMouseBinding("+","Raise ocean surface");
-  usage.addKeyboardMouseBinding("-","Lower ocean surface");
+  usage.addKeyboardMouseBinding("-","Lower ocean surface");*/
 
 }
 
 
-bool EventHandler::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapter&)
+bool EventHandler::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapter&, osg::Object*, osg::NodeVisitor*)
 {
-  static auto oceanScene(scene->oceanScene());  
+  if (ea.getHandled()) return false;
 
   if(ea.getEventType() == osgGA::GUIEventAdapter::KEYUP)
   {
-    const auto key(ea.getKey());
+
     if(key == '1')
     {
       scene->changeScene( SceneType::Type::CLEAR );
@@ -54,7 +53,7 @@ bool EventHandler::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapt
       return false;
     }
     // Reflections
-    else if (key == 'r')
+    /* else if (key == 'r')
     {
       oceanScene->enableReflections(!oceanScene->areReflectionsEnabled());
       osg::notify(osg::NOTICE) << "Reflections " << (oceanScene->areReflectionsEnabled()? "enabled" : "disabled") << std::endl;
@@ -115,12 +114,13 @@ bool EventHandler::handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapt
       oceanScene->setOceanSurfaceHeight(oceanScene->getOceanSurfaceHeight() - 1.0);
       osg::notify(osg::NOTICE) << "Ocean surface is now at z = " << oceanScene->getOceanSurfaceHeight() << std::endl;
       return true;
-    }
+    }*/
     if (key == '0')
     {
       static bool surface0(true);
       surface0 = !surface0;
-      oceanScene->setOceanSurfaceHeight(surface0 ? 0. : -1000.);
+      scene->oceanScene()->setOceanSurfaceHeight(surface0 ? 0. : -1000.);
+      return true;
     }
   }
 

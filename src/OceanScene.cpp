@@ -149,6 +149,109 @@ public:
 
 }
 
+
+bool OceanScene::EventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter&, osg::Object*, osg::NodeVisitor*)
+{
+    if (ea.getHandled()) return false;
+
+    switch(ea.getEventType())
+    {
+        case(osgGA::GUIEventAdapter::KEYUP):
+        {
+            // Reflections
+            if (ea.getKey() == 'r')
+            {
+                _oceanScene->enableReflections(!_oceanScene->areReflectionsEnabled());
+                osg::notify(osg::NOTICE) << "Reflections " << (_oceanScene->areReflectionsEnabled()? "enabled" : "disabled") << std::endl;
+                return true;
+            }
+            // Refractions
+            if (ea.getKey() == 'R')
+            {
+                _oceanScene->enableRefractions(!_oceanScene->areRefractionsEnabled());
+                osg::notify(osg::NOTICE) << "Refractions " << (_oceanScene->areRefractionsEnabled()? "enabled" : "disabled") << std::endl;
+                return true;
+            }
+            // DOF
+            if (ea.getKey() == 'o')
+            {
+                _oceanScene->enableUnderwaterDOF(!_oceanScene->isUnderwaterDOFEnabled());
+                osg::notify(osg::NOTICE) << "Depth of field " << (_oceanScene->isUnderwaterDOFEnabled()? "enabled" : "disabled") << std::endl;
+                return true;
+            }
+            // Glare
+            if (ea.getKey() == 'g')
+            {
+                _oceanScene->enableGlare(!_oceanScene->isGlareEnabled());
+                osg::notify(osg::NOTICE) << "Glare " << (_oceanScene->isGlareEnabled()? "enabled" : "disabled") << std::endl;
+                return true;
+            }
+            // God rays
+            if (ea.getKey() == 'G')
+            {
+                _oceanScene->enableGodRays(!_oceanScene->areGodRaysEnabled());
+                osg::notify(osg::NOTICE) << "God rays " << (_oceanScene->areGodRaysEnabled()? "enabled" : "disabled") << std::endl;
+                return true;
+            }
+            // Silt
+            if (ea.getKey() == 't')
+            {
+                _oceanScene->enableSilt(!_oceanScene->isSiltEnabled());
+                osg::notify(osg::NOTICE) << "Silt " << (_oceanScene->isSiltEnabled()? "enabled" : "disabled") << std::endl;
+                return true;
+            }
+            // Underwater scattering
+            if (ea.getKey() == 'T')
+            {
+                _oceanScene->enableUnderwaterScattering(!_oceanScene->isUnderwaterScatteringEnabled());
+                osg::notify(osg::NOTICE) << "Underwater scattering " << (_oceanScene->isUnderwaterScatteringEnabled()? "enabled" : "disabled") << std::endl;
+                return true;
+            }
+            // Height map
+            if (ea.getKey() == 'H')
+            {
+                _oceanScene->enableHeightmap(!_oceanScene->isHeightmapEnabled());
+                _oceanScene->getOceanTechnique()->dirty();      // Make it reload shaders.
+                osg::notify(osg::NOTICE) << "Height lookup for shoreline foam and sine shape " << (_oceanScene->isHeightmapEnabled()? "enabled" : "disabled") << std::endl;
+                return true;
+            }
+            // Ocean surface height
+            if (ea.getKey() == '+')
+            {
+                _oceanScene->setOceanSurfaceHeight(_oceanScene->getOceanSurfaceHeight() + 1.0);
+                osg::notify(osg::NOTICE) << "Ocean surface is now at z = " << _oceanScene->getOceanSurfaceHeight() << std::endl;
+                return true;
+            }
+            if (ea.getKey() == '-')
+            {
+                _oceanScene->setOceanSurfaceHeight(_oceanScene->getOceanSurfaceHeight() - 1.0);
+                osg::notify(osg::NOTICE) << "Ocean surface is now at z = " << _oceanScene->getOceanSurfaceHeight() << std::endl;
+                return true;
+            }
+
+            break;
+        }
+    default:
+        break;
+    }
+    return false;
+}
+
+/** Get the keyboard and mouse usage of this manipulator.*/
+void OceanScene::EventHandler::getUsage(osg::ApplicationUsage& usage) const
+{
+    usage.addKeyboardMouseBinding("r","Toggle reflections (above water)");
+    usage.addKeyboardMouseBinding("R","Toggle refractions (underwater)");
+    usage.addKeyboardMouseBinding("o","Toggle Depth of Field (DOF) (underwater)");
+    usage.addKeyboardMouseBinding("g","Toggle glare (above water)");
+    usage.addKeyboardMouseBinding("G","Toggle God rays (underwater)");
+    usage.addKeyboardMouseBinding("t","Toggle silt (underwater)");
+    usage.addKeyboardMouseBinding("T","Toggle scattering (underwater)");
+    usage.addKeyboardMouseBinding("H","Toggle Height lookup for shoreline foam and sine shape (above water)");
+    usage.addKeyboardMouseBinding("+","Raise ocean surface");
+    usage.addKeyboardMouseBinding("-","Lower ocean surface");
+}
+
 OceanScene::OceanScene( OceanTechnique* surface )  : _oceanSurface( surface )
 {
   if(surface==nullptr)
@@ -610,8 +713,8 @@ void OceanScene::ViewData::updateStateSet( bool eyeAboveWater )
   _globalStateSet->getUniform("osgOcean_Eye")->set( _cv->getEyePoint() );
 
   // Switch the fog state from underwater to above water or vice versa if necessary.
-  float requiredFogDensity = eyeAboveWater ? _oceanScene->_aboveWaterFogDensity : _oceanScene->_underwaterFogDensity;
-  osg::Vec4 requiredFogColor = eyeAboveWater ? _oceanScene->_aboveWaterFogColor   : _oceanScene->_underwaterFogColor;
+  const auto requiredFogDensity = eyeAboveWater ? _oceanScene->_aboveWaterFogDensity : _oceanScene->_underwaterFogDensity;
+  const auto requiredFogColor = eyeAboveWater ? _oceanScene->_aboveWaterFogColor   : _oceanScene->_underwaterFogColor;
   if (requiredFogDensity != _fog->getDensity() || requiredFogColor != _fog->getColor())
   {
     _fog->setDensity(requiredFogDensity);
@@ -652,7 +755,6 @@ void OceanScene::ViewData::updateStateSet( bool eyeAboveWater )
 void OceanScene::ViewData::cull(bool surfaceVisible )
 {
   // Assume _stateSet has been pushed before we get here.
-
   osg::Camera* currentCamera = _cv->getCurrentRenderBin()->getStage()->getCamera();
 
   bool reflectionEnabled;
@@ -722,7 +824,7 @@ void OceanScene::enableRTTEffectsForView(osg::View* view, bool enable)
 }
 
 void OceanScene::traverse( osg::NodeVisitor& nv )
-{  
+{
 
   if( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
   {

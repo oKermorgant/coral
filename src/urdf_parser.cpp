@@ -3,65 +3,97 @@
 
 using std::vector, std::string, std::map;
 
+enum class LinkBase{FIXED, FLOATING, MERGED};
+
+std::ostream& operator<<(std::ostream &os, const LinkBase &base)
+{
+  if(base == LinkBase::FIXED)
+    os << "FIXED";
+  else if(base == LinkBase::FLOATING)
+    os << "FLOATING";
+  else
+     os << "MERGED";
+  return os;
+}
+
 namespace coral
 {
 namespace urdf_parser
 {
 using Visual = std::pair<urdf::VisualSharedPtr, osg::Matrixd>;
 
-enum class LinkBase{FIXED, FLOATING, MERGED};
-
 // helper struct to resolve constant kinematic chains
 struct LinkInfo
 {
-  std::string parent;
+  std::string name;
+  LinkInfo* parent = nullptr;
+  std::vector<LinkInfo*> children;
+
   std::vector<Visual> visuals;
   std::vector<CameraInfo> cameras;
-  bool has_children = false;
+
   LinkBase base = LinkBase::FLOATING;
   osg::ref_ptr <osg::MatrixTransform> pose = new osg::MatrixTransform;
 
-  LinkInfo *merged = nullptr;
+  Link* final_link;
 
-  void mergeInto(LinkInfo &parent)
+  explicit LinkInfo(const std::string &name) : name{name} {}
+
+  inline bool operator==(const std::string &name) const
   {
-    merged = &parent;
-    if(parent.merged)
+    return name == this->name;
+  }
+
+  void setParent(LinkInfo *parent)
+  {
+    this->parent = parent;
+    parent->children.push_back(this);
+  }
+
+  void mergeIntoParent()
+  {
+    //std::transform(children.begin(), children.end(), std::back_inserter(parent.children),
+    //               SubLink::merge);
+
+    for(auto child: children)
     {
-      mergeInto(*parent.merged);
-      return;
+      child->pose->setMatrix(pose->getMatrix() * child->pose->getMatrix());
+      child->setParent(parent);
     }
 
-    parent.has_children |= has_children;
-
     for(const auto &[visual, M]: visuals)
-      parent.visuals.push_back({visual, pose->getMatrix()*M});
+      parent->visuals.push_back({visual, pose->getMatrix()*M});
 
     for(auto &cam: cameras)
     {
       cam.pose->setMatrix(pose->getMatrix() * cam.pose->getMatrix());
-      parent.cameras.push_back(cam);
+      parent->cameras.push_back(cam);
     }
-
     base = LinkBase::MERGED;
   }
 
-  bool relative() const {return !parent.empty() && parent != "world";}
-
-  bool empty() const
+  inline bool isUseful() const
   {
-    return base != LinkBase::FLOATING || (!has_children && visuals.empty() && cameras.empty());
+    return name != "world" && base == LinkBase::FLOATING &&
+        (!children.empty() || !visuals.empty() || !cameras.empty());
   }
 
-  static bool isFixed(const std::pair<std::string, LinkInfo> &info)
+  static bool canBeMerged(const LinkInfo &link)
   {
-    return info.second.base == LinkBase::FIXED;
+    if(link.base == LinkBase::MERGED) return false;
+    return link.parent && (link.base == LinkBase::FIXED || (link.cameras.empty() && link.visuals.empty()));
   }
 
-  Link toNamedLink(const std::string &name, osg::MatrixTransform* pose) const
+  Link toOSGLink()
   {
+    // find a parent link that will be kept
+    if(parent)
+    {
+      while(parent->parent && !parent->isUseful())
+        parent = parent->parent;
+    }
 
-    auto link{Link(name, pose)};
+    auto link{Link(name)}; //, parent ? parent->pose.get() : new osg::MatrixTransform)};
 
     for(const auto &[visual,M]: visuals)
       link.addVisual(visual, M);
@@ -70,30 +102,37 @@ struct LinkInfo
 
     return link;
   }
+
+  void toWorldLink(Link &world) const
+  {
+    for(const auto &[visual,M]: visuals)
+      world.addVisual(visual, M);
+    for(auto &cam: cameras)
+      world.frame()->addChild(cam.pose);
+  }
 };
 
 
-std::tuple<vector<Link>, vector<CameraInfo>> parse(const string &description, bool with_thrusters)
+std::tuple<vector<Link>, vector<CameraInfo>> parse(const string &description, bool with_thrusters, Link &world_link)
 {
   const auto cameras(CameraInfo::extractFrom(description));
-
   const auto model(urdf::parseURDF(description));
-  map<string, LinkInfo> tree;
+
+  std::vector<LinkInfo> tree;
+  // ensure pointers stay valid along the way
+  tree.reserve(model->links_.size());
+  // find-shortcut, will always have a good find
+  const auto findInTree = [&](const std::string &name) {return std::find(tree.begin(), tree.end(), name);};
 
   // extract all links
   for(const auto &[name, link]: model->links_)
   {
-    if(name == "world")
-      continue;
-
     if(!with_thrusters && name.find("thruster") != name.npos)
       continue;
 
-    auto &info(tree[name]);
-    for(const auto &visual: link->visual_array)
-    {
-      info.visuals.push_back({visual, {}});
-    }
+    auto &info(tree.emplace_back(name));
+    std::transform(link->visual_array.begin(), link->visual_array.end(), std::back_inserter(info.visuals),
+                   [](const auto &visual){return Visual{visual, {}};});
 
     for(const auto &cam: cameras)
     {
@@ -105,58 +144,59 @@ std::tuple<vector<Link>, vector<CameraInfo>> parse(const string &description, bo
   // parse joint structure
   for(const auto &[name,joint]: model->joints_)
   {
-    auto &link{tree[joint->child_link_name]};
-    if(joint->parent_link_name == "world")
-      continue;
-    link.parent = joint->parent_link_name;
-    tree[link.parent].has_children = true;
-    link.pose->setMatrix(Link::osgMatFrom(joint->parent_to_joint_origin_transform.position, joint->parent_to_joint_origin_transform.rotation));
+    auto link{findInTree(joint->child_link_name)};
+    link->setParent(findInTree(joint->parent_link_name).base());
     auto limits(joint->limits);
     if(joint->type == urdf::Joint::FIXED || (limits && limits->lower == limits->upper))
-      link.base = LinkBase::FIXED;
+    {
+      link->base = LinkBase::FIXED;
+      link->pose->setMatrix(Link::osgMatFrom(joint->parent_to_joint_origin_transform.position, joint->parent_to_joint_origin_transform.rotation));
+    }
     else
-      link.base = LinkBase::FLOATING;
+    {
+      // pose is not important, it will change
+      link->base = LinkBase::FLOATING;      
+    }
   }
 
-  // recursive merge until no more fixed links
+  // top-down merge
   while(true)
   {
-    const auto link = std::find_if(tree.begin(), tree.end(), LinkInfo::isFixed);
+    auto link{std::find_if(tree.begin(), tree.end(), LinkInfo::canBeMerged)};
     if(link == tree.end())
       break;
-    link->second.mergeInto(tree[link->second.parent]);
+    link->mergeIntoParent();
   }
 
-  // build actual osg links from floating joints with either visuals or cameras
-  // find a root link to attach others
-  // in standard robots there should be only 1
-  vector<Link> links;
-  const auto root_frame{std::find_if(tree.begin(), tree.end(), [](const auto &elem)
-    {
-      return elem.first != "world" && !elem.second.empty() && !elem.second.relative();
-    })};
-  const auto root_link = root_frame == tree.end() ? "" : root_frame->first;
 
-  // root link is the first in the list
-  if(!root_link.empty())
+  // build actual osg links from floating joints with either visuals or cameras  
+  vector<Link> links;  
+  links.reserve(tree.size());
+  // add all floating links except world
+  for(auto &link: tree)
   {
-    links.push_back(root_frame->second.toNamedLink(root_link, new osg::MatrixTransform));
+    if(link.isUseful())
+      links.push_back(link.toOSGLink());
   }
 
-  for(const auto &[name, info]: tree)
-  {
-    if(name == "world" || info.empty() || name == root_link)
-      continue;
-
-    links.push_back(info.toNamedLink(name, info.relative() ? tree[info.parent].pose.get() : new osg::MatrixTransform));
-  }
-
-  // register all links with regards to root
+  // register parent link for the new links, will be used for tf lookups to update the links
   for(auto &link: links)
   {
-    if(!(link == root_link))
-      link.setParent(links.front());
+    const auto &parent{findInTree(link.getName())->parent};
+    if(!parent || parent->name == "world")
+    {
+      link.setParent(world_link);
+    }
+    else
+    {
+      auto parent_link{std::find(links.begin(), links.end(), parent->name)};
+      link.setParent(*parent_link);
+    }
   }
+
+  // transfer visuals to world link if any fixed ones
+  if(const auto root{findInTree(model->getRoot()->name)}; root->name == "world")
+    root->toWorldLink(world_link);
 
   return {links, cameras};
 }

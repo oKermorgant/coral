@@ -8,39 +8,50 @@
 using namespace coral;
 using std::chrono::system_clock;
 
-Viewer::Viewer(Scene &scene)
+Viewer::Viewer(osg::ref_ptr<Scene> scene)
   : viewer(new osgViewer::Viewer),
-    ocean_scene(scene.oceanScene()),
-    scene_mutex(scene.mutex())
+    scene(scene)
 {
-
-  width = scene.parameters().width;
-  height = scene.parameters().height;
+  width = scene->parameters().width;
+  height = scene->parameters().height;
   viewer->setUpViewInWindow( 150, 150, width, height, 0 );
 
-  viewer->setSceneData(scene.fullScene());
+  viewer->setSceneData(scene->fullScene());
 
   viewer->addEventHandler( new osgViewer::StatsHandler );
   viewer->addEventHandler( new osgGA::StateSetManipulator( viewer->getCamera()->getOrCreateStateSet() ) );
 
-  viewer->addEventHandler(new EventHandler(&scene, this));
-  viewer->addEventHandler(scene.oceanSurface()->getEventHandler());
+  //viewer->addEventHandler(new EventHandler(scene.get(), this));
+  viewer->addEventHandler(scene->getEventHandler());
+  viewer->addEventHandler(scene->oceanScene()->getEventHandler());
+  viewer->addEventHandler(scene->oceanSurface()->getEventHandler());
 
   viewer->addEventHandler( new osgViewer::HelpHandler );
   viewer->getCamera()->setName("MainCamera");
 
   // init free-flying cam + default
-  osg::Vec3 eye(scene.parameters().initialCameraPosition);
+  osg::Vec3 eye(scene->parameters().initialCameraPosition);
   free_manip->setHomePosition( eye, eye + osg::Vec3(0,20,0), osg::Vec3f(0,0,1) );
   free_manip->setVerticalAxisFixed(true);
   cam_is_free = true;
   viewer->setCameraManipulator(free_manip);
 
   // init tracking cam
-  scene.oceanScene()->addChild(cam_pose);
+  scene->oceanScene()->addChild(cam_pose);
   tracking_manip->setTrackNode(cam_pose);
   tracking_manip->setTrackerMode(osgGA::NodeTrackerManipulator::NODE_CENTER_AND_ROTATION);
   tracking_manip->setHomePosition({3,0,0}, {0,0,0}, {0,0,1});
+
+  // virtual cam
+  camera = new osg::Camera();
+  //camera = viewer->getCamera();
+  resizeWindow(width, height);
+  camera->setReferenceFrame( osg::Transform::ABSOLUTE_RF );
+  camera->setRenderOrder(osg::Camera::POST_RENDER);
+  camera->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
+  camera->setClearMask(GL_DEPTH_BUFFER_BIT);
+
+  viewer->getCamera()->addChild(camera);
 
   viewer->realize();
   osgViewer::Viewer::Windows windows;
@@ -52,24 +63,28 @@ Viewer::Viewer(Scene &scene)
 void Viewer::frame()
 {
   static bool prev_above_water(true);
-  scene_mutex->lock();
+  auto lock{scene->lock()};
 
   if(windowWasResized())
-    ocean_scene->setScreenDims(width, height);
+    resizeWindow(width, height);
 
   const auto above_water(viewer->getCameraManipulator()->getMatrix().getTrans().z() > 0.);
   if(above_water != prev_above_water)
   {
-    if(above_water) ocean_scene->setOceanSurfaceHeight(0.);
-    else            ocean_scene->setOceanSurfaceHeight(-0.05f);
+    scene->oceanScene()->setOceanSurfaceHeight(above_water ? 0.f : -0.05f);
     prev_above_water = above_water;
   }
   {
     //auto debug{DebugMsg("viewer:frame()")};
   viewer->frame();
   }
+}
 
-  scene_mutex->unlock();
+void Viewer::resizeWindow(int width, int height)
+{
+   scene->oceanScene()->setScreenDims(width, height);
+   camera->setViewport(0,0,width,height);
+   camera->setProjectionMatrixAsOrtho2D(0,width,0,height);
 }
 
 void Viewer::freeCamera()

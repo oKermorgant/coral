@@ -5,6 +5,7 @@
 #include <osgWidget/WindowManager>
 #include <osgGA/TrackballManipulator>
 #include <osgGA/NodeTrackerManipulator>
+#include <osg/Camera>
 #include <coral/Scene.h>
 
 namespace coral
@@ -13,7 +14,7 @@ namespace coral
 class Viewer
 {
 public:
-  Viewer(Scene &scene);
+  Viewer(osg::ref_ptr<Scene> scene);
 
   inline bool done() const {return viewer->done();}
   void frame();
@@ -26,8 +27,8 @@ public:
 private:
   osg::ref_ptr<osgViewer::Viewer> viewer;
   osg::ref_ptr<osgWidget::WindowManager> wm;
-  osgOcean::OceanScene* ocean_scene;
-  std::mutex* scene_mutex;
+  osg::ref_ptr<Scene> scene;
+  osg::ref_ptr<osg::Camera> camera;
 
   // free / tracking manipulators
   osg::ref_ptr <osg::MatrixTransform> cam_pose = new osg::MatrixTransform;
@@ -41,6 +42,7 @@ private:
   int width, height;
 
   bool windowWasResized();
+  void resizeWindow(int width, int height);
 };
 
 }

@@ -144,14 +144,8 @@ void Link::addVisualNode(osg::ref_ptr<osg::Node> node, const osg::Matrixd &M, co
       node->setStateSet(stateset);
     }
   }
-
-  /*if(node->asGroup() == nullptr)
-  {
-    osg::Node * aux = node;
-    node = new osg::Group();
-    node->asGroup()->addChild(aux);
-  }*/
-
-  visuals.emplace_back(node, M);
+  auto &visual{visuals.emplace_back(node, M)};
+  pose->addChild(visual.pose);
+  osgOcean::OceanScene::setupMeshNode(visual.mesh);
 }
 }

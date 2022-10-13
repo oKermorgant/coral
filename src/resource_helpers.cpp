@@ -26,10 +26,7 @@ fs::path toOSGMesh(const fs::path &path)
   {
     new_path.replace_extension(ext);
     if(fs::exists(new_path))
-    {
-      std::cout << "Found " << new_path.filename() << " to display " << path.filename() << std::endl;
       return new_path;
-    }
   }
   return path;
 }

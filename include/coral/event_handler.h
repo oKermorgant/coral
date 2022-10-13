@@ -15,15 +15,15 @@ namespace coral
 class EventHandler : public osgGA::GUIEventHandler
 {
 public:
-  EventHandler(Scene* scene, Viewer* viewer) : scene{scene}, viewer{viewer}
+  EventHandler(Scene* scene) : scene{scene}
   {  }
 
   void getUsage(osg::ApplicationUsage& usage) const;
-  bool handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapter&);
+  bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter&, osg::Object*, osg::NodeVisitor*);
+
 
 private:
-  Scene*                scene;
-  Viewer*                 viewer;
+  Scene* scene;
 };
 
 
