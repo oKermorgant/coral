@@ -35,8 +35,6 @@ struct LinkInfo
   LinkBase base = LinkBase::FLOATING;
   osg::ref_ptr <osg::MatrixTransform> pose = new osg::MatrixTransform;
 
-  Link* final_link;
-
   explicit LinkInfo(const std::string &name) : name{name} {}
 
   inline bool operator==(const std::string &name) const

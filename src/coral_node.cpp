@@ -17,10 +17,11 @@ CoralNode::CoralNode()
               ("/coral/spawn",
                [&](const Spawn::Request::SharedPtr request, [[maybe_unused]] Spawn::Response::SharedPtr response)
   {
-    if(request->robot_namespace.empty() && request->urdf_model.empty())
+    [[maybe_unused]] const auto lock{scene->lock()};
+    if(request->robot_namespace.empty() && request->world_model.empty())
       findModels();
     else
-      spawnModel(request->robot_namespace, request->pose_topic, request->urdf_model);
+      spawnModel(request->robot_namespace, request->pose_topic, request->world_model);
   });
 
   surface_srv = create_service<Surface>("/coral/surface",
@@ -185,12 +186,19 @@ void CoralNode::findModels()
   }
 }
 
-void CoralNode::spawnModel(const std::string &model_ns, const std::string &pose_topic, const std::string &model)
+void CoralNode::spawnModel(const std::string &model_ns, const std::string &pose_topic, const std::string &world_model)
 {
-  if(!model.empty())
+  if(!world_model.empty())
   {
-    // some static URDF to spawn at a given pose
-    parseModel(model);
+    std::cout << "Trying to parse " << world_model << std::endl;
+    std::ifstream urdf{world_model};
+    if(!urdf)
+    {
+      RCLCPP_WARN(get_logger(), "cannot open file %s", world_model.c_str());
+      return;
+    }
+    using Buffer = std::istreambuf_iterator<char>;
+    parseModel({(Buffer(urdf)), Buffer()});
     return;
   }
 
