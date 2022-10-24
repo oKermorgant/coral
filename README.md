@@ -15,10 +15,10 @@ Coral will provide the `/coral/spawn` service defined as:
 ```
 string robot_namespace
 string pose_topic "pose_gt"
-string urdf_model
+string world_model
 ---
 ```
-If `urdf_model` is defined, assume it is the content of some URDF file where `world` is the root frame (typically a world mesh).
+If `world_model` is defined, assume it is the path to some URDF file where `world` is the root frame (typically a world mesh).
 Otherwise, will use the `robot_namespace` to listen for a `robot_description` topic and spawn the corresponding robot.
 If `pose_topic` is define, Coral will use it to update the pose of the root frame of the robot. Otherwise, it will rely on `/tf`.
 
