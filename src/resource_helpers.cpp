@@ -47,8 +47,8 @@ void initCoralResources()
 
 fs::path resolvePath(const std::string &file)
 {
-  static const std::string file_prefix("file://");
-  static const std::string pkg_prefix("package://");
+  const std::string file_prefix("file://");
+  const std::string pkg_prefix("package://");
 
   std::string abs_path(file);
 

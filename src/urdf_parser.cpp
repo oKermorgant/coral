@@ -1,204 +1,248 @@
 #include <coral/urdf_parser.h>
 #include <urdf_parser/urdf_parser.h>
+#include <algorithm>
 
-using std::vector, std::string, std::map;
-
-enum class LinkBase{FIXED, FLOATING, MERGED};
-
-std::ostream& operator<<(std::ostream &os, const LinkBase &base)
-{
-  if(base == LinkBase::FIXED)
-    os << "FIXED";
-  else if(base == LinkBase::FLOATING)
-    os << "FLOATING";
-  else
-     os << "MERGED";
-  return os;
-}
+using std::vector, std::string;
 
 namespace coral
 {
+
+osg::Matrixd osgMatFrom(const std::vector<double> &xyz, const std::vector<double> &rpy, const std::vector<double> &scale)
+{
+  const osg::Vec3d X(1,0,0);
+  const osg::Vec3d Y(0,1,0);
+  const osg::Vec3d Z(0,0,1);
+  osg::Matrixd M(-osg::Quat(rpy[0], X, rpy[1], Y, rpy[2], Z));
+  M.setTrans(osgVecFrom(xyz));
+  M.preMultScale(osgVecFrom(scale));
+  return M;
+}
+
+osg::Matrixd osgMatFrom(const urdf::Vector3 &t, const urdf::Rotation &q, const urdf::Vector3 &scale)
+{
+  osg::Matrixd M(-osg::Quat{q.x, q.y, q.z, q.w});
+  M.setTrans(osgVecFrom(t));
+  M.preMultScale(osgVecFrom(scale));
+  return M;
+}
+
 namespace urdf_parser
 {
-using Visual = std::pair<urdf::VisualSharedPtr, osg::Matrixd>;
 
-// helper struct to resolve constant kinematic chains
-struct LinkInfo
+struct NestedXML
 {
-  std::string name;
-  LinkInfo* parent = nullptr;
-  std::vector<LinkInfo*> children;
+  const TiXmlElement* root;
+  explicit NestedXML(const TiXmlElement* root) : root(root) {}
 
-  std::vector<Visual> visuals;
-  std::vector<CameraInfo> cameras;
-
-  LinkBase base = LinkBase::FLOATING;
-  osg::ref_ptr <osg::MatrixTransform> pose = new osg::MatrixTransform;
-
-  Link* final_link;
-
-  explicit LinkInfo(const std::string &name) : name{name} {}
-
-  inline bool operator==(const std::string &name) const
+  static const TiXmlElement* getNested(const TiXmlElement* root, const vector<string> &keys)
   {
-    return name == this->name;
+    if(keys.size() == 0)  return root;
+
+    const auto child = root->FirstChildElement(keys[0]);
+    if(child == nullptr)  return nullptr;
+
+    return getNested(child, {keys.begin()+1, keys.end()});
   }
 
-  void setParent(LinkInfo *parent)
+  bool read(const vector<string> &keys, string &value) const
   {
-    this->parent = parent;
-    parent->children.push_back(this);
+    const auto elem(getNested(root, keys));
+    if(!elem) return false;
+    value = elem->GetText();
+    return true;
   }
 
-  void mergeIntoParent()
+  bool read(const vector<string> &keys, double &value) const
   {
-    //std::transform(children.begin(), children.end(), std::back_inserter(parent.children),
-    //               SubLink::merge);
-
-    for(auto child: children)
-    {
-      child->pose->setMatrix(pose->getMatrix() * child->pose->getMatrix());
-      child->setParent(parent);
-    }
-
-    for(const auto &[visual, M]: visuals)
-      parent->visuals.push_back({visual, pose->getMatrix()*M});
-
-    for(auto &cam: cameras)
-    {
-      cam.pose->setMatrix(pose->getMatrix() * cam.pose->getMatrix());
-      parent->cameras.push_back(cam);
-    }
-    base = LinkBase::MERGED;
+    const auto elem(getNested(root, keys));
+    if(!elem) return false;
+    value = atof(elem->GetText());
+    return true;
   }
 
-  inline bool isUseful() const
+  bool read(const vector<string> &keys, int &value) const
   {
-    return name != "world" && base == LinkBase::FLOATING &&
-        (!children.empty() || !visuals.empty() || !cameras.empty());
-  }
-
-  static bool canBeMerged(const LinkInfo &link)
-  {
-    if(link.base == LinkBase::MERGED) return false;
-    return link.parent && (link.base == LinkBase::FIXED || (link.cameras.empty() && link.visuals.empty()));
-  }
-
-  Link toOSGLink()
-  {
-    // find a parent link that will be kept
-    if(parent)
-    {
-      while(parent->parent && !parent->isUseful())
-        parent = parent->parent;
-    }
-
-    auto link{Link(name)}; //, parent ? parent->pose.get() : new osg::MatrixTransform)};
-
-    for(const auto &[visual,M]: visuals)
-      link.addVisual(visual, M);
-    for(auto &cam: cameras)
-      link.frame()->addChild(cam.pose);
-
-    return link;
-  }
-
-  void toWorldLink(Link &world) const
-  {
-    for(const auto &[visual,M]: visuals)
-      world.addVisual(visual, M);
-    for(auto &cam: cameras)
-      world.frame()->addChild(cam.pose);
+    const auto elem(getNested(root, keys));
+    if(!elem) return false;
+    value = atoi(elem->GetText());
+    return true;
   }
 };
 
+// camera parser
+vector<CameraInfo> CameraInfo::extractFrom(const string &description)
+{
+  vector<CameraInfo> cameras;
 
-std::tuple<vector<Link>, vector<CameraInfo>> parse(const string &description, bool with_thrusters, Link &world_link)
+  // tediously parse the description XML to extract gazebo sensors and plugins
+  TiXmlDocument doc;
+  doc.Parse(description.c_str());
+  auto root = doc.RootElement();
+
+  for(auto gazebo_elem = root->FirstChildElement("gazebo");
+      gazebo_elem != nullptr;
+      gazebo_elem = gazebo_elem->NextSiblingElement("gazebo"))
+  {
+    const auto sensor(gazebo_elem->FirstChildElement("sensor"));
+
+    if(sensor != nullptr &&
+       std::string(sensor->Attribute("type")) == "camera" &&
+       sensor->FirstChildElement("plugin") != nullptr)
+    {
+      const string link(gazebo_elem->Attribute("reference"));
+
+      if(link.find("right") == link.npos && link.find("left") == link.npos)
+      {
+        cameras.emplace_back(link, sensor);
+      }
+    }
+  }
+  return cameras;
+}
+
+CameraInfo::CameraInfo(std::string link, const TiXmlElement* sensor_elem)
+  : link_name(link)
+{
+
+  std::cout << "Adding camera @ " << link << std::endl;
+
+  const auto sensor(NestedXML{sensor_elem});
+  const auto cam(NestedXML{sensor_elem->FirstChildElement("camera")});
+
+  cam.read({"horizontal_fov"}, fov);
+  cam.read({"image", "width"}, width);
+  cam.read({"image", "height"}, height);
+  cam.read({"clip", "near"}, clip_near);
+  cam.read({"clip", "far"}, clip_far);
+
+  int rate = 30;
+  sensor.read({"update_rate"}, rate);
+  period_ms = 1000/rate;
+
+  // topic namespace
+  sensor.read({"plugin", "camera_name"}, topic);
+  if(topic[0] != '/')
+    topic = "/" + topic;
+
+  // image topic in namespace
+  string im_topic = "image_raw";
+  /*const bool remapped = sensor.read({"plugin", "ros", "remapping"}, im_topic);
+  if(remapped)
+  {
+    const auto idx(im_topic.find('='));
+    if(idx != im_topic.npos)
+      im_topic = im_topic.substr(idx+1);
+  }*/
+  topic += '/' + im_topic;
+}
+
+
+// link parser
+bool LinkInfo::canBeMerged(const LinkInfo &link)
+{
+  if(isRoot(link))
+    return false;
+
+  // you can only merge links that are fixed or carry nothing
+  if(link.isFloating() && (!link.cameras.empty() || !link.visuals.empty()))
+    return false;
+
+  // you can only merge links with floating children
+  if(std::any_of(link.children.begin(), link.children.end(),
+                 [](LinkInfo* child)
+  {return !child->isFloating();}))
+    return false;
+
+  return true;
+}
+
+void LinkInfo::mergeIntoParent()
+{  
+  parent->children.erase(std::find(parent->children.begin(),
+                                   parent->children.end(),
+                                   this));
+
+  for(auto child: children)
+  {
+    if(!child->isFloating())
+      child->pose.value() = child->pose.value() * pose.value();
+    child->setParent(parent);
+  }
+
+  std::transform(visuals.begin(), visuals.end(), std::back_inserter(parent->visuals),
+                 [&](const auto &visual) -> Visual
+  {return {visual.first,visual.second*pose.value()};});
+
+  std::transform(cameras.begin(), cameras.end(), std::back_inserter(parent->cameras),
+                 [&](const auto &cam)
+  {return CameraInfo(cam, pose.value());});
+}
+
+
+// a whole kinematic tree
+inline auto Tree::find(const std::string &name)
+{
+  const auto elem{std::find(begin(), end(), name)};
+  return elem == end() ? nullptr : &*elem;
+}
+
+auto Tree::simplify()
+{
+  // merge
+  while(true)
+  {
+    auto link{std::find_if(begin(), end(), LinkInfo::canBeMerged)};
+    if(link == end())
+      return;
+    link->mergeIntoParent();
+    erase(link);
+  }
+}
+
+// main function
+Tree::Tree(const string &description, const bool keep_thrusters)
 {
   const auto cameras(CameraInfo::extractFrom(description));
   const auto model(urdf::parseURDF(description));
 
-  std::vector<LinkInfo> tree;
-  // ensure pointers stay valid along the way
-  tree.reserve(model->links_.size());
-  // find-shortcut, will always have a good find
-  const auto findInTree = [&](const std::string &name) {return std::find(tree.begin(), tree.end(), name);};
-
   // extract all links
-  for(const auto &[name, link]: model->links_)
+  for(const auto &elem: model->links_)
   {
-    if(!with_thrusters && name.find("thruster") != name.npos)
+    const auto &name{elem.first};
+    const auto &link{elem.second};
+    if(!keep_thrusters && name.find("thruster") != name.npos)
       continue;
 
-    auto &info(tree.emplace_back(name));
+    auto &info{add(name)};
     std::transform(link->visual_array.begin(), link->visual_array.end(), std::back_inserter(info.visuals),
-                   [](const auto &visual){return Visual{visual, {}};});
-
-    for(const auto &cam: cameras)
-    {
-      if(cam.link_name == name)
-        info.cameras.push_back(cam);
-    }
+                   [](const auto &visual){return LinkInfo::Visual{visual, osg::Matrixd::identity()};});
+    std::copy_if(cameras.begin(), cameras.end(), std::back_inserter(info.cameras),
+                 [&](const auto &cam){return cam.link_name == name;});
   }
 
-  // parse joint structure
+  // build hierarchy from model joints
   for(const auto &[name,joint]: model->joints_)
   {
-    auto link{findInTree(joint->child_link_name)};
-    link->setParent(findInTree(joint->parent_link_name).base());
+    auto link{find(joint->child_link_name)};
+    link->setParent(find(joint->parent_link_name));
     auto limits(joint->limits);
     if(joint->type == urdf::Joint::FIXED || (limits && limits->lower == limits->upper))
-    {
-      link->base = LinkBase::FIXED;
-      link->pose->setMatrix(Link::osgMatFrom(joint->parent_to_joint_origin_transform.position, joint->parent_to_joint_origin_transform.rotation));
-    }
-    else
-    {
-      // pose is not important, it will change
-      link->base = LinkBase::FLOATING;      
-    }
+      link->pose = osgMatFrom(joint->parent_to_joint_origin_transform.position,
+                              joint->parent_to_joint_origin_transform.rotation);
   }
 
-  // top-down merge
-  while(true)
+  // merge / remove merged links
+  simplify();
+
+  // reorder so that children are always behind their parents
+  // induces that root link is at front
+  const auto cmp = [](const LinkInfo &link1, const LinkInfo &link2)
   {
-    auto link{std::find_if(tree.begin(), tree.end(), LinkInfo::canBeMerged)};
-    if(link == tree.end())
-      break;
-    link->mergeIntoParent();
-  }
-
-
-  // build actual osg links from floating joints with either visuals or cameras  
-  vector<Link> links;  
-  links.reserve(tree.size());
-  // add all floating links except world
-  for(auto &link: tree)
-  {
-    if(link.isUseful())
-      links.push_back(link.toOSGLink());
-  }
-
-  // register parent link for the new links, will be used for tf lookups to update the links
-  for(auto &link: links)
-  {
-    const auto &parent{findInTree(link.getName())->parent};
-    if(!parent || parent->name == "world")
-    {
-      link.setParent(world_link);
-    }
-    else
-    {
-      auto parent_link{std::find(links.begin(), links.end(), parent->name)};
-      link.setParent(*parent_link);
-    }
-  }
-
-  // transfer visuals to world link if any fixed ones
-  if(const auto root{findInTree(model->getRoot()->name)}; root->name == "world")
-    root->toWorldLink(world_link);
-
-  return {links, cameras};
+    if(link2.parent == &link1)
+      return true;
+    return link1.parent != &link2;
+  };
+  sort(cmp);
 }
 
 }

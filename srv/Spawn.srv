@@ -1,11 +1,12 @@
 # spawn a model into Coral
-# if urdf is not empty then will spawn it at the pose given in urdf_pose
-# otherwise will listen to a robot_description in the given namespace
-# if pose_topic is empty, will listen to the transform world -> base_link on /tf
-# otherwise will use the <robot_namespace>/<pose_topic> Odometry topic instead
 
+# world_model is the path to a URDF file defining the world. It should include a world link
+string world_model
+
+# these parameters are used to spawn a robot from its robot_description topic in the given namespace
 string robot_namespace
+# if pose_gt is defined, the pose of the robot is not updated from TF but from this topic
+# the topic is expected to provide geometry_msgs/Pose messages
 string pose_topic "pose_gt"
-string urdf_model
-geometry_msgs/Pose urdf_pose
+
 ---

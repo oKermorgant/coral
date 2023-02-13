@@ -27,7 +27,8 @@ class Scene : public osg::Referenced
 private:
   SceneParams params;
   SceneType scene_type;
-  std::mutex scene_mtx;
+  std::mutex mutex;
+
 
   osg::ref_ptr<osg::Group> scene, root;
 
@@ -39,12 +40,10 @@ private:
 
 public:
   Scene(const SceneParams &params);
-
-
-
   const SceneParams & parameters() const {return params;}
 
-  [[nodiscard]] inline auto lock() {return std::lock_guard(scene_mtx);}
+  [[nodiscard]] inline auto lock() {return std::lock_guard(mutex);}
+
 
   void changeScene( SceneType::Type type);
 

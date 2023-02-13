@@ -19,6 +19,8 @@
 namespace coral
 {
 
+
+
 using geometry_msgs::msg::Pose;
 using coral::srv::Spawn;
 using coral::srv::Surface;
@@ -26,7 +28,6 @@ using coral::srv::Surface;
 class CoralNode : public rclcpp::Node
 {
  using GeometryType = decltype(urdf::Geometry::MESH);
-
 
 public:
   CoralNode();
@@ -52,12 +53,8 @@ private:
   void refreshLinkPoses();
   tf2_ros::Buffer tf_buffer;
   tf2_ros::TransformListener tf_listener;
-  inline bool hasLink(const std::string& name, const std::vector<std::string> &tf_links) const
-  {
-    return std::find(tf_links.begin(), tf_links.end(), name) != tf_links.end();
-  }
 
-  // ground truth subscribers from Gazebo
+  // ground truth subscribers from Gazebo or other Pose topic
   std::vector<rclcpp::Subscription<Pose>::SharedPtr> pose_subs;
 
   // links and their meshes
@@ -70,10 +67,11 @@ private:
   std::vector<Link> links;
   std::vector<Camera> cameras;
   std::unique_ptr<image_transport::ImageTransport> it;
+  void addCameras(const std::vector<urdf_parser::CameraInfo> &cams);
 
   // how to get them
   rclcpp::Service<Spawn>::SharedPtr spawn_srv;  
-  void spawnModel(const std::string &model_ns, const std::string &pose_topic, const std::string &model = "");
+  void spawnModel(const std::string &model_ns, const std::string &pose_topic = "", const std::string &world_model = "");
   void parseModel(const std::string &model);
   rclcpp::Subscription<rosgraph_msgs::msg::Clock>::SharedPtr clock_sub;
 
