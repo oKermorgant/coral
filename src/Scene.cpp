@@ -45,7 +45,7 @@ Scene::Scene(const SceneParams &params) : params(params), scene_type(params.scen
   osgOcean::ShaderManager::instance().enableShaders(true);
 
   scene = new osg::Group;
-  cubemap = loadCubeMapTextures( scene_type.cubemap );
+  cubemap = loadCubeMapTextures( scene_type.cubemap);
 
   // Set up surface
   ocean_surface =
@@ -151,8 +151,8 @@ Scene::Scene(const SceneParams &params) : params(params), scene_type(params.scen
   scene->addChild( lightSource );
   scene->addChild( ocean_scene.get() );
 
-  //root = scene;
-  root = new osg::Group;
+  root = scene;
+  //root = new osg::Group;
 
   root->getOrCreateStateSet()->addUniform(new osg::Uniform("uOverlayMap", 1));
   root->getStateSet()->addUniform(new osg::Uniform("uNormalMap", 2));

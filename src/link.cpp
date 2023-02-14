@@ -1,17 +1,16 @@
 #include <coral/link.h>
 
+using namespace std::chrono_literals;
 using std::vector, std::string;
+
+constexpr auto timeout{10ms};
 
 namespace coral
 {
 
-
 void Link::refreshFrom(const tf2_ros::Buffer &tf_buffer)
 {
   static geometry_msgs::msg::TransformStamped tr;
-
-  static const auto timeout(std::chrono::milliseconds(10));
-
   if(!tf_buffer.canTransform(parent, name, tf2::TimePointZero, timeout))
     return;
 
@@ -19,4 +18,5 @@ void Link::refreshFrom(const tf2_ros::Buffer &tf_buffer)
 
   setPose(osgMatFrom(tr.transform.translation, tr.transform.rotation));
 }
+
 }

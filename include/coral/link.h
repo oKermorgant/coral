@@ -2,45 +2,50 @@
 #define CORAL_VISUAL_LINK_H
 
 #include <string>
-#include <osg/Vec3d>
-#include <osg/Quat>
-#include <osg/MatrixTransform>
-#include <urdf_model/link.h>
 #include <tf2_ros/buffer.h>
-#include <geometry_msgs/msg/quaternion.hpp>
-
 #include <coral/Scene.h>
+#include <coral/urdf_parser.h>
+#include <geometry_msgs/msg/pose.hpp>
 
 namespace coral
 {
 
+template <class Translation>
+inline osg::Matrixd osgMatFrom(const Translation &t, const geometry_msgs::msg::Quaternion &q)
+{
+  osg::Matrixd M(osg::Quat{q.x, q.y, q.z, q.w});
+  M.setTrans(t.x, t.y, t.z);
+  return M;
+}
+
 class Link
 {
 public:
-  // some conversions
-  static osg::Matrixd osgMatFrom(const std::vector<double> &xyz,
-                                 const std::vector<double> &rpy,
-                                 const std::vector<double> &scale = {1,1,1});
-  static osg::Matrixd osgMatFrom(const urdf::Vector3 &t,
-                                 const urdf::Rotation &q,
-                                 const urdf::Vector3 &scale = {1,1,1});
-  template <class Translation>
-  inline static osg::Matrixd osgMatFrom(const Translation &t, const geometry_msgs::msg::Quaternion &q)
+  Link(const std::string &name) : name{name}
   {
-    osg::Matrixd M(osg::Quat{q.x, q.y, q.z, q.w});
-    M.setTrans(t.x, t.y, t.z);
-    return M;
+    pose->setDataVariance(osg::Object::STATIC);
   }
-
-  Link(const std::string &name, osg::MatrixTransform* pose = new osg::MatrixTransform) : name(name), pose(pose)
+  Link(const urdf_parser::LinkInfo &info) : name{info.name}
   {
     pose->setDataVariance(osg::Object::DYNAMIC);
+    addElements(info);
+  }
+
+  void addElements(const urdf_parser::LinkInfo &info)
+  {
+    for(const auto &[visual,M]: info.visuals)
+      addVisual(visual, M);
+    //for(auto &cam: info.cameras)
+      //pose->addChild(cam.pose);
   }
 
   auto frame() const {return pose.get();}
   inline std::string getName() const {return name;}
   void refreshFrom(const tf2_ros::Buffer &tf_buffer);
-
+  inline void refreshFromTopic()
+  {
+    setPose(osgMatFrom(last.position, last.orientation));
+  }
   inline void setPose(const osg::Matrixd &M)
   {
     pose->setMatrix(M);    
@@ -50,7 +55,7 @@ public:
   struct Visual
   {
     osg::ref_ptr<osg::Node> mesh;
-    osg::ref_ptr <osg::MatrixTransform > pose;
+    osg::ref_ptr<osg::MatrixTransform> pose;
     Visual(osg::ref_ptr<osg::Node> mesh, const osg::Matrixd &M);
   };
 
@@ -76,6 +81,13 @@ public:
       parent = root.name;
   }
 
+  auto poseCallback()
+  {
+      pose_from_topic = true;
+      return [&](geometry_msgs::msg::Pose::SharedPtr msg){last = *msg;};
+  }
+
+
   inline void ignoreTF() {pose_from_topic = true;}
   inline bool updatedFromTF() const {return !pose_from_topic;}
 
@@ -83,11 +95,11 @@ private:
 
   const std::string name;
   std::string parent;
-  osg::ref_ptr <osg::MatrixTransform> pose;
+  osg::ref_ptr <osg::MatrixTransform> pose = new osg::MatrixTransform;
+  geometry_msgs::msg::Pose last;
+
   bool pose_from_topic{false};
-
   inline void addVisualNode(osg::ref_ptr<osg::Node> frame, const osg::Matrixd &M, const urdf::Material* mat);
-
   std::vector<Visual> visuals;
 
 };

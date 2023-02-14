@@ -63,7 +63,7 @@ Viewer::Viewer(osg::ref_ptr<Scene> scene)
 void Viewer::frame()
 {
   static bool prev_above_water(true);
-  auto lock{scene->lock()};
+  [[maybe_unused]] const auto lock{scene->lock()};
 
   if(windowWasResized())
     resizeWindow(width, height);

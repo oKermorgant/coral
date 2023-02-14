@@ -11,12 +11,12 @@ int main(int argc, char *argv[])
   auto node(std::make_shared<CoralNode>());
   auto viewer{node->createViewer()};
 
-  rclcpp::executors::MultiThreadedExecutor exec;
+  rclcpp::executors::SingleThreadedExecutor exec;
   exec.add_node(node);
 
   [[maybe_unused]] auto future = std::async([&node]()
   {
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    std::this_thread::sleep_for(std::chrono::seconds(2));
     node->findModels();
   });
 
@@ -24,6 +24,7 @@ int main(int argc, char *argv[])
 
   while(!viewer->done() && rclcpp::ok())
   {
+    //exec.spin_once();
     viewer->frame();
   }
 

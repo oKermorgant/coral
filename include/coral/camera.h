@@ -4,37 +4,19 @@
 #include <string>
 #include <vector>
 #include <osg/Camera>
-#include <osg/MatrixTransform>
 #include <image_transport/image_transport.hpp>
-#include <tinyxml.h>
+#include <coral/urdf_parser.h>
+
 
 namespace coral
 {
 
 class CoralNode;
 
-
-// temporary structure to extract the camera info before building an actual simulated camera
-struct CameraInfo
-{
-  int height, width;
-  double fov;
-  double clip_near, clip_far;
-  std::string topic;
-  std::string link_name;
-  int period_ms;
-  osg::MatrixTransform* pose = new osg::MatrixTransform;
-
-  CameraInfo(std::string link, const TiXmlElement* sensor_elem);
-
-  static std::vector<CameraInfo> extractFrom(const std::string &description);
-
-};
-
 class Camera
 {
 public:
-  Camera(CoralNode *node, const CameraInfo &info);
+  Camera(CoralNode *node, const urdf_parser::CameraInfo &info);
 
 
 private:
@@ -46,7 +28,7 @@ private:
   image_transport::Publisher publisher;
   rclcpp::TimerBase::SharedPtr publish_timer;
 
-  void publish(CoralNode *node);
+  void publish();
 
 
 };

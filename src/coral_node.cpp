@@ -14,14 +14,11 @@ CoralNode::CoralNode()
   display_thrusters = declare_parameter("with_thrusters", false);
 
   spawn_srv = create_service<Spawn>
-              ("/coral/spawn",
-               [&](const Spawn::Request::SharedPtr request, [[maybe_unused]] Spawn::Response::SharedPtr response)
+      ("/coral/spawn",
+       [&](const Spawn::Request::SharedPtr request, [[maybe_unused]] Spawn::Response::SharedPtr response)
   {
     [[maybe_unused]] const auto lock{scene->lock()};
-    if(request->robot_namespace.empty() && request->world_model.empty())
-      findModels();
-    else
-      spawnModel(request->robot_namespace, request->pose_topic, request->world_model);
+    spawnModel(request->robot_namespace, request->pose_topic, request->world_model);
   });
 
   surface_srv = create_service<Surface>("/coral/surface",
@@ -46,8 +43,7 @@ SceneParams CoralNode::parameters()
 {
   SceneParams params;
 
-  auto updateParam = [&](const string &description,
-                     auto & val)
+  const auto updateParam = [&](const string &description, auto & val)
   {val = declare_parameter(description, val);};
 
   // display
@@ -118,26 +114,29 @@ Link* CoralNode::getKnownCamParent()
 
 void CoralNode::refreshLinkPoses()
 {
-  vector<string> tf_links;
-  tf_buffer._getFrameStrings(tf_links);
-  for(auto &link: links)
   {
-    if(link.updatedFromTF() && hasLink(link.getName(), tf_links))
-      link.refreshFrom(tf_buffer);
+    [[maybe_unused]] const auto lock{scene->lock()};
+    for(auto &link: links)
+    {
+      if(link.updatedFromTF())
+          link.refreshFrom(tf_buffer);
+      else
+        link.refreshFromTopic();
+    }
   }
 
-  if(hasLink("world", tf_links) && hasLink(coral_cam_link, tf_links))
+  if(tf_buffer._frameExists(coral_cam_link))
   {
     const auto parent{getKnownCamParent()};
 
     if(parent == nullptr)
       return;
 
-    const auto tr = tf_buffer.lookupTransform(parent->getName(), coral_cam_link, tf2::TimePointZero, 10ms);
+    const auto tr{tf_buffer.lookupTransform(parent->getName(), coral_cam_link, tf2::TimePointZero, 10ms)};
     const auto delay{(now() - tr.header.stamp).seconds()};
     if(delay < 1 || delay > 1e8)
     {
-      auto M = Link::osgMatFrom(tr.transform.translation, tr.transform.rotation);
+      auto M = osgMatFrom(tr.transform.translation, tr.transform.rotation);
 
       if(parent->getName() != "world")
       {
@@ -146,13 +145,17 @@ void CoralNode::refreshLinkPoses()
       viewer->lockCamera(M);
     }
     else
+    {
       viewer->freeCamera();
+    }
   }
 }
 
 void CoralNode::findModels()
 {
   const auto topics{get_topic_names_and_types()};
+  if(topics.empty())
+    return;
   const std::string description{"robot_description"};
   const auto isDescription{[description](const std::string &topic)
     {
@@ -172,22 +175,27 @@ void CoralNode::findModels()
         }};
 
       // pose_topic should be a geometry_msgs/Pose, published by Gazebo as ground truth
-      std::string pose_topic;
-      for(const auto &[other_topic, other_msg]: topics)
+      const auto pose_topic = std::find_if(topics.begin(), topics.end(), [&](const auto &elem)
       {
-        if(isSameNS(other_topic) && other_msg[0] == "geometry_msgs/msg/Pose")
-        {
-          pose_topic = other_topic.substr(ns.size()+1);
-          break;
-        }
-      }
-      spawnModel(ns, pose_topic);
+        return isSameNS(elem.first) && elem.second[0] == "geometry_msgs/msg/Pose";
+      });
+      if(pose_topic == topics.end())
+        spawnModel(ns);
+      else
+        spawnModel(ns, pose_topic->first.substr(ns.size()+1));
     }
   }
 }
 
-void CoralNode::spawnModel(const std::string &model_ns, const std::string &pose_topic, const std::string &world_model)
+void CoralNode::spawnModel(const std::string &model_ns,
+                           const std::string &pose_topic,
+                           const std::string &world_model)
 {
+  if(model_ns.empty() && world_model.empty())
+  {
+    findModels();
+    return;
+  }
   if(!world_model.empty())
   {
     std::cout << "Trying to parse " << world_model << std::endl;
@@ -208,7 +216,7 @@ void CoralNode::spawnModel(const std::string &model_ns, const std::string &pose_
   // retrieve full model through robot_state_publisher
   const auto rsp_node(std::make_shared<Node>("coral_rsp"));
   const auto rsp_param_srv = std::make_shared<rclcpp::SyncParametersClient>
-                             (rsp_node, model_ns + "/robot_state_publisher");
+      (rsp_node, model_ns + "/robot_state_publisher");
   rsp_param_srv->wait_for_service();
   if(!rsp_param_srv->has_parameter("robot_description"))
   {
@@ -218,54 +226,84 @@ void CoralNode::spawnModel(const std::string &model_ns, const std::string &pose_
   }
 
   const auto root_link_idx{links.size()};
-
   parseModel(rsp_param_srv->get_parameter<string>("robot_description"));
-  if(!pose_topic.empty())
+
+  if(!pose_topic.empty() && links.size() > root_link_idx)
   {
-    if(root_link_idx == links.size())
+
+    auto &this_root_link{links[root_link_idx]};
+    RCLCPP_INFO(get_logger(), "%s seems to have its pose published on %s/%s for frame %s",
+                model_ns.substr(1).c_str(),
+                model_ns.c_str(),
+                pose_topic.c_str(),
+                this_root_link.getName().c_str());
+
+    links[root_link_idx].ignoreTF();
+    pose_subs.push_back(create_subscription<Pose>(model_ns + "/" + pose_topic, 1, [&,root_link_idx](Pose::SharedPtr msg)
     {
-      // no new links were added for this robot
-      RCLCPP_WARN(get_logger(),
-                  "No link was found in description from namespace %s",
-                  model_ns.c_str());
-    }
-    else
-    {
-      links[root_link_idx].ignoreTF();
-      RCLCPP_INFO(get_logger(), "%s seems to have its pose published on %s/%s",
-                  model_ns.substr(1).c_str(), model_ns.c_str(), pose_topic.c_str());
-      pose_subs.push_back(create_subscription<Pose>(model_ns + "/" + pose_topic, 1, [&,root_link_idx](Pose::SharedPtr msg)
-      {
-        links[root_link_idx].setPose(Link::osgMatFrom(msg->position, msg->orientation));
-      }));
-    }
+      links[root_link_idx].setPose(osgMatFrom(msg->position, msg->orientation));
+    }));
+
+    pose_subs.push_back(create_subscription<Pose>(model_ns + "/" + pose_topic, 1, this_root_link.poseCallback()));
   }
   models.push_back(model_ns);
 }
 
 void CoralNode::parseModel(const string &description)
 {
-  const auto [new_links, new_cams] = urdf_parser::parse(description, display_thrusters, world_link); {}
+  const auto tree{urdf_parser::Tree(description, display_thrusters)};
+  links.reserve(links.size() + tree.size());
+  const auto root{links.begin()+links.size()};
+  std::vector<urdf_parser::CameraInfo> new_cameras;
 
-  // add cameras
-  if(!new_cams.empty())
+  for(const auto &link: tree)
   {
-    if(!it) it = std::make_unique<image_transport::ImageTransport>(shared_from_this());
-    // check if Gazebo is already publishing images, if any
-    const auto current_topics{get_topic_names_and_types()};
-    for(const auto &cam: new_cams)
+    if(link.name == "world")
     {
-
-      if(current_topics.find(cam.topic) != current_topics.end())
-        RCLCPP_WARN(get_logger(),
-                    "Image topic %s seems already advertized by Gazebo, use `unset DISPLAY` in the Gazebo terminal and run without GUI",
-                    cam.topic.c_str());
-
-      cameras.emplace_back(this, cam);
+      world_link.addElements(link);
     }
+    else
+    {
+      auto &last{links.emplace_back(link)};
+      // find the parent if any, was already added
+      if(!link.parent || link.parent->name == "world")
+      {
+        std::cout << link.name << " defined wrt world" << std::endl;
+        last.setParent(world_link);
+      }
+      else
+      {
+        auto parent_link{std::find(root, links.end(), link.parent->name)};
+        last.setParent(*parent_link);
+        std::cout << link.name << " defined wrt " << link.parent->name << std::endl;
+      }
+    }
+    std::copy(link.cameras.begin(), link.cameras.end(), std::back_inserter(new_cameras));
   }
-  std::copy(new_links.begin(), new_links.end(), std::back_inserter(links));
+
+  addCameras(new_cameras);
+
 }
+
+void CoralNode::addCameras(const std::vector<urdf_parser::CameraInfo> &cams)
+{
+  if(cams.empty()) return;
+  if(!it) it = std::make_unique<image_transport::ImageTransport>(shared_from_this());
+  // check if someone is already publishing images, if any
+  const auto current_topics{get_topic_names_and_types()};
+  for(auto &cam: cams)
+  {
+
+    if(current_topics.find(cam.topic) != current_topics.end())
+      RCLCPP_WARN(get_logger(),
+                  "Image topic %s seems already advertized by Gazebo, use `unset DISPLAY` in the Gazebo terminal and run without GUI",
+                  cam.topic.c_str());
+
+    cameras.emplace_back(this, cam);
+  }
+}
+
+
 
 void CoralNode::computeSurface(const Surface::Request &req, Surface::Response &res)
 {

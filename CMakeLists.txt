@@ -42,8 +42,6 @@ execute_process(COMMAND git submodule update --init
   WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
 endif()
 
-set(CMAKE_BUILD_TYPE Debug)
-
 if(OSGOCEAN_EXTERNAL)
 
     # manual compile 

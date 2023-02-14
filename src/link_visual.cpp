@@ -16,34 +16,6 @@ Link::Visual::Visual(osg::ref_ptr<osg::Node> mesh, const osg::Matrixd &M)
   pose->addChild(this->mesh);
 }
 
-osg::Vec3 osgVecFrom(const std::vector<double> &xyz)
-{
-  return osg::Vec3(xyz[0], xyz[1], xyz[2]);
-}
-osg::Vec3 osgVecFrom(const urdf::Vector3 &t)
-{
-  return osg::Vec3(t.x, t.y, t.z);
-}
-
-osg::Matrixd Link::osgMatFrom(const std::vector<double> &xyz, const std::vector<double> &rpy, const std::vector<double> &scale)
-{
-  static const osg::Vec3d X(1,0,0);
-  static const osg::Vec3d Y(0,1,0);
-  static const osg::Vec3d Z(0,0,1);
-  osg::Matrixd M(-osg::Quat(rpy[0], X, rpy[1], Y, rpy[2], Z));
-  M.setTrans(osgVecFrom(xyz));
-  M.preMultScale(osgVecFrom(scale));
-  return M;
-}
-
-osg::Matrixd Link::osgMatFrom(const urdf::Vector3 &t, const urdf::Rotation &q, const urdf::Vector3 &scale)
-{
-  osg::Matrixd M(-osg::Quat{q.x, q.y, q.z, q.w});
-  M.setTrans(osgVecFrom(t));
-  M.preMultScale(osgVecFrom(scale));
-  return M;
-}
-
 void Link::addVisual(urdf::VisualSharedPtr visual, const osg::Matrixd &M)
 {
   const auto mat(visual->material.get());
