@@ -124,21 +124,6 @@ install(PROGRAMS ${SCRIPTS}
 )
 
 
-ADD_EXECUTABLE(
-
-  oceanExample
-  src/OceanScene.cpp
-  src/oceanExample/application.cpp
-  src/oceanExample/Scene.cpp
-  #src/oceanExample/SkyDome.cpp
-  src/SkyDome.cpp
-  src/SphereSegment.cpp
-  src/resource_helpers.cpp
-  )
-target_include_directories(oceanExample SYSTEM PRIVATE include ${OPENSCENEGRAPH_INCLUDE_DIR} ${OSGOCEAN_INCLUDE_DIRS} ${OPENGL_INCLUDE_DIR})
-target_link_libraries(oceanExample  osgOcean ${OPENSCENEGRAPH_LIBRARIES} ${OPENGL_LIBRARY})
-ament_target_dependencies(oceanExample ament_index_cpp)
-
 if(NOT OSGOCEAN_EXTERNAL)
 install(TARGETS osgOcean
   ARCHIVE DESTINATION lib

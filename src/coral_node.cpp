@@ -196,7 +196,6 @@ void CoralNode::spawnModel(const std::string &model_ns,
     findModels();
     return;
   }
-
   if(!world_model.empty())
   {
     std::cout << "Trying to parse " << world_model << std::endl;
