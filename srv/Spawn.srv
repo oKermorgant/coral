@@ -1,10 +1,12 @@
 # spawn a model into Coral
 
 # world_model is the path to a URDF file defining the world. It should include a world link
+# it is possible to sequence several calls with various URDF files
 string world_model
 
 # these parameters are used to spawn a robot from its robot_description topic in the given namespace
 string robot_namespace
+
 # if pose_gt is defined, the pose of the robot is not updated from TF but from this topic
 # the topic is expected to provide geometry_msgs/Pose messages
 string pose_topic "pose_gt"

@@ -97,6 +97,7 @@ public:
         double z = -_oceanScene->getOceanCylinder()->getHeight() +                      // So the cylinder is underwater
                    _oceanScene->getOceanSurfaceHeight() +                              // Follow the ocean surface's height
                    mult * _oceanScene->getOceanTechnique()->getMaximumHeight();        // Offset either up or down by a bit.
+        z *= 0;
         osg::RefMatrix* cylinderMatrix = createOrReuseMatrix(osg::Matrix::translate(eye.x(), eye.y(), z) * currentCamera->getViewMatrix());
         cv->pushModelViewMatrix(cylinderMatrix, osg::Transform::ABSOLUTE_RF);
       }
@@ -194,7 +195,7 @@ bool OceanScene::EventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::G
                 return true;
             }
             // Silt
-            if (ea.getKey() == 't')
+            if (ea.getKey() == 'u')
             {
                 _oceanScene->enableSilt(!_oceanScene->isSiltEnabled());
                 osg::notify(osg::NOTICE) << "Silt " << (_oceanScene->isSiltEnabled()? "enabled" : "disabled") << std::endl;
@@ -245,7 +246,7 @@ void OceanScene::EventHandler::getUsage(osg::ApplicationUsage& usage) const
     usage.addKeyboardMouseBinding("o","Toggle Depth of Field (DOF) (underwater)");
     usage.addKeyboardMouseBinding("g","Toggle glare (above water)");
     usage.addKeyboardMouseBinding("G","Toggle God rays (underwater)");
-    usage.addKeyboardMouseBinding("t","Toggle silt (underwater)");
+    usage.addKeyboardMouseBinding("u","Toggle silt (underwater)");
     usage.addKeyboardMouseBinding("T","Toggle scattering (underwater)");
     usage.addKeyboardMouseBinding("H","Toggle Height lookup for shoreline foam and sine shape (above water)");
     usage.addKeyboardMouseBinding("+","Raise ocean surface");

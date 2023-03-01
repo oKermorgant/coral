@@ -6,6 +6,7 @@
 #include <osg/Program>
 #include <osg/LightSource>
 #include <osgOcean/ShaderManager>
+#include <osgOcean/FFTOceanSurface>
 
 #include <coral/resource_helpers.h>
 
@@ -38,14 +39,16 @@ public:
 //                       Scene 
 // ----------------------------------------------------
 
-Scene::Scene(const SceneParams &params) : params(params), scene_type(params.scene_type)
+Scene::Scene(const SceneParams &params) : params(params)
 {
   initCoralResources();
 
   osgOcean::ShaderManager::instance().enableShaders(true);
 
+  const SceneType scene_type(params.scene_type);
+
   scene = new osg::Group;
-  cubemap = loadCubeMapTextures( scene_type.cubemap);
+  loadCubeMapTextures( scene_type.cubemap);
 
   // Set up surface
   ocean_surface =
@@ -61,15 +64,11 @@ Scene::Scene(const SceneParams &params) : params(params), scene_type(params.scen
   ocean_surface->setFoamBottomHeight( 2.2f );
   ocean_surface->setFoamTopHeight( 3.0f );
   ocean_surface->enableCrestFoam( true );
-  ocean_surface->setLightColor( scene_type.lightColor );
   // Make the ocean surface track with the main camera position, giving the illusion
   // of an endless ocean surface.
   ocean_surface->enableEndlessOcean(false);
 
   // Set up ocean scene, add surface
-  osg::Vec3f sunDir = -scene_type.sunPosition;
-  sunDir.normalize();
-
   ocean_scene = new osgOcean::OceanScene( ocean_surface.get() );
   //ocean_scene->createDefaultSceneShader();
   ocean_scene->setLightID(0);
@@ -83,12 +82,6 @@ Scene::Scene(const SceneParams &params) : params(params), scene_type(params.scen
   // The size of the cylinder should be changed according the size of the ocean surface.
   ocean_scene->setCylinderSize( 1900.f, 4000.f );
 
-  ocean_scene->setAboveWaterFog(0.0012f, scene_type.fogColor );
-  ocean_scene->setUnderwaterFog(0.002f,  scene_type.waterFogColor );
-  ocean_scene->setUnderwaterDiffuse( scene_type.underwaterDiffuse );
-  ocean_scene->setUnderwaterAttenuation( scene_type.underwaterAttenuation);
-
-  ocean_scene->setSunDirection( sunDir );
   ocean_scene->enableSilt(true);
   ocean_scene->enableUnderwaterDOF(params.underwaterDof);
   ocean_scene->enableUnderwaterScattering(true);
@@ -133,20 +126,14 @@ Scene::Scene(const SceneParams &params) : params(params), scene_type(params.scen
   stateset->setTextureMode(0,GL_TEXTURE_2D,osg::StateAttribute::ON);
   stateset->setTextureMode(0,GL_TEXTURE_3D,osg::StateAttribute::OFF);
 
-
   auto lightSource = new osg::LightSource;
   lightSource->setNodeMask(lightSource->getNodeMask() & ~CAST_SHADOW & ~RECEIVE_SHADOW);
   lightSource->setLocalStateSetModes();
-
   light = lightSource->getLight();
   light->setLightNum(0);
-  light->setAmbient( osg::Vec4d(0.3f, 0.3f, 0.3f, 1.0f ));
-  light->setDiffuse( scene_type.sunDiffuse );
-  light->setSpecular(osg::Vec4d( 0.1f, 0.1f, 0.1f, 1.0f ) );
 
-  osg::Vec3f direction(scene_type.sunPosition);
-  direction.normalize();
-  light->setPosition( osg::Vec4f(direction, 0.0) );  // directional light
+  // init overall scene
+  changeScene(scene_type);
 
   scene->addChild( lightSource );
   scene->addChild( ocean_scene.get() );
@@ -166,14 +153,13 @@ Scene::Scene(const SceneParams &params) : params(params), scene_type(params.scen
 
   if(root.get() != scene.get())
     root->addChild(scene);
-
 }
 
-void Scene::changeScene( SceneType::Type type )
+void Scene::changeScene(const SceneType &scene_type)
 {
-  scene_type.switchTo(type);
+  mood = scene_type.mood;
 
-  cubemap = loadCubeMapTextures(scene_type.cubemap);
+  loadCubeMapTextures(scene_type.cubemap);
   skyDome->setCubeMap( cubemap.get() );
 
   ocean_surface->setEnvironmentMap( cubemap.get() );
@@ -189,11 +175,24 @@ void Scene::changeScene( SceneType::Type type )
 
   ocean_scene->setSunDirection( sunDir );
   light->setPosition( osg::Vec4f(-sunDir, 0.f) );
+  light->setAmbient( scene_type.sunAmbient);
   light->setDiffuse( scene_type.sunDiffuse);
 }
 
-osg::ref_ptr<osg::TextureCubeMap> Scene::loadCubeMapTextures( const std::string& dir )
+void Scene::loadCubeMapTextures( const std::string& dir )
 {
+  if(!cubemap)
+  {
+    cubemap = new osg::TextureCubeMap;
+    cubemap->setInternalFormat(GL_RGBA);
+
+    cubemap->setFilter( osg::Texture::MIN_FILTER,    osg::Texture::LINEAR_MIPMAP_LINEAR);
+    cubemap->setFilter( osg::Texture::MAG_FILTER,    osg::Texture::LINEAR);
+    cubemap->setWrap  ( osg::Texture::WRAP_S,        osg::Texture::CLAMP_TO_EDGE);
+    cubemap->setWrap  ( osg::Texture::WRAP_T,        osg::Texture::CLAMP_TO_EDGE);
+  }
+
+  const auto path = "/textures/" + dir + "/";
   const std::vector<std::pair<osg::TextureCubeMap::Face, std::string>> filenames
   {{osg::TextureCubeMap::NEGATIVE_X,"west.png"},
     {osg::TextureCubeMap::POSITIVE_X, "east.png"},
@@ -202,69 +201,7 @@ osg::ref_ptr<osg::TextureCubeMap> Scene::loadCubeMapTextures( const std::string&
     {osg::TextureCubeMap::NEGATIVE_Z, "south.png"},
     {osg::TextureCubeMap::POSITIVE_Z, "north.png"}};
 
-  osg::ref_ptr<osg::TextureCubeMap> cubeMap = new osg::TextureCubeMap;
-  cubeMap->setInternalFormat(GL_RGBA);
-
-  cubeMap->setFilter( osg::Texture::MIN_FILTER,    osg::Texture::LINEAR_MIPMAP_LINEAR);
-  cubeMap->setFilter( osg::Texture::MAG_FILTER,    osg::Texture::LINEAR);
-  cubeMap->setWrap  ( osg::Texture::WRAP_S,        osg::Texture::CLAMP_TO_EDGE);
-  cubeMap->setWrap  ( osg::Texture::WRAP_T,        osg::Texture::CLAMP_TO_EDGE);
-
-  const auto path = "/textures/" + dir + "/";
-
   for(const auto &[dir, filename]: filenames)
-  {
-    cubeMap->setImage(dir, osgDB::readImageFile(path + filename) );
-  }
-
-  return cubeMap;
+    cubemap->setImage(dir, osgDB::readImageFile(path + filename));
 }
 
-
-bool Scene::EventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter&, osg::Object*, osg::NodeVisitor*)
-{
-  if (ea.getHandled()) return false;
-
-  if(ea.getEventType() == osgGA::GUIEventAdapter::KEYUP)
-  {
-    const auto key(ea.getKey());
-    if(key == '1')
-    {
-      scene->changeScene( SceneType::Type::CLEAR );
-      return true;
-    }
-    else if(key == '2')
-    {
-      scene->changeScene( SceneType::Type::DUSK );
-      return true;
-    }
-    else if(key == '3' )
-    {
-      scene->changeScene( SceneType::Type::CLOUDY );
-      return true;
-    }
-    else if(key == '4' )
-    {
-      scene->changeScene( SceneType::Type::NIGHT);
-      return true;
-    }
-    else if (key == '0')
-    {
-      static bool surface0(true);
-      surface0 = !surface0;
-      scene->oceanScene()->setOceanSurfaceHeight(surface0 ? 0. : -1000.);
-      return true;
-    }
-  }
-  return false;
-}
-
-/** Get the keyboard and mouse usage of this manipulator.*/
-void Scene::EventHandler::getUsage(osg::ApplicationUsage& usage) const
-{
-  usage.addKeyboardMouseBinding("1","Select scene \"Clear Blue Sky\"");
-  usage.addKeyboardMouseBinding("2","Select scene \"Dusk\"");
-  usage.addKeyboardMouseBinding("3","Select scene \"Pacific Cloudy\"");
-  usage.addKeyboardMouseBinding("4","Select scene \"Night\"");
-  usage.addKeyboardMouseBinding("0","Toggle ocean surface");
-}

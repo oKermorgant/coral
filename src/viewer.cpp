@@ -21,13 +21,16 @@ Viewer::Viewer(osg::ref_ptr<Scene> scene)
   viewer->addEventHandler( new osgViewer::StatsHandler );
   viewer->addEventHandler( new osgGA::StateSetManipulator( viewer->getCamera()->getOrCreateStateSet() ) );
 
+  event_handler = new Viewer::EventHandler(this);
+  viewer->addEventHandler(event_handler);
   //viewer->addEventHandler(new EventHandler(scene.get(), this));
-  viewer->addEventHandler(scene->getEventHandler());
+  //viewer->addEventHandler(scene->getEventHandler());
   viewer->addEventHandler(scene->oceanScene()->getEventHandler());
   viewer->addEventHandler(scene->oceanSurface()->getEventHandler());
 
   viewer->addEventHandler( new osgViewer::HelpHandler );
-  viewer->getCamera()->setName("MainCamera");
+  viewer->getCamera()->setName("MainCamera");  
+  viewer->getCamera()->setClearColor(scene->getMood().underwaterDiffuse);
 
   // init free-flying cam + default
   osg::Vec3 eye(scene->parameters().initialCameraPosition);
@@ -62,6 +65,7 @@ Viewer::Viewer(osg::ref_ptr<Scene> scene)
 
 void Viewer::frame()
 {
+
   static bool prev_above_water(true);
   [[maybe_unused]] const auto lock{scene->lock()};
 
@@ -75,7 +79,7 @@ void Viewer::frame()
     prev_above_water = above_water;
   }
   {
-    //auto debug{DebugMsg("viewer:frame()")};
+ // [[maybe_unused]] auto debug{DebugMsg("viewer:frame()")};
   viewer->frame();
   }
 }
@@ -132,4 +136,61 @@ bool Viewer::windowWasResized()
     return true;
   }
   return false;
+}
+
+void Viewer::changeMood(SceneType::Mood mood)
+{
+  const SceneType scene_type(mood);
+  scene->changeScene(scene_type);
+  viewer->getCamera()->setClearColor(scene_type.underwaterDiffuse);
+}
+
+
+bool Viewer::EventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter&, osg::Object*, osg::NodeVisitor*)
+{
+  if (ea.getHandled()) return false;
+
+  if(ea.getEventType() == osgGA::GUIEventAdapter::KEYUP)
+  {
+    const auto key(ea.getKey());
+    if(key == '1')
+    {
+
+      viewer->changeMood(SceneType::Mood::CLEAR);
+      return true;
+    }
+    else if(key == '2')
+    {
+      viewer->changeMood( SceneType::Mood::DUSK );
+      return true;
+    }
+    else if(key == '3' )
+    {
+      viewer->changeMood( SceneType::Mood::CLOUDY );
+      return true;
+    }
+    else if(key == '4' )
+    {
+      viewer->changeMood( SceneType::Mood::NIGHT);
+      return true;
+    }
+    else if (key == '0')
+    {
+      static bool surface0(true);
+      surface0 = !surface0;
+      viewer->scene->oceanScene()->setOceanSurfaceHeight(surface0 ? 0. : -1000.);
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Get the keyboard and mouse usage of this manipulator.*/
+void Viewer::EventHandler::getUsage(osg::ApplicationUsage& usage) const
+{
+  usage.addKeyboardMouseBinding("1","Select scene \"Clear Blue Sky\"");
+  usage.addKeyboardMouseBinding("2","Select scene \"Dusk\"");
+  usage.addKeyboardMouseBinding("3","Select scene \"Pacific Cloudy\"");
+  usage.addKeyboardMouseBinding("4","Select scene \"Night\"");
+  usage.addKeyboardMouseBinding("0","Toggle ocean surface");
 }

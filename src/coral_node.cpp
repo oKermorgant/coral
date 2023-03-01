@@ -268,14 +268,12 @@ void CoralNode::parseModel(const string &description)
       // find the parent if any, was already added
       if(!link.parent || link.parent->name == "world")
       {
-        std::cout << link.name << " defined wrt world" << std::endl;
         last.setParent(world_link);
       }
       else
       {
         auto parent_link{std::find(root, links.end(), link.parent->name)};
         last.setParent(*parent_link);
-        std::cout << link.name << " defined wrt " << link.parent->name << std::endl;
       }
     }
     std::copy(link.cameras.begin(), link.cameras.end(), std::back_inserter(new_cameras));

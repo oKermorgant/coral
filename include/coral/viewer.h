@@ -43,6 +43,20 @@ private:
 
   bool windowWasResized();
   void resizeWindow(int width, int height);
+
+  void changeMood(SceneType::Mood mood);
+
+  class EventHandler : public osgGA::GUIEventHandler
+  {
+  public:
+    EventHandler(Viewer* viewer) : viewer{viewer} {}
+    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, osg::Object*, osg::NodeVisitor*) override;
+    void getUsage(osg::ApplicationUsage& usage) const override;
+  protected:
+    Viewer* viewer;
+  };
+
+  osg::ref_ptr<EventHandler> event_handler;
 };
 
 }

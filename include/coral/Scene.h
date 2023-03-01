@@ -5,7 +5,7 @@
 #include <osgText/Text>
 
 #include <coral/OceanScene.h>
-#include <osgOcean/FFTOceanSurface>
+#include <osgOcean/FFTOceanTechnique>
 
 #include <coral/SkyDome.h>
 #include <coral/scene_params.h>
@@ -26,14 +26,14 @@ class Scene : public osg::Referenced
 {
 private:
   SceneParams params;
-  SceneType scene_type;
+  SceneType::Mood mood;
   std::mutex mutex;
 
 
   osg::ref_ptr<osg::Group> scene, root;
 
   osg::ref_ptr<osgOcean::OceanScene> ocean_scene;
-  osg::ref_ptr<osgOcean::FFTOceanSurface> ocean_surface;
+  osg::ref_ptr<osgOcean::FFTOceanTechnique> ocean_surface;
   osg::ref_ptr<osg::TextureCubeMap> cubemap;
   osg::ref_ptr<SkyDome> skyDome;
   osg::ref_ptr<osg::Light> light;
@@ -44,10 +44,14 @@ public:
 
   [[nodiscard]] inline auto lock() {return std::lock_guard(mutex);}
 
+  inline auto getMood() const {return SceneType(mood);}
+  void changeScene(const SceneType &scene_type);
+  inline void changeScene( const std::string &type)
+  {
+    changeScene(SceneType(type));
+  }
 
-  void changeScene( SceneType::Type type);
-
-  osg::ref_ptr<osg::TextureCubeMap> loadCubeMapTextures( const std::string& dir );
+  void loadCubeMapTextures( const std::string& dir );
 
   inline osgOcean::OceanTechnique* oceanSurface()
   {
@@ -66,25 +70,6 @@ public:
 
   osg::Light* getLight() const { return light.get(); }
 
-
-  class EventHandler : public osgGA::GUIEventHandler
-  {
-  public:
-    EventHandler(Scene* scene) : scene{scene} {}
-    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, osg::Object*, osg::NodeVisitor*) override;
-    void getUsage(osg::ApplicationUsage& usage) const override;
-  protected:
-    Scene* scene;
-  };
-
-  osg::ref_ptr<EventHandler> event_handler;
-
-  EventHandler* getEventHandler()
-  {
-    if (!event_handler.valid())
-      event_handler = new EventHandler(this);
-    return event_handler.get();
-  }
 };
 
 }

@@ -8,25 +8,21 @@ int main(int argc, char *argv[])
 
   osg::setNotifyLevel(osg::WARN);
 
-  auto node(std::make_shared<CoralNode>());
+  auto node{std::make_shared<CoralNode>()};
   auto viewer{node->createViewer()};
 
-  rclcpp::executors::SingleThreadedExecutor exec;
-  exec.add_node(node);
-
-  [[maybe_unused]] auto future = std::async([&node]()
   {
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-    node->findModels();
-  });
+    [[maybe_unused]] auto future = std::async([&node]()
+    {
+      std::this_thread::sleep_for(std::chrono::seconds(2));
+      node->findModels();
+    });
+  }
 
-  std::thread ros([&](){exec.spin();});
+  std::thread ros([&](){rclcpp::spin(node);});
 
   while(!viewer->done() && rclcpp::ok())
-  {
-    //exec.spin_once();
     viewer->frame();
-  }
 
   if(rclcpp::ok())
     rclcpp::shutdown();
