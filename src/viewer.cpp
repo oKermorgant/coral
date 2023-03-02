@@ -5,6 +5,8 @@
 #include <chrono>
 #include <coral/debug_msg.h>
 
+int DebugMsg::indent{};
+
 using namespace coral;
 using std::chrono::system_clock;
 
@@ -16,7 +18,7 @@ Viewer::Viewer(Scene &scene)
   height = scene.parameters().height;
   viewer->setUpViewInWindow( 150, 150, width, height, 0 );
 
-  viewer->setSceneData(scene.fullScene());
+  viewer->setSceneData(scene.getWorld());
 
   viewer->addEventHandler( new osgViewer::StatsHandler );
   viewer->addEventHandler( new osgGA::StateSetManipulator( viewer->getCamera()->getOrCreateStateSet() ) );
@@ -25,7 +27,7 @@ Viewer::Viewer(Scene &scene)
   viewer->addEventHandler(event_handler);
   //viewer->addEventHandler(new EventHandler(scene.get(), this));
   //viewer->addEventHandler(scene.getEventHandler());
-  viewer->addEventHandler(scene.oceanScene()->getEventHandler());
+  viewer->addEventHandler(scene.getWorld()->getEventHandler());
   viewer->addEventHandler(scene.oceanSurface()->getEventHandler());
 
   viewer->addEventHandler( new osgViewer::HelpHandler );
@@ -40,7 +42,7 @@ Viewer::Viewer(Scene &scene)
   viewer->setCameraManipulator(free_manip);
 
   // init tracking cam
-  scene.oceanScene()->addChild(cam_pose);
+  scene.getWorld()->addChild(cam_pose);
   tracking_manip->setTrackNode(cam_pose);
   tracking_manip->setTrackerMode(osgGA::NodeTrackerManipulator::NODE_CENTER_AND_ROTATION);
   tracking_manip->setHomePosition({3,0,0}, {0,0,0}, {0,0,1});
@@ -66,7 +68,9 @@ Viewer::Viewer(Scene &scene)
 void Viewer::frame()
 {
   static bool prev_underwater(true);
+#ifdef USE_SCENE_LOCK
   [[maybe_unused]] const auto lock{scene->lock()};
+#endif
 
   if(windowWasResized())
     resizeWindow(width, height);
@@ -81,7 +85,7 @@ void Viewer::frame()
 
   if(underwater != prev_underwater)
   {
-    scene->oceanScene()->setOceanSurfaceHeight(underwater ? -0.05f : 0.f);
+    scene->getWorld()->setOceanSurfaceHeight(underwater ? -0.05f : 0.f);
     prev_underwater = underwater;
   }
   {
@@ -92,7 +96,7 @@ void Viewer::frame()
 
 void Viewer::resizeWindow(int width, int height)
 {
-  scene->oceanScene()->setScreenDims(width, height);
+  scene->getWorld()->setScreenDims(width, height);
   camera->setViewport(0,0,width,height);
   camera->setProjectionMatrixAsOrtho2D(0,width,0,height);
 }
@@ -184,7 +188,7 @@ bool Viewer::EventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIAc
     {
       static bool surface0(true);
       surface0 = !surface0;
-      viewer->scene->oceanScene()->setOceanSurfaceHeight(surface0 ? 0. : -1000.);
+      viewer->scene->getWorld()->setOceanSurfaceHeight(surface0 ? 0. : -1000.);
       return true;
     }
   }

@@ -37,6 +37,8 @@
 #include <osg/ClipPlane>
 #include <osgGA/GUIEventHandler>
 
+#include <coral/osg_make_ref.h>
+
 #include <map>
 
 namespace osgOcean
@@ -55,19 +57,19 @@ public:
   {
   public:
     EventHandler(OceanScene* oceanScene) : _oceanScene{oceanScene} {}
-      virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, osg::Object*, osg::NodeVisitor*);
-      virtual void getUsage(osg::ApplicationUsage& usage) const;
+    virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, osg::Object*, osg::NodeVisitor*);
+    virtual void getUsage(osg::ApplicationUsage& usage) const;
   protected:
-      OceanScene* _oceanScene;
+    OceanScene* _oceanScene;
   };
 
   /// Virtual constructor for OceanScene::EventHandler - override in
   /// derived classes to return subclass-specific handler if needed.
   virtual EventHandler* getEventHandler()
   {
-      if (!_eventHandler.valid())
-          _eventHandler = new EventHandler(this);
-      return _eventHandler.get();
+    if (!_eventHandler.valid())
+      _eventHandler = new EventHandler(this);
+    return _eventHandler.get();
   }
 
 private:
@@ -757,7 +759,7 @@ public:
     osgDB::Registry::instance()->getDataFilePathList().push_back(path);
   }
 
-    osg::Program* createDefaultSceneShader( void );
+  osg::Program* createDefaultSceneShader( void );
 
 private:
   osg::Texture2D* createTexture2D( const osg::Vec2s& size, GLint format );

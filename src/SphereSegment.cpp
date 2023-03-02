@@ -16,6 +16,7 @@
 */
 
 #include <coral/SphereSegment.h>
+#include <coral/osg_make_ref.h>
 
 SphereSegment::SphereSegment(void)
 {}
@@ -88,12 +89,11 @@ void SphereSegment::compute( float radius,
         phi = latStart;
     }
 
-    osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
+    auto geom = osg::make_ref_ptr<osg::Geometry>();
 
     for(unsigned int r = 0; r <= longitudeSteps-1; r += 1)
     {
-        osg::DrawElementsUInt* indices = 
-            new osg::DrawElementsUInt( osg::PrimitiveSet::TRIANGLE_STRIP, 0 );
+        auto indices = new osg::DrawElementsUInt( osg::PrimitiveSet::TRIANGLE_STRIP, 0 );
 
         for(unsigned int c = 0; c <= lattitudeSteps; c += 1 )
         {    

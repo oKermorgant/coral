@@ -95,13 +95,22 @@ struct LinkInfo
   {
     return link.parent == nullptr;
   }
+
+  bool isAncestorOf(const LinkInfo &link) const
+  {
+    if(parent == nullptr || link.parent == this)
+      return true;
+    if(link.parent == nullptr)
+      return false;
+    return parent->isAncestorOf(link);
+  }
 };
 
 struct Tree : public std::list<LinkInfo>
 {  
   explicit Tree(const std::string &description, const bool keep_thrusters);
   inline LinkInfo& add(const std::string &name)
-  {
+  {    
     return emplace_back(name);
   }
   auto find(const std::string &name);

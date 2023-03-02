@@ -20,6 +20,7 @@
 #include <osg/Program>
 #include <osg/Uniform>
 #include <osg/TextureCubeMap>
+#include <coral/osg_make_ref.h>
 
 class SkyDome : public SphereSegment
 {

@@ -2,6 +2,8 @@
 #include <urdf_parser/urdf_parser.h>
 #include <algorithm>
 
+#include <coral/debug_msg.h>
+
 using std::vector, std::string;
 
 namespace coral
@@ -188,12 +190,11 @@ inline auto Tree::find(const std::string &name)
 
 auto Tree::simplify()
 {
-  // merge
   while(true)
   {
     auto link{std::find_if(begin(), end(), LinkInfo::canBeMerged)};
     if(link == end())
-      return;
+      break;
     link->mergeIntoParent();
     erase(link);
   }
@@ -238,9 +239,9 @@ Tree::Tree(const string &description, const bool keep_thrusters)
   // induces that root link is at front
   const auto cmp = [](const LinkInfo &link1, const LinkInfo &link2)
   {
-    if(link2.parent == &link1)
+    if(link1.isAncestorOf(link2))
       return true;
-    return link1.parent != &link2;
+    return !link2.isAncestorOf(link1);
   };
   sort(cmp);
 }

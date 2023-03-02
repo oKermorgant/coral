@@ -47,12 +47,10 @@ Scene::Scene(const SceneParams &params) : params(params)
 
   const SceneType scene_type(params.scene_type);
 
-  root = new osg::Group;
   loadCubeMapTextures( scene_type.cubemap);
 
   // Set up surface
-  ocean_surface =
-      new osgOcean::FFTOceanSurface(
+  ocean_surface = osg::make_ref_ptr<osgOcean::FFTOceanSurface>(
         64, 256, 17,
         params.windDirection,
         params.windSpeed, params.depth,
@@ -68,65 +66,65 @@ Scene::Scene(const SceneParams &params) : params(params)
   // of an endless ocean surface.
   ocean_surface->enableEndlessOcean(false);
 
-  // Set up ocean scene, add surface
-  ocean_scene = new osgOcean::OceanScene( ocean_surface.get() );
+  // Set up ocean scene, with surface
+  world = osg::make_ref_ptr<osgOcean::OceanScene>( ocean_surface.get() );
   //ocean_scene->createDefaultSceneShader();
-  ocean_scene->setLightID(0);
-  ocean_scene->enableReflections(true);
-  ocean_scene->enableRefractions(true);
-  ocean_scene->enableHeightmap(true);
+  world->setLightID(0);
+  world->enableReflections(true);
+  world->enableRefractions(true);
+  world->enableHeightmap(true);
 
   // Set the size of _oceanCylinder which follows the camera underwater.
   // This cylinder prevents the clear from being visible past the far plane
   // instead it will be the fog color.
   // The size of the cylinder should be changed according the size of the ocean surface.
-  ocean_scene->setCylinderSize( 1900.f, 4000.f );
+  world->setCylinderSize( 1900.f, 4000.f );
 
-  ocean_scene->enableSilt(true);
-  ocean_scene->enableUnderwaterDOF(params.underwaterDof);
-  ocean_scene->enableUnderwaterScattering(true);
-  ocean_scene->enableDistortion(true);
-  ocean_scene->enableGlare(params.glare);
-  ocean_scene->setGlareAttenuation(0.8f);
+  world->enableSilt(true);
+  world->enableUnderwaterDOF(params.underwaterDof);
+  world->enableUnderwaterScattering(true);
+  world->enableDistortion(true);
+  world->enableGlare(params.glare);
+  world->setGlareAttenuation(0.8f);
 
-  ocean_scene->enableGodRays(params.godrays);
-  ocean_scene->setScreenDims(params.width, params.height);
+  world->enableGodRays(params.godrays);
+  world->setScreenDims(params.width, params.height);
 
   // create sky dome and add to ocean scene
   // set masks so it appears in reflected scene and normal scene
-  skyDome = new SkyDome( 1900.f, 16, 16, cubemap.get() );
+  skyDome = osg::make_ref_ptr<SkyDome>( 1900.f, 16, 16, cubemap.get() );
   osgOcean::OceanScene::setupMeshNode(skyDome);
 
   // add a pat to track the camera
-  osg::MatrixTransform* transform = new osg::MatrixTransform;
+  auto transform = osg::make_ref_ptr<osg::MatrixTransform>();
   transform->setDataVariance( osg::Object::DYNAMIC );
   transform->setMatrix( osg::Matrixf::translate( osg::Vec3f(0.f, 0.f, 0.f) ));
   transform->setCullCallback( new CameraTrackCallback );
 
   transform->addChild( skyDome.get() );
 
-  ocean_scene->addChild( transform );
+  world->addChild( transform );
 
   // Create and add fake texture for use with nodes without any texture
   // since the OceanScene default scene shader assumes that texture unit
   // 0 is used as a base texture map.
-  osg::Image * image = new osg::Image;
+  auto image = osg::make_ref_ptr<osg::Image>();
   image->allocateImage( 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE );
   *(osg::Vec4ub*)image->data() = osg::Vec4ub( 0xFF, 0xFF, 0xFF, 0xFF );
 
-  osg::Texture2D* fakeTex = new osg::Texture2D( image );
+  auto fakeTex = osg::make_ref_ptr<osg::Texture2D>( image );
   fakeTex->setWrap(osg::Texture2D::WRAP_S,osg::Texture2D::REPEAT);
   fakeTex->setWrap(osg::Texture2D::WRAP_T,osg::Texture2D::REPEAT);
   fakeTex->setFilter(osg::Texture2D::MIN_FILTER,osg::Texture2D::NEAREST);
   fakeTex->setFilter(osg::Texture2D::MAG_FILTER,osg::Texture2D::NEAREST);
 
-  auto stateset = ocean_scene->getOrCreateStateSet();
+  auto stateset = world->getOrCreateStateSet();
   stateset->setTextureAttribute(0,fakeTex,osg::StateAttribute::ON);
   stateset->setTextureMode(0,GL_TEXTURE_1D,osg::StateAttribute::OFF);
   stateset->setTextureMode(0,GL_TEXTURE_2D,osg::StateAttribute::ON);
   stateset->setTextureMode(0,GL_TEXTURE_3D,osg::StateAttribute::OFF);
 
-  auto lightSource = new osg::LightSource;
+  auto lightSource = osg::make_ref_ptr<osg::LightSource>();
   lightSource->setNodeMask(lightSource->getNodeMask() & ~CAST_SHADOW & ~RECEIVE_SHADOW);
   lightSource->setLocalStateSetModes();
   sun = lightSource->getLight();
@@ -135,18 +133,16 @@ Scene::Scene(const SceneParams &params) : params(params)
   // init overall scene
   changeScene(scene_type);
 
-  root->addChild( lightSource );
-  root->addChild( ocean_scene.get() );
+  world->addChild(lightSource);
+  world->getOrCreateStateSet()->addUniform(new osg::Uniform("uOverlayMap", 1));
+  world->getStateSet()->addUniform(new osg::Uniform("uNormalMap", 2));
+  world->getStateSet()->addUniform(new osg::Uniform("SLStex", 3));
+  world->getStateSet()->addUniform(new osg::Uniform("SLStex2", 4));
+  world->getStateSet()->addUniform( new osg::Uniform("stddev", 0.0f ) );
+  world->getStateSet()->addUniform( new osg::Uniform("mean", 0.0f ) );
+  world->getStateSet()->addUniform( new osg::Uniform("light", 1.f ) );
 
-  root->getOrCreateStateSet()->addUniform(new osg::Uniform("uOverlayMap", 1));
-  root->getStateSet()->addUniform(new osg::Uniform("uNormalMap", 2));
-  root->getStateSet()->addUniform(new osg::Uniform("SLStex", 3));
-  root->getStateSet()->addUniform(new osg::Uniform("SLStex2", 4));
-  root->getStateSet()->addUniform( new osg::Uniform("stddev", 0.0f ) );
-  root->getStateSet()->addUniform( new osg::Uniform("mean", 0.0f ) );
-  root->getStateSet()->addUniform( new osg::Uniform("light", 1.f ) );
-
-  ocean_scene->setOceanSurfaceHeight(0);
+  world->setOceanSurfaceHeight(0);
 }
 
 void Scene::changeScene(const SceneType &scene_type)
@@ -159,15 +155,15 @@ void Scene::changeScene(const SceneType &scene_type)
   ocean_surface->setEnvironmentMap( cubemap.get() );
   ocean_surface->setLightColor( scene_type.lightColor);
 
-  ocean_scene->setAboveWaterFog(0.0012f,  scene_type.fogColor );
-  ocean_scene->setUnderwaterFog(0.002f,   scene_type.waterFogColor );
-  ocean_scene->setUnderwaterDiffuse(  scene_type.underwaterDiffuse );
-  ocean_scene->setUnderwaterAttenuation(  scene_type.underwaterAttenuation );
+  world->setAboveWaterFog(0.0012f,  scene_type.fogColor );
+  world->setUnderwaterFog(0.002f,   scene_type.waterFogColor );
+  world->setUnderwaterDiffuse(  scene_type.underwaterDiffuse );
+  world->setUnderwaterAttenuation(  scene_type.underwaterAttenuation );
 
   osg::Vec3f sunDir = - scene_type.sunPosition;
   sunDir.normalize();
 
-  ocean_scene->setSunDirection( sunDir );
+  world->setSunDirection( sunDir );
   sun->setPosition( osg::Vec4f(-sunDir, 0.f) );
   sun->setAmbient( scene_type.sunAmbient);
   sun->setDiffuse( scene_type.sunDiffuse);
@@ -177,7 +173,7 @@ void Scene::loadCubeMapTextures( const std::string& dir )
 {
   if(!cubemap)
   {
-    cubemap = new osg::TextureCubeMap;
+    cubemap = osg::make_ref_ptr<osg::TextureCubeMap>();
     cubemap->setInternalFormat(GL_RGBA);
 
     cubemap->setFilter( osg::Texture::MIN_FILTER,    osg::Texture::LINEAR_MIPMAP_LINEAR);

@@ -45,7 +45,7 @@ SkyDome::SkyDome( float radius, unsigned int longSteps, unsigned int latSteps, o
 
 void SkyDome::setupStateSet( osg::TextureCubeMap* cubemap )
 {
-    osg::StateSet* ss = new osg::StateSet;
+    auto ss = osg::make_ref_ptr<osg::StateSet>();
 
     ss->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
     ss->setTextureAttributeAndModes( 0, cubemap, osg::StateAttribute::ON );

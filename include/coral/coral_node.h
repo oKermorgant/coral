@@ -49,7 +49,6 @@ private:
 
   // tf interface
   rclcpp::TimerBase::SharedPtr pose_update_timer;
-  void refreshWorldParams();
   void refreshLinkPoses();
   tf2_ros::Buffer tf_buffer;
   tf2_ros::TransformListener tf_listener;
@@ -58,10 +57,10 @@ private:
   std::vector<rclcpp::Subscription<Pose>::SharedPtr> pose_subs;
 
   // links and their meshes
-  std::vector<std::string> models;
+  std::vector<std::string> known_model_namespaces;
   inline bool hasModel(const std::string &model) const
   {
-    return std::find(models.begin(), models.end(), model) != models.end();
+    return std::find(known_model_namespaces.begin(), known_model_namespaces.end(), model) != known_model_namespaces.end();
   }
   bool display_thrusters = false;
   std::vector<Link> links;

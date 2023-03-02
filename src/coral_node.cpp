@@ -20,7 +20,9 @@ CoralNode::CoralNode()
       ("/coral/spawn",
        [&](const Spawn::Request::SharedPtr request, [[maybe_unused]] Spawn::Response::SharedPtr response)
   {
+    #ifdef USE_SCENE_LOCK
     [[maybe_unused]] const auto lock{scene.lock()};
+    #endif
     spawnModel(request->robot_namespace, request->pose_topic, request->world_model);
   });
 
@@ -31,7 +33,7 @@ CoralNode::CoralNode()
     clock_sub.reset();
   });
 
-  scene.oceanScene()->addChild(world_link.frame());
+  scene.getWorld()->addChild(world_link.frame());
 }
 
 SceneParams CoralNode::parameters()
@@ -110,15 +112,26 @@ Link* CoralNode::getKnownCamParent()
 
 void CoralNode::refreshLinkPoses()
 {
+  if(tf_buffer._frameExists("world"))
   {
-    [[maybe_unused]] const auto lock{scene.lock()};
+#ifdef USE_SCENE_LOCK
+   // lock scene only when refreshing transforms, useful?
+  [[maybe_unused]] const auto lock{scene->lock()};
+#endif
     for(auto &link: links)
     {
       if(link.updatedFromTF())
-          link.refreshFrom(tf_buffer);
+        link.refreshFrom(tf_buffer);
       else
         link.refreshFromTopic();
     }
+  }
+
+  {
+    // test rate
+    static auto pub = create_publisher<geometry_msgs::msg::Point>("refresh",1);
+    static const auto p{geometry_msgs::msg::Point()};
+    pub->publish(p);
   }
 
   if(tf_buffer._frameExists(coral_cam_link))
@@ -242,7 +255,7 @@ void CoralNode::spawnModel(const std::string &model_ns,
 
     pose_subs.push_back(create_subscription<Pose>(model_ns + "/" + pose_topic, 1, this_root_link.poseCallback()));
   }
-  models.push_back(model_ns);
+  known_model_namespaces.push_back(model_ns);
 }
 
 void CoralNode::parseModel(const string &description)

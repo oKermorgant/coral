@@ -1,29 +1,24 @@
 #ifndef DEBUG_MSG_H
 #define DEBUG_MSG_H
 
-#pragma once
-
 #include <string>
 #include <iostream>
 
 struct DebugMsg
 {
-  std::string msg;
+  std::string msg, my_indent;
   static int indent;
   inline DebugMsg(std::string src) : msg{src}
   {
-    for(int i = 0; i < indent; ++i)
-      msg = " " + msg;
-    std::cout << msg << ": begin" << std::endl;
+    my_indent.resize(2*indent, ' ');
+    std::cout << my_indent << "<-- " << msg << std::endl;
     indent++;
   }
   inline ~DebugMsg()
   {
-    std::cout << msg << ": end" << std::endl;
+    std::cout << my_indent << msg << " -->" << std::endl;
     indent--;
   }
 };
-
-int DebugMsg::indent{};
 
 #endif // DEBUG_MSG_H

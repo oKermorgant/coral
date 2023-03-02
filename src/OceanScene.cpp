@@ -265,12 +265,12 @@ OceanScene::OceanScene( OceanTechnique* surface )  : _oceanSurface( surface )
   _oceanCylinder->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
   _oceanCylinder->getOrCreateStateSet()->setMode(GL_FOG, osg::StateAttribute::OFF);
 
-  osg::Geode* cylinderGeode = new osg::Geode;
+  auto cylinderGeode = osg::make_ref_ptr<osg::Geode>();
   cylinderGeode->addDrawable( _oceanCylinder.get() );
 
   _oceanCylinderMT->setMatrix( osg::Matrix::translate(0, 0, -OCEAN_CYLINDER_HEIGHT) );
   _oceanCylinderMT->setDataVariance( osg::Object::DYNAMIC );
-  _oceanCylinderMT->setCullCallback( new CameraTrackCallback(this) );
+  _oceanCylinderMT->setCullCallback( osg::make_ref_ptr<CameraTrackCallback>(this));
   _oceanCylinderMT->setNodeMask( getNormalSceneMask() | getRefractedSceneMask() );
   _oceanCylinderMT->addChild( cylinderGeode );
 
