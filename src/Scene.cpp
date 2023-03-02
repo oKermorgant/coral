@@ -47,7 +47,7 @@ Scene::Scene(const SceneParams &params) : params(params)
 
   const SceneType scene_type(params.scene_type);
 
-  scene = new osg::Group;
+  root = new osg::Group;
   loadCubeMapTextures( scene_type.cubemap);
 
   // Set up surface
@@ -129,17 +129,14 @@ Scene::Scene(const SceneParams &params) : params(params)
   auto lightSource = new osg::LightSource;
   lightSource->setNodeMask(lightSource->getNodeMask() & ~CAST_SHADOW & ~RECEIVE_SHADOW);
   lightSource->setLocalStateSetModes();
-  light = lightSource->getLight();
-  light->setLightNum(0);
+  sun = lightSource->getLight();
+  sun->setLightNum(0);
 
   // init overall scene
   changeScene(scene_type);
 
-  scene->addChild( lightSource );
-  scene->addChild( ocean_scene.get() );
-
-  root = scene;
-  //root = new osg::Group;
+  root->addChild( lightSource );
+  root->addChild( ocean_scene.get() );
 
   root->getOrCreateStateSet()->addUniform(new osg::Uniform("uOverlayMap", 1));
   root->getStateSet()->addUniform(new osg::Uniform("uNormalMap", 2));
@@ -150,14 +147,11 @@ Scene::Scene(const SceneParams &params) : params(params)
   root->getStateSet()->addUniform( new osg::Uniform("light", 1.f ) );
 
   ocean_scene->setOceanSurfaceHeight(0);
-
-  if(root.get() != scene.get())
-    root->addChild(scene);
 }
 
 void Scene::changeScene(const SceneType &scene_type)
 {
-  mood = scene_type.mood;
+  base_water_color = scene_type.waterFogColor;
 
   loadCubeMapTextures(scene_type.cubemap);
   skyDome->setCubeMap( cubemap.get() );
@@ -174,9 +168,9 @@ void Scene::changeScene(const SceneType &scene_type)
   sunDir.normalize();
 
   ocean_scene->setSunDirection( sunDir );
-  light->setPosition( osg::Vec4f(-sunDir, 0.f) );
-  light->setAmbient( scene_type.sunAmbient);
-  light->setDiffuse( scene_type.sunDiffuse);
+  sun->setPosition( osg::Vec4f(-sunDir, 0.f) );
+  sun->setAmbient( scene_type.sunAmbient);
+  sun->setDiffuse( scene_type.sunDiffuse);
 }
 
 void Scene::loadCubeMapTextures( const std::string& dir )

@@ -11,9 +11,7 @@ namespace coral
 
 struct SceneType
 {
-  enum class Mood{ CLEAR, DUSK, CLOUDY, NIGHT };
-
-  Mood mood;
+  enum class Mood{ CLEAR, DUSK, CLOUDY, NIGHT }; 
   std::string cubemap;
   osg::Vec4f lightColor;
   osg::Vec4f fogColor;
@@ -50,7 +48,6 @@ struct SceneType
 
   inline void init(Mood mood)
   {
-    this->mood = mood;
     switch (mood)
     {
       case Mood::CLEAR:

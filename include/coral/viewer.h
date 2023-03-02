@@ -14,7 +14,7 @@ namespace coral
 class Viewer
 {
 public:
-  Viewer(osg::ref_ptr<Scene> scene);
+  Viewer(Scene& scene);
 
   inline bool done() const {return viewer->done();}
   void frame();
@@ -27,7 +27,7 @@ public:
 private:
   osg::ref_ptr<osgViewer::Viewer> viewer;
   osg::ref_ptr<osgWidget::WindowManager> wm;
-  osg::ref_ptr<Scene> scene;
+  Scene* scene;
   osg::ref_ptr<osg::Camera> camera;
 
   // free / tracking manipulators

@@ -5,7 +5,7 @@
 #include <osgText/Text>
 
 #include <coral/OceanScene.h>
-#include <osgOcean/FFTOceanTechnique>
+#include <osgOcean/FFTOceanSurface>
 
 #include <coral/SkyDome.h>
 #include <coral/scene_params.h>
@@ -22,21 +22,20 @@ enum DrawMask
 };
 
 
-class Scene : public osg::Referenced
+class Scene
 {
 private:
   SceneParams params;
-  SceneType::Mood mood;
+  osg::Vec4f base_water_color;
+
   std::mutex mutex;
 
-
-  osg::ref_ptr<osg::Group> scene, root;
-
+  osg::ref_ptr<osg::Group> root;
   osg::ref_ptr<osgOcean::OceanScene> ocean_scene;
-  osg::ref_ptr<osgOcean::FFTOceanTechnique> ocean_surface;
+  osg::ref_ptr<osgOcean::FFTOceanSurface> ocean_surface;
   osg::ref_ptr<osg::TextureCubeMap> cubemap;
   osg::ref_ptr<SkyDome> skyDome;
-  osg::ref_ptr<osg::Light> light;
+  osg::ref_ptr<osg::Light> sun;
 
 public:
   Scene(const SceneParams &params);
@@ -44,7 +43,13 @@ public:
 
   [[nodiscard]] inline auto lock() {return std::lock_guard(mutex);}
 
-  inline auto getMood() const {return SceneType(mood);}
+  inline auto underwaterColor(float f = 1.f)
+  {
+    const auto scaled{base_water_color * f};
+    ocean_scene->setUnderwaterFog(0.002f,   scaled);
+    ocean_scene->setUnderwaterDiffuse(scaled);
+    return scaled;
+  }
   void changeScene(const SceneType &scene_type);
   inline void changeScene( const std::string &type)
   {
@@ -53,23 +58,9 @@ public:
 
   void loadCubeMapTextures( const std::string& dir );
 
-  inline osgOcean::OceanTechnique* oceanSurface()
-  {
-    return ocean_surface.get();
-  }
-
-  inline auto fullScene() const
-  {
-    return root.get();
-  }
-
-  inline auto oceanScene() const
-  {
-    return ocean_scene.get();
-  }
-
-  osg::Light* getLight() const { return light.get(); }
-
+  inline auto oceanSurface() {return ocean_surface.get();}
+  inline auto fullScene() const {return root.get();}
+  inline auto oceanScene() const {return ocean_scene.get();}
 };
 
 }

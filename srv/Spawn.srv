@@ -1,6 +1,7 @@
 # spawn a model into Coral
 
-# world_model is the path to a URDF file defining the world. It should include a world link
+# world_model is the path to a URDF file defining the world, if any.
+# it should include a world link
 # it is possible to sequence several calls with various URDF files
 string world_model
 

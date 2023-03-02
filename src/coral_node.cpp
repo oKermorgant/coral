@@ -7,7 +7,10 @@ using namespace std::chrono_literals;
 using std::vector, std::string;
 
 CoralNode::CoralNode()
-  : rclcpp::Node("coral"), tf_buffer(get_clock()), tf_listener(tf_buffer)
+  : rclcpp::Node("coral"),
+    scene(parameters()),
+    viewer(scene),
+    tf_buffer(get_clock()), tf_listener(tf_buffer)
 {  
   pose_update_timer = create_wall_timer(50ms, [&](){refreshLinkPoses();});
 
@@ -17,14 +20,8 @@ CoralNode::CoralNode()
       ("/coral/spawn",
        [&](const Spawn::Request::SharedPtr request, [[maybe_unused]] Spawn::Response::SharedPtr response)
   {
-    [[maybe_unused]] const auto lock{scene->lock()};
+    [[maybe_unused]] const auto lock{scene.lock()};
     spawnModel(request->robot_namespace, request->pose_topic, request->world_model);
-  });
-
-  surface_srv = create_service<Surface>("/coral/surface",
-                                        [&](const Surface::Request::SharedPtr req, Surface::Response::SharedPtr res)
-  {
-    computeSurface(*req, *res);
   });
 
   clock_sub = create_subscription<rosgraph_msgs::msg::Clock>("/clock", 1, [&]([[maybe_unused]] rosgraph_msgs::msg::Clock::SharedPtr msg)
@@ -34,9 +31,7 @@ CoralNode::CoralNode()
     clock_sub.reset();
   });
 
-  // create scene from declared params
-  scene = new coral::Scene(parameters());
-  scene->oceanScene()->addChild(world_link.frame());
+  scene.oceanScene()->addChild(world_link.frame());
 }
 
 SceneParams CoralNode::parameters()
@@ -65,12 +60,13 @@ SceneParams CoralNode::parameters()
 
   // underwater
   updateParam("ocean.depth", params.depth);
+  updateParam("ocean.attenuation", params.depth_attn);
+
 
   // ocean surface params
   updateParam("surface.reflection_damping", params.reflectionDamping);
 
   // vfx
-  updateParam("vfx.vbo", params.useVBO);
   updateParam("vfx.godrays", params.godrays);
   updateParam("vfx.glare", params.glare);
   updateParam("vfx.underwaterDof", params.underwaterDof);
@@ -115,7 +111,7 @@ Link* CoralNode::getKnownCamParent()
 void CoralNode::refreshLinkPoses()
 {
   {
-    [[maybe_unused]] const auto lock{scene->lock()};
+    [[maybe_unused]] const auto lock{scene.lock()};
     for(auto &link: links)
     {
       if(link.updatedFromTF())
@@ -142,11 +138,11 @@ void CoralNode::refreshLinkPoses()
       {
         M = M*parent->frame()->getMatrix();
       }
-      viewer->lockCamera(M);
+      viewer.lockCamera(M);
     }
     else
     {
-      viewer->freeCamera();
+      viewer.freeCamera();
     }
   }
 }
@@ -301,33 +297,3 @@ void CoralNode::addCameras(const std::vector<urdf_parser::CameraInfo> &cams)
   }
 }
 
-
-
-void CoralNode::computeSurface(const Surface::Request &req, Surface::Response &res)
-{
-  const auto surface{scene->oceanSurface()};
-
-  // compute local frame
-  res.dim_x = std::ceil(std::round(10*req.size_x/req.resolution)/10);
-  res.dim_y = std::ceil(std::round(10*req.size_y/req.resolution)/10);
-  res.surface.reserve(res.dim_x*res.dim_y);
-  const auto c{cos(req.theta)};
-  const auto s{sin(req.theta)};
-  const auto x0{-req.size_x/2};
-  const auto y0{-req.size_y/2};
-
-  for(int ix = 0; ix < res.dim_x; ix++)
-  {
-    const auto dx{x0+ix*req.resolution};
-
-    for(int iy = 0; iy < res.dim_y; iy++)
-    {
-      const auto dy{y0+iy*req.resolution};
-      res.surface.push_back(
-            surface->getSurfaceHeightAt(
-              req.x + dx*c - dy*s,
-              req.y + dx*s + dy*c));
-    }
-  }
-  std::cout << "ok computing surface " << res.dim_x << " x " << res.dim_y << std::endl;
-}

@@ -8,15 +8,15 @@
 using namespace coral;
 using std::chrono::system_clock;
 
-Viewer::Viewer(osg::ref_ptr<Scene> scene)
+Viewer::Viewer(Scene &scene)
   : viewer(new osgViewer::Viewer),
-    scene(scene)
+    scene(&scene)
 {
-  width = scene->parameters().width;
-  height = scene->parameters().height;
+  width = scene.parameters().width;
+  height = scene.parameters().height;
   viewer->setUpViewInWindow( 150, 150, width, height, 0 );
 
-  viewer->setSceneData(scene->fullScene());
+  viewer->setSceneData(scene.fullScene());
 
   viewer->addEventHandler( new osgViewer::StatsHandler );
   viewer->addEventHandler( new osgGA::StateSetManipulator( viewer->getCamera()->getOrCreateStateSet() ) );
@@ -24,23 +24,23 @@ Viewer::Viewer(osg::ref_ptr<Scene> scene)
   event_handler = new Viewer::EventHandler(this);
   viewer->addEventHandler(event_handler);
   //viewer->addEventHandler(new EventHandler(scene.get(), this));
-  //viewer->addEventHandler(scene->getEventHandler());
-  viewer->addEventHandler(scene->oceanScene()->getEventHandler());
-  viewer->addEventHandler(scene->oceanSurface()->getEventHandler());
+  //viewer->addEventHandler(scene.getEventHandler());
+  viewer->addEventHandler(scene.oceanScene()->getEventHandler());
+  viewer->addEventHandler(scene.oceanSurface()->getEventHandler());
 
   viewer->addEventHandler( new osgViewer::HelpHandler );
-  viewer->getCamera()->setName("MainCamera");  
-  viewer->getCamera()->setClearColor(scene->getMood().underwaterDiffuse);
+  viewer->getCamera()->setName("MainCamera");
+  viewer->getCamera()->setClearColor(scene.underwaterColor());
 
   // init free-flying cam + default
-  osg::Vec3 eye(scene->parameters().initialCameraPosition);
+  osg::Vec3 eye(scene.parameters().initialCameraPosition);
   free_manip->setHomePosition( eye, eye + osg::Vec3(0,20,0), osg::Vec3f(0,0,1) );
   free_manip->setVerticalAxisFixed(true);
   cam_is_free = true;
   viewer->setCameraManipulator(free_manip);
 
   // init tracking cam
-  scene->oceanScene()->addChild(cam_pose);
+  scene.oceanScene()->addChild(cam_pose);
   tracking_manip->setTrackNode(cam_pose);
   tracking_manip->setTrackerMode(osgGA::NodeTrackerManipulator::NODE_CENTER_AND_ROTATION);
   tracking_manip->setHomePosition({3,0,0}, {0,0,0}, {0,0,1});
@@ -65,30 +65,36 @@ Viewer::Viewer(osg::ref_ptr<Scene> scene)
 
 void Viewer::frame()
 {
-
-  static bool prev_above_water(true);
+  static bool prev_underwater(true);
   [[maybe_unused]] const auto lock{scene->lock()};
 
   if(windowWasResized())
     resizeWindow(width, height);
 
-  const auto above_water(viewer->getCameraManipulator()->getMatrix().getTrans().z() > 0.);
-  if(above_water != prev_above_water)
+  const auto z{viewer->getCameraManipulator()->getMatrix().getTrans().z()};
+  const auto underwater(z < 0.);
+
+  if(underwater && scene->parameters().depth_attn > 0.f)
   {
-    scene->oceanScene()->setOceanSurfaceHeight(above_water ? 0.f : -0.05f);
-    prev_above_water = above_water;
+    viewer->getCamera()->setClearColor(scene->underwaterColor(1.f+z/scene->parameters().depth_attn));
+  }
+
+  if(underwater != prev_underwater)
+  {
+    scene->oceanScene()->setOceanSurfaceHeight(underwater ? -0.05f : 0.f);
+    prev_underwater = underwater;
   }
   {
- // [[maybe_unused]] auto debug{DebugMsg("viewer:frame()")};
-  viewer->frame();
+    // [[maybe_unused]] auto debug{DebugMsg("viewer:frame()")};
+    viewer->frame();
   }
 }
 
 void Viewer::resizeWindow(int width, int height)
 {
-   scene->oceanScene()->setScreenDims(width, height);
-   camera->setViewport(0,0,width,height);
-   camera->setProjectionMatrixAsOrtho2D(0,width,0,height);
+  scene->oceanScene()->setScreenDims(width, height);
+  camera->setViewport(0,0,width,height);
+  camera->setProjectionMatrixAsOrtho2D(0,width,0,height);
 }
 
 void Viewer::freeCamera()
@@ -142,7 +148,7 @@ void Viewer::changeMood(SceneType::Mood mood)
 {
   const SceneType scene_type(mood);
   scene->changeScene(scene_type);
-  viewer->getCamera()->setClearColor(scene_type.underwaterDiffuse);
+  viewer->getCamera()->setClearColor(scene->underwaterColor());
 }
 
 

@@ -36,8 +36,6 @@ include_directories (${OSGTEXT_INCLUDE_DIR})
 find_package (OpenThreads REQUIRED)
 include_directories(${OPENTHREADS_INCLUDE_DIR})
 
-set(CMAKE_BUILD_TYPE Release)
-
 IF (NOT WIN32)
   IF (NOT OSG_LIBRARY_DEBUG)
     SET(OSG_LIBRARY_DEBUG ${OSG_LIBRARY})

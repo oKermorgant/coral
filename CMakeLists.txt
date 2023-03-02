@@ -19,7 +19,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
-rosidl_generate_interfaces(${PROJECT_NAME} "srv/Spawn.srv" "srv/Surface.srv"
+rosidl_generate_interfaces(${PROJECT_NAME} "srv/Spawn.srv"
 DEPENDENCIES geometry_msgs)
 
 if("$ENV{ROS_DISTRO}" STREQUAL "galactic" OR "$ENV{ROS_DISTRO}" STREQUAL "foxy")

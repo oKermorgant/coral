@@ -25,13 +25,13 @@ struct SceneParams
   float windSpeed                 {3.3};
 
   float depth                     {1000};
+  float depth_attn                {300};
   float reflectionDamping         {0.35f};
 
   float waveScale                 {1e-8f};
   float choppyFactor              {2.5f};
   float crestFoamHeight           {2.2f};
 
-  bool useVBO                     {false};
   bool godrays                    {false};  // godrays do not work on Intel GPUs
   bool glare                      {true};
   bool underwaterDof              {false};  // do not work on Intel GPUs

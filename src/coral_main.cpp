@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
   osg::setNotifyLevel(osg::WARN);
 
   auto node{std::make_shared<CoralNode>()};
-  auto viewer{node->createViewer()};
+  auto viewer{node->getViewer()};
 
   {
     [[maybe_unused]] auto future = std::async([&node]()

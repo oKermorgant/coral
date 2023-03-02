@@ -1,0 +1,11 @@
+Build types and crash
+
+osg      osgOcean      Coral
+ R          D           D       crash
+ R          D           R       crash
+ R          R           R       crash
+ R          R           D
+ D          D           D       ok
+ D          D           R       ok
+ D          R           R       ok
+ D          R           D
