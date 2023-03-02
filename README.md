@@ -4,6 +4,8 @@ This ROS 2 package allows displaying simulated scenes with osgOcean. It is inspi
 
 Contrary to UWSim, Coral is not a simulator at all and only renders available models found on the TF tree. It is compatible with Gazebo simulation, if the poses of the objects are published and bridged to ROS.
 
+![](images/floatgen-bluerov.png)
+
  - Coral can detect `robot_description` topics and will then monitor the poses of the discovered frames through `/tf`
  - a special frame is `coral_cam_view`: if available in the TF tree then Coral will use this frame to place its camera. If the frame is not refreshed for 1 sec then the camera will be free-flying again
  
