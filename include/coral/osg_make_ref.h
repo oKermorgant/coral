@@ -9,12 +9,12 @@
 // wrap creation of a osg::ref_ptr
 namespace osg
 {
-template <class osgStuff, typename... Args>
-inline auto make_ref_ptr( Args&&... args )
+template <class osgPointee, typename... Args>
+inline auto make_ref( Args&&... args )
 {
-  static_assert (std::is_base_of<osg::Referenced, osgStuff>::value,
-      "osg::ref_ptr should only be used on osg::Referenced derived classes");
-  return osg::ref_ptr<osgStuff>(new osgStuff(std::forward<Args>(args)...));
+  static_assert (std::is_base_of<osg::Referenced, osgPointee>::value,
+      "osg::make_ref should only be used on osg::Referenced derived classes");
+  return osg::ref_ptr<osgPointee>(new osgPointee(std::forward<Args>(args)...));
 }
 }
 

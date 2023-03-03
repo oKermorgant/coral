@@ -230,6 +230,7 @@ bool OceanScene::EventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::G
                 return true;
             }
 
+
             break;
         }
     default:
@@ -256,7 +257,7 @@ void OceanScene::EventHandler::getUsage(osg::ApplicationUsage& usage) const
 OceanScene::OceanScene( OceanTechnique* surface )  : _oceanSurface( surface )
 {
   if(surface==nullptr)
-    return;
+    return; 
 
   //-----------------------------------------------------------------------
   // _oceanCylinder follows the camera underwater, so that the clear
@@ -265,12 +266,12 @@ OceanScene::OceanScene( OceanTechnique* surface )  : _oceanSurface( surface )
   _oceanCylinder->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
   _oceanCylinder->getOrCreateStateSet()->setMode(GL_FOG, osg::StateAttribute::OFF);
 
-  auto cylinderGeode = osg::make_ref_ptr<osg::Geode>();
+  auto cylinderGeode = osg::make_ref<osg::Geode>();
   cylinderGeode->addDrawable( _oceanCylinder.get() );
 
   _oceanCylinderMT->setMatrix( osg::Matrix::translate(0, 0, -OCEAN_CYLINDER_HEIGHT) );
   _oceanCylinderMT->setDataVariance( osg::Object::DYNAMIC );
-  _oceanCylinderMT->setCullCallback( osg::make_ref_ptr<CameraTrackCallback>(this));
+  _oceanCylinderMT->setCullCallback( osg::make_ref<CameraTrackCallback>(this));
   _oceanCylinderMT->setNodeMask( getNormalSceneMask() | getRefractedSceneMask() );
   _oceanCylinderMT->addChild( cylinderGeode );
 

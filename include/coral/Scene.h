@@ -10,9 +10,9 @@
 #include <coral/scene_params.h>
 #include <coral/scene_type.h>
 
-//#define USE_SCENE_LOCK
+#define CORAL_WITH_SCENE_LOCK
 
-#ifdef USE_SCENE_LOCK
+#ifdef CORAL_WITH_SCENE_LOCK
 #include <mutex>
 #endif
 namespace coral
@@ -30,21 +30,27 @@ class Scene
 private:
   SceneParams params;
   osg::Vec4f base_water_color;
-#ifdef USE_SCENE_LOCK
-  std::mutex mutex;
-#endif
+
   osg::ref_ptr<osgOcean::OceanScene> world;
   osg::ref_ptr<osgOcean::FFTOceanSurface> ocean_surface;
   osg::ref_ptr<osg::TextureCubeMap> cubemap;
   osg::ref_ptr<SkyDome> skyDome;
   osg::ref_ptr<osg::Light> sun;
 
+#ifdef CORAL_WITH_SCENE_LOCK
+  std::mutex mutex;
+#endif
+
 public:
   Scene(const SceneParams &params);
   const SceneParams & parameters() const {return params;}
-#ifdef USE_SCENE_LOCK
-  [[nodiscard]] inline auto lock() {return std::lock_guard(mutex);}
+
+#ifdef CORAL_WITH_SCENE_LOCK
+  [[nodiscard]] inline auto scoped_lock() {return std::lock_guard(mutex);}
+#else
+  inline auto scoped_lock() {return nullptr;}
 #endif
+
   inline auto underwaterColor(float f = 1.f)
   {
     const auto scaled{base_water_color * f};

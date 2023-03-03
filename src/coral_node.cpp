@@ -20,9 +20,7 @@ CoralNode::CoralNode()
       ("/coral/spawn",
        [&](const Spawn::Request::SharedPtr request, [[maybe_unused]] Spawn::Response::SharedPtr response)
   {
-    #ifdef USE_SCENE_LOCK
-    [[maybe_unused]] const auto lock{scene.lock()};
-    #endif
+    [[maybe_unused]] const auto lock{scene.scoped_lock()};
     spawnModel(request->robot_namespace, request->pose_topic, request->world_model);
   });
 
@@ -114,10 +112,9 @@ void CoralNode::refreshLinkPoses()
 {
   if(tf_buffer._frameExists("world"))
   {
-#ifdef USE_SCENE_LOCK
-   // lock scene only when refreshing transforms, useful?
-  [[maybe_unused]] const auto lock{scene->lock()};
-#endif
+    // lock scene only when refreshing transforms, useful?
+    [[maybe_unused]] const auto lock{scene.scoped_lock()};
+
     for(auto &link: links)
     {
       if(link.updatedFromTF())
@@ -207,12 +204,15 @@ void CoralNode::spawnModel(const std::string &model_ns,
   }
   if(!world_model.empty())
   {
-    std::cout << "Trying to parse " << world_model << std::endl;
     std::ifstream urdf{world_model};
     if(!urdf)
     {
       RCLCPP_WARN(get_logger(), "cannot open file %s", world_model.c_str());
       return;
+    }
+    else
+    {
+      RCLCPP_INFO(get_logger(), "Loading world from %s", world_model.c_str());
     }
     using Buffer = std::istreambuf_iterator<char>;
     parseModel({(Buffer(urdf)), Buffer()});
@@ -239,7 +239,6 @@ void CoralNode::spawnModel(const std::string &model_ns,
 
   if(!pose_topic.empty() && links.size() > root_link_idx)
   {
-
     auto &this_root_link{links[root_link_idx]};
     RCLCPP_INFO(get_logger(), "%s seems to have its pose published on %s/%s for frame %s",
                 model_ns.substr(1).c_str(),
@@ -277,6 +276,7 @@ void CoralNode::parseModel(const string &description)
       // find the parent if any, was already added
       if(!link.parent || link.parent->name == "world")
       {
+        RCLCPP_INFO(get_logger(), "Got new model with root frame %s", link.name.c_str());
         last.setParent(world_link);
       }
       else

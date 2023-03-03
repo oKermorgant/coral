@@ -89,7 +89,7 @@ void SphereSegment::compute( float radius,
         phi = latStart;
     }
 
-    auto geom = osg::make_ref_ptr<osg::Geometry>();
+    auto geom = osg::make_ref<osg::Geometry>();
 
     for(unsigned int r = 0; r <= longitudeSteps-1; r += 1)
     {

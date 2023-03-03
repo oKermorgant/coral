@@ -54,8 +54,8 @@ void Link::addVisual(urdf::VisualSharedPtr visual, const osg::Matrixd &M)
 
 void Link::addVisualBox(const osg::Vec3d &dim, const osg::Matrixd &M, const urdf::Material* mat)
 {
-  auto box = osg::make_ref_ptr<osg::Box>(osg::Vec3d{}, dim.x(), dim.y(), dim.z());
-  auto shape = osg::make_ref_ptr<osg::ShapeDrawable>(box);
+  auto box = osg::make_ref<osg::Box>(osg::Vec3d{}, dim.x(), dim.y(), dim.z());
+  auto shape = osg::make_ref<osg::ShapeDrawable>(box);
   osg::ref_ptr<osg::Geode> geode = new osg::Geode();
   geode->addDrawable(shape);
 
@@ -90,11 +90,11 @@ void Link::addVisualNode(osg::ref_ptr<osg::Node> node, const osg::Matrixd &M, co
     {
       auto image = osgDB::readImageFile(mat->texture_filename);
 
-      auto texture = osg::make_ref_ptr<osg::Texture2D>(image);
+      auto texture = osg::make_ref<osg::Texture2D>(image);
       texture->setFilter(osg::Texture2D::FilterParameter::MIN_FILTER,osg::Texture2D::FilterMode::LINEAR);
       texture->setFilter(osg::Texture2D::FilterParameter::MAG_FILTER,osg::Texture2D::FilterMode::LINEAR);
 
-      auto stateset = osg::make_ref_ptr<osg::StateSet>();
+      auto stateset = osg::make_ref<osg::StateSet>();
       stateset->setTextureAttribute(0,texture,osg::StateAttribute::OVERRIDE);
       stateset->setTextureMode(0,GL_TEXTURE_2D,osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE);
       stateset->setTextureMode(0,GL_TEXTURE_GEN_S,osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE);
@@ -103,8 +103,8 @@ void Link::addVisualNode(osg::ref_ptr<osg::Node> node, const osg::Matrixd &M, co
     }
     else
     {
-      auto stateset = osg::make_ref_ptr<osg::StateSet>();
-      auto material = osg::make_ref_ptr<osg::Material>();
+      auto stateset = osg::make_ref<osg::StateSet>();
+      auto material = osg::make_ref<osg::Material>();
       material->setDiffuse(
             osg::Material::FRONT_AND_BACK,
       {mat->color.r, mat->color.g,mat->color.b, mat->color.a});

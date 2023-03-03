@@ -50,7 +50,7 @@ Scene::Scene(const SceneParams &params) : params(params)
   loadCubeMapTextures( scene_type.cubemap);
 
   // Set up surface
-  ocean_surface = osg::make_ref_ptr<osgOcean::FFTOceanSurface>(
+  ocean_surface = osg::make_ref<osgOcean::FFTOceanSurface>(
         64, 256, 17,
         params.windDirection,
         params.windSpeed, params.depth,
@@ -67,7 +67,7 @@ Scene::Scene(const SceneParams &params) : params(params)
   ocean_surface->enableEndlessOcean(false);
 
   // Set up ocean scene, with surface
-  world = osg::make_ref_ptr<osgOcean::OceanScene>( ocean_surface.get() );
+  world = osg::make_ref<osgOcean::OceanScene>( ocean_surface.get() );
   //ocean_scene->createDefaultSceneShader();
   world->setLightID(0);
   world->enableReflections(true);
@@ -92,11 +92,11 @@ Scene::Scene(const SceneParams &params) : params(params)
 
   // create sky dome and add to ocean scene
   // set masks so it appears in reflected scene and normal scene
-  skyDome = osg::make_ref_ptr<SkyDome>( 1900.f, 16, 16, cubemap.get() );
+  skyDome = osg::make_ref<SkyDome>( 1900.f, 16, 16, cubemap.get() );
   osgOcean::OceanScene::setupMeshNode(skyDome);
 
   // add a pat to track the camera
-  auto transform = osg::make_ref_ptr<osg::MatrixTransform>();
+  auto transform = osg::make_ref<osg::MatrixTransform>();
   transform->setDataVariance( osg::Object::DYNAMIC );
   transform->setMatrix( osg::Matrixf::translate( osg::Vec3f(0.f, 0.f, 0.f) ));
   transform->setCullCallback( new CameraTrackCallback );
@@ -108,11 +108,11 @@ Scene::Scene(const SceneParams &params) : params(params)
   // Create and add fake texture for use with nodes without any texture
   // since the OceanScene default scene shader assumes that texture unit
   // 0 is used as a base texture map.
-  auto image = osg::make_ref_ptr<osg::Image>();
+  auto image = osg::make_ref<osg::Image>();
   image->allocateImage( 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE );
   *(osg::Vec4ub*)image->data() = osg::Vec4ub( 0xFF, 0xFF, 0xFF, 0xFF );
 
-  auto fakeTex = osg::make_ref_ptr<osg::Texture2D>( image );
+  auto fakeTex = osg::make_ref<osg::Texture2D>( image );
   fakeTex->setWrap(osg::Texture2D::WRAP_S,osg::Texture2D::REPEAT);
   fakeTex->setWrap(osg::Texture2D::WRAP_T,osg::Texture2D::REPEAT);
   fakeTex->setFilter(osg::Texture2D::MIN_FILTER,osg::Texture2D::NEAREST);
@@ -124,7 +124,7 @@ Scene::Scene(const SceneParams &params) : params(params)
   stateset->setTextureMode(0,GL_TEXTURE_2D,osg::StateAttribute::ON);
   stateset->setTextureMode(0,GL_TEXTURE_3D,osg::StateAttribute::OFF);
 
-  auto lightSource = osg::make_ref_ptr<osg::LightSource>();
+  auto lightSource = osg::make_ref<osg::LightSource>();
   lightSource->setNodeMask(lightSource->getNodeMask() & ~CAST_SHADOW & ~RECEIVE_SHADOW);
   lightSource->setLocalStateSetModes();
   sun = lightSource->getLight();
@@ -173,7 +173,7 @@ void Scene::loadCubeMapTextures( const std::string& dir )
 {
   if(!cubemap)
   {
-    cubemap = osg::make_ref_ptr<osg::TextureCubeMap>();
+    cubemap = osg::make_ref<osg::TextureCubeMap>();
     cubemap->setInternalFormat(GL_RGBA);
 
     cubemap->setFilter( osg::Texture::MIN_FILTER,    osg::Texture::LINEAR_MIPMAP_LINEAR);
