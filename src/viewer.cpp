@@ -45,8 +45,7 @@ Viewer::Viewer(Scene &scene) : scene(&scene)
 
   // virtual cam
   camera = osg::make_ref<osg::Camera>();
-  //camera = getCamera();
-  resizeWindow(width, height);
+  scene.getWorld()->setScreenDims(width, height);
   camera->setReferenceFrame( osg::Transform::ABSOLUTE_RF );
   camera->setRenderOrder(osg::Camera::POST_RENDER);
   camera->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
@@ -63,9 +62,9 @@ Viewer::Viewer(Scene &scene) : scene(&scene)
 
 void Viewer::frame(double simTime)
 {
-  static bool prev_underwater(true);
+  static auto prev_underwater(true);
   if(windowWasResized())
-    resizeWindow(width, height);
+    scene->getWorld()->setScreenDims(width, height);
 
   const auto z{getCameraManipulator()->getMatrix().getTrans().z()};
   const auto underwater(z < 0.);
@@ -88,13 +87,6 @@ void Viewer::frame(double simTime)
     updateTraversal();
   }
   renderingTraversals();
-}
-
-void Viewer::resizeWindow(int width, int height)
-{
-  scene->getWorld()->setScreenDims(width, height);
-  camera->setViewport(0,0,width,height);
-  camera->setProjectionMatrixAsOrtho2D(0,width,0,height);
 }
 
 void Viewer::freeCamera()

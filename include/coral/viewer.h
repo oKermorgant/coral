@@ -37,7 +37,6 @@ private:
   int width, height;
 
   bool windowWasResized();
-  void resizeWindow(int width, int height);
 
   void changeMood(SceneType::Mood mood);
 
