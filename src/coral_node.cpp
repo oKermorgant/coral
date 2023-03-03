@@ -112,9 +112,7 @@ void CoralNode::refreshLinkPoses()
 {
   if(tf_buffer._frameExists("world"))
   {
-    // lock scene only when refreshing transforms, useful?
-    [[maybe_unused]] const auto lock{scene.scoped_lock()};
-
+    // cache retrieval of pending new poses
     for(auto &link: links)
     {
       if(link.updatedFromTF())
@@ -125,10 +123,10 @@ void CoralNode::refreshLinkPoses()
   }
 
   {
-    // test rate
-    static auto pub = create_publisher<geometry_msgs::msg::Point>("refresh",1);
-    static const auto p{geometry_msgs::msg::Point()};
-    pub->publish(p);
+    // locked while forwarding poses to scene
+    [[maybe_unused]] const auto lock{scene.scoped_lock()};
+    for(auto &link: links)
+      link.applyNewPose();
   }
 
   if(tf_buffer._frameExists(coral_cam_link))
@@ -249,7 +247,7 @@ void CoralNode::spawnModel(const std::string &model_ns,
     links[root_link_idx].ignoreTF();
     pose_subs.push_back(create_subscription<Pose>(model_ns + "/" + pose_topic, 1, [&,root_link_idx](Pose::SharedPtr msg)
     {
-      links[root_link_idx].setPose(osgMatFrom(msg->position, msg->orientation));
+      links[root_link_idx].setPending(osgMatFrom(msg->position, msg->orientation));
     }));
 
     pose_subs.push_back(create_subscription<Pose>(model_ns + "/" + pose_topic, 1, this_root_link.poseCallback()));

@@ -44,11 +44,15 @@ public:
   void refreshFrom(const tf2_ros::Buffer &tf_buffer);
   inline void refreshFromTopic()
   {
-    setPose(osgMatFrom(last.position, last.orientation));
+    setPending(osgMatFrom(last.position, last.orientation));
   }
-  inline void setPose(const osg::Matrixd &M)
+  inline void setPending(const osg::Matrixd &M)
   {
-    pose->setMatrix(M);    
+    M_pending = M;
+  }
+  inline void applyNewPose()
+  {
+    pose->setMatrix(M_pending);
   }
 
   // visual things
@@ -87,7 +91,6 @@ public:
       return [&](geometry_msgs::msg::Pose::SharedPtr msg){last = *msg;};
   }
 
-
   inline void ignoreTF() {pose_from_topic = true;}
   inline bool updatedFromTF() const {return !pose_from_topic;}
 
@@ -95,6 +98,7 @@ private:
 
   const std::string name;
   std::string parent;
+  osg::Matrixd M_pending;
   osg::ref_ptr <osg::MatrixTransform> pose = new osg::MatrixTransform;
   geometry_msgs::msg::Pose last;
 

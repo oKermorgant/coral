@@ -16,7 +16,7 @@ void Link::refreshFrom(const tf2_ros::Buffer &tf_buffer)
 
   tr = tf_buffer.lookupTransform(parent, name, tf2::TimePointZero, timeout);
 
-  setPose(osgMatFrom(tr.transform.translation, tr.transform.rotation));
+  setPending(osgMatFrom(tr.transform.translation, tr.transform.rotation));
 }
 
 }
