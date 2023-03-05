@@ -8,8 +8,8 @@ using std::vector, std::string;
 
 CoralNode::CoralNode()
   : rclcpp::Node("coral"),
-    scene(parameters()),
-    viewer(scene),
+    scene{osg::make_ref<OceanScene>(parameters())},
+    viewer(scene.get()),
     tf_buffer(get_clock()), tf_listener(tf_buffer)
 {  
   pose_update_timer = create_wall_timer(50ms, [&](){refreshLinkPoses();});
@@ -20,7 +20,7 @@ CoralNode::CoralNode()
       ("/coral/spawn",
        [&](const Spawn::Request::SharedPtr request, [[maybe_unused]] Spawn::Response::SharedPtr response)
   {
-    [[maybe_unused]] const auto lock{scene.scoped_lock()};
+    [[maybe_unused]] const auto lock{scene->scoped_lock()};
     spawnModel(request->robot_namespace, request->pose_topic, request->world_model);
   });
 
@@ -31,7 +31,7 @@ CoralNode::CoralNode()
     clock_sub.reset();
   });
 
-  scene.getWorld()->addChild(world_link.frame());
+  scene->addChild(world_link.frame());
 }
 
 SceneParams CoralNode::parameters()
@@ -69,7 +69,7 @@ SceneParams CoralNode::parameters()
   // vfx
   updateParam("vfx.godrays", params.godrays);
   updateParam("vfx.glare", params.glare);
-  updateParam("vfx.underwaterDof", params.underwaterDof);
+  updateParam("vfx.underwaterDof", params.underwaterDOF);
 
   return params;
 }
@@ -124,7 +124,7 @@ void CoralNode::refreshLinkPoses()
 
   {
     // locked while forwarding poses to scene
-    [[maybe_unused]] const auto lock{scene.scoped_lock()};
+    [[maybe_unused]] const auto lock{scene->scoped_lock()};
     for(auto &link: links)
       link.applyNewPose();
   }

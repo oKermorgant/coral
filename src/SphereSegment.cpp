@@ -18,6 +18,8 @@
 #include <coral/SphereSegment.h>
 #include <coral/osg_make_ref.h>
 
+using namespace coral;
+
 SphereSegment::SphereSegment(void)
 {}
 

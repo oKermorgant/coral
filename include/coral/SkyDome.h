@@ -16,11 +16,15 @@
 */
 
 #pragma once
-#include "SphereSegment.h"
 #include <osg/Program>
 #include <osg/Uniform>
 #include <osg/TextureCubeMap>
+
+#include <coral/SphereSegment.h>
 #include <coral/osg_make_ref.h>
+
+namespace coral
+{
 
 class SkyDome : public SphereSegment
 {
@@ -41,3 +45,4 @@ private:
 	osg::ref_ptr<osg::Program> createShader(void);
 
 };
+}

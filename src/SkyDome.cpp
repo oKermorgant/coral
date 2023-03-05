@@ -20,6 +20,8 @@
 #include <coral/SkyDome.h>
 #include <osgOcean/ShaderManager>
 
+using namespace coral;
+
 SkyDome::SkyDome( void )
 {
     

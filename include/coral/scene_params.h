@@ -32,9 +32,15 @@ struct SceneParams
   float choppyFactor              {2.5f};
   float crestFoamHeight           {2.2f};
 
+  bool refractions                {true};
+  bool reflections                {true};
   bool godrays                    {false};  // godrays do not work on Intel GPUs
   bool glare                      {true};
-  bool underwaterDof              {false};  // do not work on Intel GPUs
+  bool underwaterDOF              {false};  // do not work on Intel GPUs
+  bool distortion                 {true};
+  bool silt                       {true};
+  bool underwaterScattering       {false};
+  bool heightmap                  {false};
   osg::Vec3 initialCameraPosition {-10.,0.,10.};
 
   int width         {1024};

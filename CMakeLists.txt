@@ -82,7 +82,6 @@ find_package (OpenGL REQUIRED)
 add_executable(coral_gui
                   src/coral_main.cpp
                   src/coral_node.cpp
-                  #src/event_handler.cpp
                   src/camera.cpp
                   src/link.cpp
                   src/link_visual.cpp
@@ -90,9 +89,8 @@ add_executable(coral_gui
                   src/resource_helpers.cpp
                   src/viewer.cpp
 
-                  # from osgOcean + example
+                  # adapted from osgOcean + example
                   src/OceanScene.cpp
-                  src/Scene.cpp
                   src/SkyDome.cpp
                   src/SphereSegment.cpp
 )

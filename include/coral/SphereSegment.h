@@ -19,6 +19,9 @@
 #include <osg/Geode>
 #include <osg/Geometry>
 
+namespace coral
+{
+
 class SphereSegment : public osg::Geode
 {
 public:
@@ -55,3 +58,4 @@ private:
 		return c + r * row_len;
 	}
 };
+}

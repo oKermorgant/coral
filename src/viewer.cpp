@@ -1,5 +1,4 @@
 #include <coral/viewer.h>
-#include <coral/event_handler.h>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
 #include <chrono>
@@ -10,42 +9,42 @@ int DebugMsg::indent{};
 using namespace coral;
 using std::chrono::system_clock;
 
-Viewer::Viewer(Scene &scene) : scene(&scene)
+Viewer::Viewer(OceanScene *scene) : scene(scene)
 {
-  width = scene.parameters().width;
-  height = scene.parameters().height;
+  width = scene->params.width;
+  height = scene->params.height;
   setUpViewInWindow( 150, 150, width, height, 0 );
 
-  setSceneData(scene.getWorld());
+  setSceneData(scene);
 
   addEventHandler( new osgViewer::StatsHandler );
   addEventHandler( new osgGA::StateSetManipulator( getCamera()->getOrCreateStateSet() ) );
 
   event_handler = osg::make_ref<Viewer::EventHandler>(this);
   addEventHandler(event_handler);
-  addEventHandler(scene.getWorld()->getEventHandler());
-  addEventHandler(scene.oceanSurface()->getEventHandler());
+  addEventHandler(scene->getEventHandler());
+  addEventHandler(scene->surface()->getEventHandler());
   addEventHandler( new osgViewer::HelpHandler);
 
   getCamera()->setName("MainCamera");
-  getCamera()->setClearColor(scene.underwaterColor());
+  getCamera()->setClearColor(scene->scaleUnderwaterColor());
 
   // init free-flying cam + default
-  osg::Vec3 eye(scene.parameters().initialCameraPosition);
+  osg::Vec3 eye(scene->params.initialCameraPosition);
   free_manip->setHomePosition( eye, eye + osg::Vec3(0,20,0), osg::Vec3f(0,0,1) );
   free_manip->setVerticalAxisFixed(true);
   cam_is_free = true;
   setCameraManipulator(free_manip);
 
   // init tracking cam
-  scene.getWorld()->addChild(cam_pose);
+  scene->addChild(cam_pose);
   tracking_manip->setTrackNode(cam_pose);
   tracking_manip->setTrackerMode(osgGA::NodeTrackerManipulator::NODE_CENTER_AND_ROTATION);
   tracking_manip->setHomePosition({3,0,0}, {0,0,0}, {0,0,1});
 
   // virtual cam
   camera = osg::make_ref<osg::Camera>();
-  scene.getWorld()->setScreenDims(width, height);
+  scene->fitToSize(width, height);
   camera->setReferenceFrame( osg::Transform::ABSOLUTE_RF );
   camera->setRenderOrder(osg::Camera::POST_RENDER);
   camera->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
@@ -64,19 +63,19 @@ void Viewer::frame(double simTime)
 {
   static auto prev_underwater(true);
   if(windowWasResized())
-    scene->getWorld()->setScreenDims(width, height);
+    scene->fitToSize(width, height);
 
   const auto z{getCameraManipulator()->getMatrix().getTrans().z()};
   const auto underwater(z < 0.);
 
-  if(underwater && scene->parameters().depth_attn > 0.f)
+  if(underwater && scene->params.depth_attn > 0.f)
   {
-    getCamera()->setClearColor(scene->underwaterColor(1.f+z/scene->parameters().depth_attn));
+    getCamera()->setClearColor(scene->scaleUnderwaterColor(1.f+z/scene->params.depth_attn));
   }
 
   if(underwater != prev_underwater)
   {
-    scene->getWorld()->setOceanSurfaceHeight(underwater ? -0.05f : 0.f);
+    scene->setOceanSurfaceHeight(underwater ? -0.05f : 0.f);
     prev_underwater = underwater;
   }
 
@@ -136,11 +135,10 @@ bool Viewer::windowWasResized()
   return false;
 }
 
-void Viewer::changeMood(SceneType::Mood mood)
+void Viewer::changeMood(Weather::Mood mood)
 {
-  const SceneType scene_type(mood);
-  scene->changeScene(scene_type);
-  getCamera()->setClearColor(scene->underwaterColor());
+  scene->changeMood(mood);
+  getCamera()->setClearColor(scene->scaleUnderwaterColor());
 }
 
 
@@ -153,29 +151,29 @@ bool Viewer::EventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIAc
     const auto key(ea.getKey());
     if(key == '1')
     {
-      viewer->changeMood(SceneType::Mood::CLEAR);
+      viewer->changeMood(Weather::Mood::CLEAR);
       return true;
     }
     else if(key == '2')
     {
-      viewer->changeMood( SceneType::Mood::DUSK );
+      viewer->changeMood( Weather::Mood::DUSK );
       return true;
     }
     else if(key == '3' )
     {
-      viewer->changeMood( SceneType::Mood::CLOUDY );
+      viewer->changeMood( Weather::Mood::CLOUDY );
       return true;
     }
     else if(key == '4' )
     {
-      viewer->changeMood( SceneType::Mood::NIGHT);
+      viewer->changeMood( Weather::Mood::NIGHT);
       return true;
     }
     else if (key == '0')
     {
       static bool surface0(true);
       surface0 = !surface0;
-      viewer->scene->getWorld()->setOceanSurfaceHeight(surface0 ? 0. : -1000.);
+      viewer->scene->setOceanSurfaceHeight(surface0 ? 0. : -1000.);
       return true;
     }
   }

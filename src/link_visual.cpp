@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <osg/Material>
 #include <osg/ShapeDrawable>
+#include <coral/OceanScene.h>
 #include <coral/osg_make_ref.h>
 
 namespace coral
@@ -119,6 +120,6 @@ void Link::addVisualNode(osg::ref_ptr<osg::Node> node, const osg::Matrixd &M, co
   }
   auto &visual{visuals.emplace_back(node, M)};
   pose->addChild(visual.pose);
-  osgOcean::OceanScene::setupMeshNode(visual.mesh);
+  OceanScene::setupMeshNode(visual.mesh);
 }
 }

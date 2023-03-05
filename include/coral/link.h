@@ -3,7 +3,6 @@
 
 #include <string>
 #include <tf2_ros/buffer.h>
-#include <coral/Scene.h>
 #include <coral/urdf_parser.h>
 #include <geometry_msgs/msg/pose.hpp>
 

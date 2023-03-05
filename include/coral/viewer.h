@@ -6,7 +6,7 @@
 #include <osgGA/TrackballManipulator>
 #include <osgGA/NodeTrackerManipulator>
 #include <osg/Camera>
-#include <coral/Scene.h>
+#include <coral/OceanScene.h>
 
 namespace coral
 {
@@ -14,7 +14,7 @@ namespace coral
 class Viewer : public osgViewer::Viewer
 {
 public:
-  Viewer(Scene& scene);
+  Viewer(OceanScene *scene);
 
   void frame(double simulationTime=USE_REFERENCE_TIME) override;
 
@@ -22,7 +22,7 @@ public:
   void freeCamera();
 
 private:  
-  Scene* scene;
+  OceanScene* scene;
 
   // free / tracking manipulators
   osg::ref_ptr<osg::Camera> camera;
@@ -38,7 +38,7 @@ private:
 
   bool windowWasResized();
 
-  void changeMood(SceneType::Mood mood);
+  void changeMood(Weather::Mood mood);
 
   class EventHandler : public osgGA::GUIEventHandler
   {

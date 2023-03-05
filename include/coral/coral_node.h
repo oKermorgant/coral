@@ -11,7 +11,7 @@
 
 #include <coral/srv/spawn.hpp>
 #include <coral/srv/surface.hpp>
-#include <coral/Scene.h>
+#include <coral/OceanScene.h>
 #include <coral/viewer.h>
 #include <coral/link.h>
 #include <coral/camera.h>
@@ -44,7 +44,7 @@ public:
 
 private:
   Link world_link{"world"};
-  Scene scene;
+  osg::ref_ptr<OceanScene> scene;
   Viewer viewer;
 
   // tf interface

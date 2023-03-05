@@ -19,7 +19,7 @@
 
 #pragma once
 #include <osgOcean/Export>
-#include <osgOcean/OceanTechnique>
+#include <osgOcean/FFTOceanTechnique>
 #include <osgOcean/GodRayBlendSurface>
 #include <osgOcean/DistortionSurface>
 #include <osgOcean/GodRays>
@@ -38,16 +38,26 @@
 #include <osgGA/GUIEventHandler>
 
 #include <coral/osg_make_ref.h>
+#include <coral/scene_params.h>
+#include <coral/weather.h>
+#include <coral/SkyDome.h>
 
 #include <map>
 
-namespace osgOcean
+#define CORAL_WITH_SCENE_LOCK
+
+#ifdef CORAL_WITH_SCENE_LOCK
+#include <mutex>
+#endif
+
+namespace coral
 {
 /**
     * Controls the render passes required for the ocean scene effects.
     * Uses a series of traversal masks to control which passes a child is subjected to.
     * @note Requires an \c OceanTechnique to be added.
     */
+
 class OSGOCEAN_EXPORT OceanScene : public osg::Group
 {
 public:
@@ -67,29 +77,30 @@ public:
   /// derived classes to return subclass-specific handler if needed.
   virtual EventHandler* getEventHandler()
   {
-    if (!_eventHandler.valid())
-      _eventHandler = new EventHandler(this);
-    return _eventHandler.get();
+    if (!eventHandler.valid())
+      eventHandler = new EventHandler(this);
+    return eventHandler.get();
   }
 
 private:
   static constexpr float OCEAN_CYLINDER_HEIGHT = 4000.f;
 
-  osg::ref_ptr<OceanTechnique> _oceanSurface{nullptr};
-  osg::ref_ptr<EventHandler> _eventHandler;
+  Weather weather;
+  osg::Vec4f base_water_color;
+  osg::ref_ptr<osg::TextureCubeMap> cubemap;
+  osg::ref_ptr<SkyDome> skyDome;
+  osg::ref_ptr<osg::Light> sun;
+
+#ifdef CORAL_WITH_SCENE_LOCK
+  std::mutex mutex;
+#endif
+
+  osg::ref_ptr<osgOcean::FFTOceanTechnique> oceanSurface{nullptr};
+  osg::ref_ptr<EventHandler> eventHandler;
 
   bool _isDirty                 {true};
 
-  bool _enableRefractions         {true};
-  bool _enableReflections         {true};
-  bool _enableGodRays             {true};
-  bool _enableSilt                {true};
-  bool _enableDOF                 {true};
-  bool _enableGlare               {true};
-  bool _enableDistortion          {true};
-  bool _enableUnderwaterScattering{false};
-  bool _enableDefaultShader       {true};
-  bool _enableHeightmap           {false};
+  static constexpr bool _enableDefaultShader       {true};
 
   osg::Vec2s _reflectionTexSize   {512,512};
   osg::Vec2s _refractionTexSize   {512,512};
@@ -100,12 +111,12 @@ private:
   int _refractionDepthUnit        {3};
   int _heightmapUnit              {7};
 
-  constexpr static unsigned int _reflectionSceneMask {0x1};
-  constexpr static unsigned int _refractionSceneMask {0x2};
-  constexpr static unsigned int _heightmapMask       {0x20};
-  constexpr static unsigned int _surfaceMask         {0x8};
-  constexpr static unsigned int _normalSceneMask     {0x4};
-  constexpr static unsigned int _siltMask            {0x10};
+  constexpr static unsigned int reflectionSceneMask {0x1};
+  constexpr static unsigned int refractionSceneMask {0x2};
+  constexpr static unsigned int heightmapMask       {0x20};
+  constexpr static unsigned int surfaceMask         {0x8};
+  constexpr static unsigned int normalSceneMask     {0x4};
+  constexpr static unsigned int siltMask            {0x10};
 
   unsigned int _lightID           {0};
 
@@ -121,19 +132,9 @@ private:
 
   float _surfaceHeight            {0};
 
-
-  // from scene type
-  float      _aboveWaterFogDensity{0.0012f};
-  osg::Vec4f _aboveWaterFogColor  {};
-  float      _underwaterFogDensity{0.01};
-  osg::Vec4f _underwaterFogColor  {0.2274509f, 0.4352941f, 0.7294117f, 1.f};
-  osg::Vec4f _underwaterDiffuse   {};
-  osg::Vec3f _underwaterAttenuation{0.015f, 0.0075f, 0.005f};
-  osg::Vec3f _sunDirection        {0,0,-1};
-
   osg::ref_ptr<osg::MatrixTransform>  _oceanTransform{new osg::MatrixTransform};
   osg::ref_ptr<osg::MatrixTransform>  _oceanCylinderMT{new osg::MatrixTransform};
-  osg::ref_ptr<Cylinder>              _oceanCylinder{new Cylinder(1900.f, OCEAN_CYLINDER_HEIGHT, 16, false, true)};
+  osg::ref_ptr<osgOcean::Cylinder>    _oceanCylinder{new osgOcean::Cylinder(1900.f, OCEAN_CYLINDER_HEIGHT, 16, false, true)};
 
   osg::ref_ptr<osg::Camera> _godrayPreRender;
   osg::ref_ptr<osg::Camera> _godrayPostRender;
@@ -147,9 +148,9 @@ private:
 
   osg::ref_ptr<osg::Program> _defaultSceneShader{nullptr};
 
-  osg::ref_ptr<GodRayBlendSurface> _godRayBlendSurface;
-  osg::ref_ptr<DistortionSurface> _distortionSurface;
-  osg::ref_ptr<GodRays> _godrays;
+  osg::ref_ptr<osgOcean::GodRayBlendSurface> _godRayBlendSurface;
+  osg::ref_ptr<osgOcean::DistortionSurface> _distortionSurface;
+  osg::ref_ptr<osgOcean::GodRays> _godrays;
   osg::ref_ptr<osg::ClipNode> _siltClipNode;
   osg::ref_ptr<osg::ClipNode> _reflectionClipNode;
 
@@ -221,8 +222,33 @@ private:
 
   // NOTE: Remember to add new variables to the copy constructor.
 public:
-  //OceanScene( void );
-  OceanScene(OceanTechnique* surface=nullptr);
+
+  explicit OceanScene() {}
+  explicit OceanScene(const SceneParams &params);
+  SceneParams params;
+
+#ifdef CORAL_WITH_SCENE_LOCK
+  [[nodiscard]] inline auto scoped_lock() {return std::lock_guard(mutex);}
+#else
+  inline auto scoped_lock() {return nullptr;}
+#endif
+
+  inline auto scaleUnderwaterColor(float f = 1.f)
+  {
+    weather.underwaterDiffuse = weather.underwaterFogColor = base_water_color * f;
+    refreshUnderwaterFog();
+    return weather.underwaterDiffuse;
+  }
+  void changeMood(const Weather::Mood &mood);
+  inline void changeMood( const std::string &type)
+  {
+    changeMood(Weather::from(type));
+  }
+
+  void loadCubeMapTextures( const std::string& dir );
+
+
+  //OceanScene(OceanTechnique* surface=nullptr);
 
   //OceanScene( const OceanScene& copy, const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY );
 
@@ -240,20 +266,20 @@ public:
   /// Set ocean surface height in world space (default is 0.0)
   void setOceanSurfaceHeight(float height){
     _surfaceHeight = height;
-    _oceanTransform->setMatrix(osg::Matrix::translate(0,0,_surfaceHeight - _oceanSurface->getSurfaceHeight()));
+    _oceanTransform->setMatrix(osg::Matrix::translate(0,0,_surfaceHeight - oceanSurface->getSurfaceHeight()));
     _isDirty = true;
   }
 
   /// Get ocean surface average height in world space.
   double getOceanSurfaceHeight() const{
-    return _surfaceHeight + _oceanSurface->getSurfaceHeight();
+    return _surfaceHeight + oceanSurface->getSurfaceHeight();
   }
 
   /// Get height of given (x,y) point in world space. Optionally returns the normal.
   float getOceanSurfaceHeightAt(float x, float y, osg::Vec3* normal = 0)
   {
     return _surfaceHeight +
-        _oceanSurface->getSurfaceHeightAt(x, y, normal);
+        oceanSurface->getSurfaceHeightAt(x, y, normal);
   }
 
   /// Set the ocean surface world-space position. Note that the (x,y)
@@ -264,7 +290,7 @@ public:
     _surfaceHeight = transform.getTrans().z();
     _oceanTransform->setMatrix(osg::Matrix::translate(transform.getTrans().x(),
                                                       transform.getTrans().y(),
-                                                      transform.getTrans().z() - _oceanSurface->getSurfaceHeight()));
+                                                      transform.getTrans().z() - oceanSurface->getSurfaceHeight()));
     _isDirty = true;
   }
 
@@ -276,12 +302,12 @@ public:
   {
     return osg::Matrix::translate(_oceanTransform->getMatrix().getTrans().x(),
                                   _oceanTransform->getMatrix().getTrans().y(),
-                                  _surfaceHeight + _oceanSurface->getSurfaceHeight());
+                                  _surfaceHeight + oceanSurface->getSurfaceHeight());
   }
 
   /// Set whether the ocean surface is visible or not.
   void setOceanVisible(bool visible){
-    _oceanTransform->setNodeMask( visible ? _normalSceneMask | _surfaceMask : 0 );
+    _oceanTransform->setNodeMask( visible ? normalSceneMask | surfaceMask : 0 );
   }
 
   /// Check whether the ocean surface is visible or not.
@@ -307,19 +333,18 @@ public:
   }
 
   /// Get the radius of the ocean cylinder.
-  inline const float getCylinderRadius( void ) const{
+  inline float getCylinderRadius( void ) const{
     return _oceanCylinder->getRadius();
   }
 
   /// Get the height of the ocean cylinder.
-  inline const float getCylinderHeight( void ) const{
+  inline float getCylinderHeight( void ) const{
     return _oceanCylinder->getHeight();
   }
 
   /// Enable/disable RTT effects (reflection, refraction, height map)
   /// for the given view.
   void enableRTTEffectsForView(osg::View* view, bool enable);
-
 
   /// Get the list of views where RTT effects (reflection, refraction,
   /// height map) are disabled (enabled for all other views).
@@ -328,16 +353,11 @@ public:
     return _viewsWithRTTEffectsDisabled;
   }
 
-  /// Enable reflections (one RTT pass when the eye is above the ocean
-  /// surface).
-  inline void enableReflections( bool enable ){
-    _enableReflections = enable;
-    _isDirty = true;
-  }
-
-  /// Check whether reflections are enabled.
-  inline bool areReflectionsEnabled() const{
-    return _enableReflections;
+  inline void switchParam(bool &param)
+  {
+    param = !param;
+    if(param)
+      _isDirty = true;
   }
 
   /// If the eye is higher than this value above the ocean surface,
@@ -360,18 +380,6 @@ public:
     _isDirty = true;
   }
 
-  /// Enable refractions (one RTT pass whether the eye is above or
-  /// below the ocean surface).
-  inline void enableRefractions( bool enable ){
-    _enableRefractions = enable;
-    _isDirty = true;
-  }
-
-  /// Check whether refractions are enabled.
-  inline bool areRefractionsEnabled() const{
-    return _enableRefractions;
-  }
-
   /// If the eye is lower than this value below the ocean surface,
   /// refractions will not be rendered. Set to a very large negative
   /// value to disable this feature. Default is -FLT_MAX.
@@ -392,71 +400,21 @@ public:
     _isDirty = true;
   }
 
-  /// Enable the height map pass (one RTT pass when the eye is above
-  /// the ocean surface - uses the same texture size as refractions).
-  inline void enableHeightmap( bool enable ){
-    _enableHeightmap = enable;
-    _isDirty = true;
-  }
-
-  /// Check whether the height map pass is enabled.
-  inline bool isHeightmapEnabled() const {
-    return _enableHeightmap;
-  }
-
-  /// Enable underwater God Rays.
-  inline void enableGodRays( bool enable ){
-    _enableGodRays = enable;
-    _isDirty = true;
-  }
-
-  /// Check whether God Rays are enabled.
-  inline bool areGodRaysEnabled() const{
-    return _enableGodRays;
-  }
-
-  /// Enable underwater silt.
-  inline void enableSilt( bool enable ){
-    _enableSilt = enable;
-    _isDirty = true;
-  }
-
-  /// Check whether silt is enabled.
-  inline bool isSiltEnabled() const{
-    return _enableSilt;
-  }
-
   /// Sets the current screen size, needed to initialise the God Ray
   /// and DOF frame buffers. Default is 1024x768.
-  void setScreenDims(int width , int height);
+  void fitToSize(int width , int height);
 
   /// Set sun direction.
   inline void setSunDirection( const osg::Vec3f& sunDir ){
-    _sunDirection = sunDir;
+    weather.sunDirection = sunDir;
     _isDirty = true;
   }
 
   /// Get sun direction.
   inline osg::Vec3f getSunDirection() const{
-    return _sunDirection;
+    return weather.sunDirection;
   }
 
-  /// Enable underwater depth of field.
-  /// Also enables the use of the default scene shader as the effect
-  /// requires information stored in the alpha component.
-  inline void enableUnderwaterDOF( bool enable ){
-    _enableDOF = enable;
-
-    if(enable)
-      _enableDefaultShader = true;
-
-    _isDirty = true;
-  }
-
-  /// Check if underwater depth of field is enabled.
-  inline bool isUnderwaterDOFEnabled() const{
-    return _enableDOF;
-  }
 
   /// Set near DOF blur distance.
   inline void setDOFNear( float dofNear ) {
@@ -510,25 +468,6 @@ public:
     return _dofFocus;
   }
 
-  /// Enable cross hatch glare.
-  /// Also enables the use of the default scene shader as the effect
-  /// requires information stored in the alpha component.
-  inline void enableGlare( bool flag )
-  {
-    _enableGlare = flag;
-
-    if(flag)
-      _enableDefaultShader = true;
-
-    _isDirty = true;
-  }
-
-  /// Check if glare is enabled.
-  inline bool isGlareEnabled() const
-  {
-    return _enableGlare;
-  }
-
   /// Set the luminance threshold for glare.
   /// Luminance value at which glare appears.
   /// Typical range: 0.75 < threshold < 1.0
@@ -547,88 +486,15 @@ public:
     _isDirty = true;
   }
 
-  /// Enable underwater distortion.
-  inline void enableDistortion( bool flag )
-  {
-    _enableDistortion = flag;
-    _isDirty = true;
-  }
-
-  /// Check if underwater distortion is enabled.
-  inline bool isDistortionEnabled() const
-  {
-    return _enableDistortion;
-  }
-
-  /// Enable underwater scattering.
-  inline void enableUnderwaterScattering( bool flag )
-  {
-    _enableUnderwaterScattering = flag;
-    _isDirty = true;
-  }
-
-  /// Check whether underwater scattering is enabled.
-  inline bool isUnderwaterScatteringEnabled() const
-  {
-    return _enableUnderwaterScattering;
-  }
-
-  /// Set the ocean technique.
-  inline void setOceanTechnique( OceanTechnique* surface ){
-
-    if( _oceanSurface.valid() )
-      _oceanTransform->removeChild( _oceanSurface.get() );
-
-    _oceanSurface = surface;
-
-    if (_oceanSurface.valid())
-    {
-      _oceanSurface->setNodeMask( _surfaceMask );
-
-      _oceanTransform->addChild( _oceanSurface.get() );
-    }
-
-    _isDirty = true;
-  }
-
   static inline void setupMeshNode(osg::Node *mesh)
   {
-    mesh->setNodeMask(_normalSceneMask | _reflectionSceneMask | _refractionSceneMask);
+    mesh->setNodeMask(normalSceneMask | reflectionSceneMask | refractionSceneMask);
   }
 
-  /// Get the current ocean technique.
-  inline OceanTechnique* getOceanTechnique( void ) const
+  /// Get the current ocean surface
+  inline auto surface() const
   {
-    return _oceanSurface.get();
-  }
-
-  /// Get the node mask for the reflected scene.
-  inline unsigned int getReflectedSceneMask( void ) const{
-    return _reflectionSceneMask;
-  }
-
-  /// Get the node mask for the refracted scene.
-  inline unsigned int getRefractedSceneMask( void ) const
-  {
-    return _refractionSceneMask;
-  }
-
-  /// Get the node mask for the height map (generally terrain).
-  inline unsigned int getHeightmapMask( void ) const
-  {
-    return _heightmapMask;
-  }
-
-  /// Get the node mask for the ocean surface.
-  inline unsigned int getOceanSurfaceMask( void ) const
-  {
-    return _surfaceMask;
-  }
-
-  /// Get the node mask for the scene.
-  inline unsigned int getNormalSceneMask( void ) const
-  {
-    return _normalSceneMask;
+    return oceanSurface.get();
   }
 
   /// Set the ID of the light source that should be used to light the ocean.
@@ -639,91 +505,30 @@ public:
 
   /// Sets the fogging params for the above water scene.
   /// EXP fog
-  inline void setAboveWaterFog( float density, const osg::Vec4f& color )
+  inline void refreshAboveWaterFog()
   {
-    _aboveWaterFogDensity = density;
-    _aboveWaterFogColor = color;
-
     const float LOG2E = 1.442695;
     if( _globalStateSet.valid() ){
-      _globalStateSet->getUniform("osgOcean_AboveWaterFogDensity")->set(-_aboveWaterFogDensity*_aboveWaterFogDensity*LOG2E);
-      _globalStateSet->getUniform("osgOcean_AboveWaterFogColor")->set(color);
+      _globalStateSet->getUniform("osgOcean_AboveWaterFogDensity")->set(-weather.aboveWaterFogDensity*weather.aboveWaterFogDensity*LOG2E);
+      _globalStateSet->getUniform("osgOcean_AboveWaterFogColor")->set(weather.fogColor);
     }
 
     _isDirty = true;
-  }
-
-  /// Get the above water fog density.
-  inline float getAboveWaterFogDensity() const
-  {
-    return _aboveWaterFogDensity;
-  }
-
-  /// Get the above water fog color.
-  inline osg::Vec4f getAboveWaterFogColor() const
-  {
-    return _aboveWaterFogColor;
   }
 
   /// Sets the fogging params for the underwater scene.
   /// EXP2 fog
-  inline void setUnderwaterFog( float density, const osg::Vec4f& color )
+  inline void refreshUnderwaterFog()
   {
-    _underwaterFogDensity = density;
-    _underwaterFogColor = color;
-    _oceanCylinder->setColor(_underwaterFogColor);
+    _oceanCylinder->setColor(weather.underwaterFogColor);
 
     const float LOG2E = 1.442695;
     if( _globalStateSet.valid() ){
-      _globalStateSet->getUniform("osgOcean_UnderwaterFogDensity")->set(-_underwaterFogDensity*_underwaterFogDensity*LOG2E);
-      _globalStateSet->getUniform("osgOcean_UnderwaterFogColor")->set(_underwaterFogColor);
+      _globalStateSet->getUniform("osgOcean_UnderwaterFogDensity")->set(-weather.underwaterFogDensity*weather.underwaterFogDensity*LOG2E);
+      _globalStateSet->getUniform("osgOcean_UnderwaterFogColor")->set(weather.underwaterFogColor);
     }
 
     _isDirty = true;
-  }
-
-  /// Get the underwater fog density.
-  inline float getUnderwaterFogDensity() const
-  {
-    return _underwaterFogDensity;
-  }
-
-  /// Get the underwater fog color.
-  inline osg::Vec4f getUnderwaterFogColor() const
-  {
-    return _underwaterFogColor;
-  }
-
-  /// Changes the color of diffuse light used underwater.
-  /// @note Should be computing this from physical calculations. For
-  /// the moment this is tweaked by hand.
-  /// see: http://citeseer.ist.psu.edu/cache/papers/cs/26265/http:zSzzSzwww.cs.sunysb.eduzSz~ashzSzwaterCGF.pdf/
-  void setUnderwaterDiffuse( const osg::Vec4f& diffuse )
-  {
-    _underwaterDiffuse = diffuse;
-    _isDirty = true;
-  }
-
-  /// Get the color of the diffuse light underwater.
-  osg::Vec4f getUnderwaterDiffuse() const
-  {
-    return _underwaterDiffuse;
-  }
-
-  /// Change the attenuation of light underwater.
-  /// @note Should be computing this from physical calculations. For
-  ///the moment this is tweaked by hand.
-  /// see: http://citeseer.ist.psu.edu/cache/papers/cs/26265/http:zSzzSzwww.cs.sunysb.eduzSz~ashzSzwaterCGF.pdf/
-  void setUnderwaterAttenuation( const osg::Vec3f& attenuation )
-  {
-    _underwaterAttenuation = attenuation;
-    _isDirty = true;
-  }
-
-  /// Get the attenuation of light underwater.
-  osg::Vec3f getUnderwaterAttenuation() const
-  {
-    return _underwaterAttenuation;
   }
 
   /// Override the default scene shader for custom shaders.
@@ -733,30 +538,6 @@ public:
   {
     _defaultSceneShader = program;
     _isDirty = true;
-  }
-
-  /// Enable/Disable the use of the default scene shader.
-  /// This shader is required for the glare, and DOF effects as they
-  /// require information stored in the alpha component.
-  /// It also controls the above/below water fogging and lighting.
-  /// Enabling glare or DOF will automatically enable the shader.
-  void setUseDefaultSceneShader( bool enable )
-  {
-    _enableDefaultShader = enable;
-  }
-
-  /// Add a new path from which to search for library textures.
-  /// Updates osgDB::Registry's data file path
-  inline void addAlternativeTexturePath( const std::string& path )
-  {
-    osgDB::Registry::instance()->getDataFilePathList().push_back(path);
-  }
-
-  /// Add a new path from which to search for library shaders.
-  /// Updates osgDB::Registry's data file path
-  inline void addAlternativeShaderPath( const std::string& path )
-  {
-    osgDB::Registry::instance()->getDataFilePathList().push_back(path);
   }
 
   osg::Program* createDefaultSceneShader( void );

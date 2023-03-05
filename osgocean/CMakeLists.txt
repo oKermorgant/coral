@@ -161,12 +161,12 @@ SET( LIB_HEADERS
   ${HEADER_PATH}/DistortionSurface
   ${HEADER_PATH}/FFTOceanTechnique
   ${HEADER_PATH}/FFTOceanSurface
-  ${HEADER_PATH}/FFTOceanSurfaceVBO
+  #${HEADER_PATH}/FFTOceanSurfaceVBO
   ${HEADER_PATH}/FFTSimulation
   ${HEADER_PATH}/GodRays
   ${HEADER_PATH}/GodRayBlendSurface
   ${HEADER_PATH}/MipmapGeometry
-  ${HEADER_PATH}/MipmapGeometryVBO
+  #${HEADER_PATH}/MipmapGeometryVBO
   #${HEADER_PATH}/OceanScene
   ${HEADER_PATH}/OceanTechnique
   ${HEADER_PATH}/OceanTile
@@ -199,12 +199,12 @@ ADD_LIBRARY(
   ${OSGOCEAN_CPP}/DistortionSurface.cpp
   ${OSGOCEAN_CPP}/FFTOceanTechnique.cpp
   ${OSGOCEAN_CPP}/FFTOceanSurface.cpp
-  ${OSGOCEAN_CPP}/FFTOceanSurfaceVBO.cpp
+  #${OSGOCEAN_CPP}/FFTOceanSurfaceVBO.cpp
   ${OSGOCEAN_CPP}/FFTSimulation.cpp
   ${OSGOCEAN_CPP}/GodRays.cpp
   ${OSGOCEAN_CPP}/GodRayBlendSurface.cpp
   ${OSGOCEAN_CPP}/MipmapGeometry.cpp
-  ${OSGOCEAN_CPP}/MipmapGeometryVBO.cpp
+  #${OSGOCEAN_CPP}/MipmapGeometryVBO.cpp
   #${OSGOCEAN_CPP}/OceanScene.cpp
   ${OSGOCEAN_CPP}/OceanTechnique.cpp
   ${OSGOCEAN_CPP}/OceanTile.cpp
