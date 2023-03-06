@@ -23,7 +23,7 @@ Viewer::Viewer(OceanScene *scene) : scene(scene)
   event_handler = osg::make_ref<Viewer::EventHandler>(this);
   addEventHandler(event_handler);
   addEventHandler(scene->getEventHandler());
-  addEventHandler(scene->surface()->getEventHandler());
+  //addEventHandler(scene->surface()->getEventHandler());
   addEventHandler( new osgViewer::HelpHandler);
 
   getCamera()->setName("MainCamera");
@@ -65,7 +65,8 @@ void Viewer::frame(double simTime)
     scene->fitToSize(width, height);
 
   const auto z{getCameraManipulator()->getMatrix().getTrans().z()};
-  const auto underwater(z < 0.);
+  const auto zSurf{scene->getOceanSurfaceHeight()};
+  const auto underwater(z < zSurf);
 
   if(underwater && scene->params.depth_attn > 0.f)
   {
@@ -74,7 +75,7 @@ void Viewer::frame(double simTime)
 
   if(underwater != prev_underwater)
   {
-    scene->setOceanSurfaceHeight(underwater ? -0.05f : 0.f);
+    scene->setOceanSurfaceHeight(underwater ? zSurf-0.05f : zSurf);
     prev_underwater = underwater;
   }
 

@@ -99,8 +99,8 @@ private:
 
   bool pose_from_topic{false};
   void addVisual(urdf::VisualSharedPtr visual, const osg::Matrixd &M);
-  void addVisualShape(osg::ref_ptr<osg::Shape> shape, const osg::Matrixd &M, const urdf::Material* mat);
-  inline void addVisualNode(osg::ref_ptr<osg::Node> frame, const osg::Matrixd &M, const urdf::Material* mat);
+  void addVisualShape(osg::ref_ptr<osg::Shape> shape, const osg::Matrixd &M, urdf::MaterialConstSharedPtr mat);
+  inline void addVisualNode(osg::ref_ptr<osg::Node> frame, const osg::Matrixd &M, urdf::MaterialConstSharedPtr mat);
   std::vector<Visual> visuals;
 
 };

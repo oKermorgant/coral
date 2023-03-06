@@ -222,24 +222,67 @@ bool OceanScene::EventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::G
       return true;
     }
     // Ocean surface height
+    if (key == osgGA::GUIEventAdapter::KEY_Page_Up)
+    {
+      _oceanScene->setOceanSurfaceHeight(_oceanScene->getOceanSurfaceHeight() + .5);
+      return true;
+    }
+    if (key == osgGA::GUIEventAdapter::KEY_Page_Down)
+    {
+      _oceanScene->setOceanSurfaceHeight(_oceanScene->getOceanSurfaceHeight() - .5);
+      return true;
+    }
+    else if (key == osgGA::GUIEventAdapter::KEY_Home)
+    {
+      _oceanScene->setOceanSurfaceHeight(0.);
+      return true;
+    }
+    else if (key == osgGA::GUIEventAdapter::KEY_End)
+    {
+      _oceanScene->setOceanSurfaceHeight(-1000.);
+      return true;
+    }
+    // Ocean surface shape, override FFTOceanTechnique's event handler
+    auto fftSurface{_oceanScene->surface()};
+
+    // Crest foam
+    if (key == 'f' )
+    {
+        fftSurface->enableCrestFoam(!fftSurface->isCrestFoamEnabled());
+        return true;
+    }
+    // isChoppy
+    if( key == 'p' )
+    {
+        fftSurface->setIsChoppy(!fftSurface->isChoppy(), true);
+        return true;
+    }
+    // Wind speed + 0.5
     if (key == '+')
     {
-      _oceanScene->setOceanSurfaceHeight(_oceanScene->getOceanSurfaceHeight() + 1.0);
-      return true;
+        fftSurface->setWindSpeed(fftSurface->getWindSpeed() + 0.5, true);
+        return true;
     }
+    // Wind speed - 0.5
     if (key == '-')
     {
-      _oceanScene->setOceanSurfaceHeight(_oceanScene->getOceanSurfaceHeight() - 1.0);
-      return true;
+        fftSurface->setWindSpeed(fftSurface->getWindSpeed() - 0.5, true);
+        return true;
     }
-    else if (key == '0')
+    // Scale factor + 1e-9
+    if(key == 'K' )
     {
-      static bool surface0(true);
-      surface0 = !surface0;
-      _oceanScene->setOceanSurfaceHeight(surface0 ? 0. : -1000.);
-      return true;
+        float waveScale = fftSurface->getWaveScaleFactor();
+        fftSurface->setWaveScaleFactor(waveScale+(1e-9), true);
+        return true;
     }
-
+    // Scale factor - 1e-9
+    if(key == 'k' )
+    {
+        float waveScale = fftSurface->getWaveScaleFactor();
+        fftSurface->setWaveScaleFactor(waveScale-(1e-9), true);
+        return true;
+    }
   }
   return false;
 }
@@ -255,9 +298,17 @@ void OceanScene::EventHandler::getUsage(osg::ApplicationUsage& usage) const
   usage.addKeyboardMouseBinding("u","Toggle silt (underwater)");
   usage.addKeyboardMouseBinding("T","Toggle scattering (underwater)");
   usage.addKeyboardMouseBinding("H","Toggle Height lookup for shoreline foam and sine shape (above water)");
-  usage.addKeyboardMouseBinding("+","Raise ocean surface");
-  usage.addKeyboardMouseBinding("-","Lower ocean surface");
-  usage.addKeyboardMouseBinding("0","Toggle ocean surface");
+  usage.addKeyboardMouseBinding("Page Up","Raise ocean surface");
+  usage.addKeyboardMouseBinding("Page Down","Lower ocean surface");
+  usage.addKeyboardMouseBinding("End","Remove ocean surface");
+  usage.addKeyboardMouseBinding("Home","Reset ocean surface at z=0");
+
+  usage.addKeyboardMouseBinding("f","Toggle crest foam");
+  usage.addKeyboardMouseBinding("p","Toggle choppy waves (dirties geometry if autoDirty is active)");
+  usage.addKeyboardMouseBinding("k","Decrease wave scale factor by 1e-9 (dirties geometry if autoDirty is active)");
+  usage.addKeyboardMouseBinding("K","Increase wave scale factor by 1e-9 (dirties geometry if autoDirty is active)");
+  usage.addKeyboardMouseBinding("-","Decrease wind speed by 0.5 (dirties geometry if autoDirty is active)");
+  usage.addKeyboardMouseBinding("+","Increase wind speed by 0.5 (dirties geometry if autoDirty is active)");
 }
 
 void OceanScene::loadCubeMapTextures( const std::string& dir )

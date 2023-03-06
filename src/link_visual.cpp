@@ -8,21 +8,117 @@
 #include <coral/OceanScene.h>
 #include <coral/osg_make_ref.h>
 
-
-template<>
-struct std::less<urdf::Color>
+// util struct to build or reuse osg::Shapes
+class ShapeWrapper
 {
-  inline bool operator()(const urdf::Color &c1, const urdf::Color &c2) const
+  enum class Type {SPHERE, BOX, CYLINDER} type;
+  //Type type;
+  urdf::Vector3 box;
+  double radius, length;
+  std::string name;
+
+  inline static std::string hash(urdf::MaterialConstSharedPtr mat)
   {
-    if(c1.r != c2.r)
-      return c1.r < c2.r;
-    if(c1.g != c2.g)
-      return c1.g < c2.g;
-    if(c1.b != c2.b)
-      return c1.b < c2.b;
-    return c1.a < c2.a;
+    if(!mat->texture_filename.empty())
+      return mat->texture_filename;
+
+    const uint8_t r(mat->color.r*255);
+    const uint8_t g(mat->color.g*255);
+    const uint8_t b(mat->color.b*255);
+    const uint8_t a(mat->color.a*255);
+    return std::to_string(r)+"."+std::to_string(g)+"."+std::to_string(b)+"."+std::to_string(a);
+  }
+
+  osg::ref_ptr<osg::Shape> create() const
+  {
+    switch(type)
+    {
+      case Type::BOX:
+        return osg::make_ref<osg::Box>(osg::Vec3d{}, box.x, box.y, box.z);
+      case Type::SPHERE:
+        return osg::make_ref<osg::Sphere>(osg::Vec3d{}, radius);
+      case Type::CYLINDER:
+        return osg::make_ref<osg::Cylinder>(osg::Vec3d{}, radius, length);
+    }
+    return {};
+  }
+
+public:
+
+  explicit ShapeWrapper(urdf::GeometryConstSharedPtr geometry, urdf::MaterialConstSharedPtr mat)
+  {
+    if(geometry->type == geometry->BOX)
+    {
+      type = Type::BOX;
+      box = static_cast<urdf::Box const *>(geometry.get())->dim;
+      name = "box_"+std::to_string(box.x)+std::to_string(box.y)+std::to_string(box.z);
+    }
+    else if(geometry->type == geometry->SPHERE)
+    {
+      type = Type::SPHERE;
+      radius = static_cast<urdf::Sphere const *>(geometry.get())->radius;
+      name = "sph_"+std::to_string(radius);
+    }
+    else
+    {
+      type = Type::CYLINDER;
+      const auto info = static_cast<urdf::Cylinder const *>(geometry.get());
+      radius = info->radius;
+      length = info->length;
+      name = "cyl_"+std::to_string(radius)+std::to_string(length);
+    }
+    name += hash(mat);
+  }
+
+  // cache
+  static osg::ref_ptr<osg::Shape>& createOrReuse(const ShapeWrapper &shape)
+  {
+    static std::map<std::string, osg::ref_ptr<osg::Shape>> cache;
+    auto &cached{cache[shape.name]};
+    if(!cached.valid())
+      cached = shape.create();
+    return cached;
+  }
+
+  static osg::ref_ptr<osg::StateSet> & StateSet(urdf::MaterialConstSharedPtr mat)
+  {
+    static std::map<std::string, osg::ref_ptr<osg::StateSet>> cache;
+    auto &stateset{cache[hash(mat)]};
+
+    if(!stateset.valid())
+    {
+      stateset = osg::make_ref<osg::StateSet>();
+      if(!mat->texture_filename.empty())
+      {
+        auto image = osgDB::readImageFile(mat->texture_filename);
+
+        auto texture = osg::make_ref<osg::Texture2D>(image);
+        texture->setFilter(osg::Texture2D::FilterParameter::MIN_FILTER,osg::Texture2D::FilterMode::LINEAR);
+        texture->setFilter(osg::Texture2D::FilterParameter::MAG_FILTER,osg::Texture2D::FilterMode::LINEAR);
+
+        stateset->setTextureAttribute(0,texture,osg::StateAttribute::OVERRIDE);
+        stateset->setTextureMode(0,GL_TEXTURE_2D,osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE);
+        stateset->setTextureMode(0,GL_TEXTURE_GEN_S,osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE);
+        stateset->setTextureMode(0,GL_TEXTURE_GEN_T,osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE);
+      }
+      else
+      {
+          auto material = osg::make_ref<osg::Material>();
+          material->setDiffuse(
+                osg::Material::FRONT_AND_BACK,
+                {mat->color.r, mat->color.g,mat->color.b, mat->color.a});
+          stateset->setAttribute(material);
+          if (mat->color.a < 1)
+          {
+            stateset->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+            stateset->setMode(GL_BLEND, osg::StateAttribute::ON);
+          }
+        }
+    }
+    return stateset;
   }
 };
+
 
 namespace coral
 {
@@ -35,14 +131,14 @@ Link::Visual::Visual(osg::ref_ptr<osg::Node> mesh, const osg::Matrixd &M)
 }
 
 void Link::addVisual(urdf::VisualSharedPtr visual, const osg::Matrixd &M)
-{  
-  const auto mat(visual->material.get());
+{
+  const auto mat(visual->material);
 
   if(visual->geometry->type == visual->geometry->MESH)
   {
     const auto mesh_info = static_cast<urdf::Mesh*>(visual->geometry.get());
-    auto Mm(osgMatFrom(visual->origin.position,visual->origin.rotation, mesh_info->scale)*M);
-    addVisualNode(extractMesh(mesh_info->filename), Mm, mat);
+    auto Mv(osgMatFrom(visual->origin.position,visual->origin.rotation, mesh_info->scale)*M);
+    addVisualNode(extractMesh(mesh_info->filename), Mv, mat);
     return;
   }
 
@@ -50,29 +146,12 @@ void Link::addVisual(urdf::VisualSharedPtr visual, const osg::Matrixd &M)
   if(mat == nullptr)
     return;
 
-  const auto Mm(osgMatFrom(visual->origin.position, visual->origin.rotation) *M);
-
-  if(visual->geometry->type == visual->geometry->BOX)
-  {
-    const auto info = static_cast<urdf::Box*>(visual->geometry.get());
-    addVisualShape(osg::make_ref<osg::Box>(osg::Vec3d{}, info->dim.x, info->dim.y, info->dim.z),
-                   Mm, mat);
-  }
-  else if(visual->geometry->type == visual->geometry->SPHERE)
-  {
-    const auto info = static_cast<urdf::Sphere*>(visual->geometry.get());
-    addVisualShape(osg::make_ref<osg::Sphere>(osg::Vec3d{}, info->radius),
-                   Mm, mat);
-  }
-  else
-  {
-    const auto info = static_cast<urdf::Cylinder*>(visual->geometry.get());
-    addVisualShape(osg::make_ref<osg::Cylinder>(osg::Vec3d{}, info->radius, info->length),
-                   Mm, mat);
-  }
+  const auto Mv(osgMatFrom(visual->origin.position, visual->origin.rotation) *M);
+  const ShapeWrapper shape(visual->geometry, mat);
+  addVisualShape(ShapeWrapper::createOrReuse(shape), Mv, mat);
 }
 
-void Link::addVisualShape(osg::ref_ptr<osg::Shape> shape, const osg::Matrixd &M, const urdf::Material *mat)
+void Link::addVisualShape(osg::ref_ptr<osg::Shape> shape, const osg::Matrixd &M, urdf::MaterialConstSharedPtr mat)
 {
   auto drawable = osg::make_ref<osg::ShapeDrawable>(shape);
   auto geode = osg::make_ref<osg::Geode>();
@@ -80,46 +159,11 @@ void Link::addVisualShape(osg::ref_ptr<osg::Shape> shape, const osg::Matrixd &M,
   addVisualNode(geode, M, mat);
 }
 
-void Link::addVisualNode(osg::ref_ptr<osg::Node> node, const osg::Matrixd &M, const urdf::Material *mat)
+void Link::addVisualNode(osg::ref_ptr<osg::Node> node, const osg::Matrixd &M, urdf::MaterialConstSharedPtr mat)
 {
   if(mat)
-  {
-    if(!mat->texture_filename.empty())
-    {
-      auto image = osgDB::readImageFile(mat->texture_filename);
+    node->setStateSet(ShapeWrapper::StateSet(mat));
 
-      auto texture = osg::make_ref<osg::Texture2D>(image);
-      texture->setFilter(osg::Texture2D::FilterParameter::MIN_FILTER,osg::Texture2D::FilterMode::LINEAR);
-      texture->setFilter(osg::Texture2D::FilterParameter::MAG_FILTER,osg::Texture2D::FilterMode::LINEAR);
-
-      auto stateset = osg::make_ref<osg::StateSet>();
-      stateset->setTextureAttribute(0,texture,osg::StateAttribute::OVERRIDE);
-      stateset->setTextureMode(0,GL_TEXTURE_2D,osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE);
-      stateset->setTextureMode(0,GL_TEXTURE_GEN_S,osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE);
-      stateset->setTextureMode(0,GL_TEXTURE_GEN_T,osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE);
-      node->setStateSet(stateset);
-    }
-    else
-    {
-      static std::map<urdf::Color, osg::ref_ptr<osg::StateSet>> rgbaCache;
-      auto& stateset = rgbaCache[mat->color];
-      if(!stateset.valid())
-      {
-        stateset = osg::make_ref<osg::StateSet>();
-        auto material = osg::make_ref<osg::Material>();
-        material->setDiffuse(
-              osg::Material::FRONT_AND_BACK,
-              {mat->color.r, mat->color.g,mat->color.b, mat->color.a});
-        stateset->setAttribute(material);
-        if (mat->color.a < 1)
-        {
-          stateset->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
-          stateset->setMode(GL_BLEND, osg::StateAttribute::ON);
-        }
-      }
-      node->setStateSet(stateset);
-    }
-  }
   auto &visual{visuals.emplace_back(node, M)};
   pose->addChild(visual.pose);
   OceanScene::setupMeshNode(visual.mesh);

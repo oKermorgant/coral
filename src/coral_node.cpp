@@ -32,6 +32,15 @@ CoralNode::CoralNode()
   });
 
   scene->addChild(world_link.frame());
+
+  if(const auto delay = declare_parameter("spawn_auto", 2); delay > 0)
+  {
+    [[maybe_unused]] static auto future = std::async([=]()
+    {
+      std::this_thread::sleep_for(std::chrono::seconds(delay));
+      findModels();
+    });
+  }
 }
 
 SceneParams CoralNode::parameters()
@@ -274,7 +283,7 @@ void CoralNode::parseModel(const string &description)
       // find the parent if any, was already added
       if(!link.parent || link.parent->name == "world")
       {
-        RCLCPP_INFO(get_logger(), "Got new model with root frame %s", link.name.c_str());
+        RCLCPP_INFO(get_logger(), "Got new frame %s", link.name.c_str());
         last.setParent(world_link);
       }
       else

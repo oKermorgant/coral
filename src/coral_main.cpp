@@ -11,12 +11,6 @@ int main(int argc, char *argv[])
   auto node{std::make_shared<CoralNode>()};
   auto viewer{node->getViewer()};
 
-  [[maybe_unused]] auto future = std::async([&node]()
-  {
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-    node->findModels();
-  });
-
   std::thread ros([&](){rclcpp::spin(node);});
 
   while(!viewer->done() && rclcpp::ok())
