@@ -63,10 +63,6 @@ public:
   };
 
   inline bool hasVisuals() const {return !visuals.empty();}
-  void addVisual(urdf::VisualSharedPtr visual, const osg::Matrixd &M);
-  void addVisualBox(const osg::Vec3d &dim, const osg::Matrixd &M, const urdf::Material* mat);
-  void addVisualSphere(double radius, const osg::Matrixd &M, const urdf::Material* mat);
-  void addVisualCylinder(double radius, double length, const osg::Matrixd &M, const urdf::Material* mat);
 
   inline bool operator==(const std::string &name) const
   {
@@ -102,6 +98,8 @@ private:
   geometry_msgs::msg::Pose last;
 
   bool pose_from_topic{false};
+  void addVisual(urdf::VisualSharedPtr visual, const osg::Matrixd &M);
+  void addVisualShape(osg::ref_ptr<osg::Shape> shape, const osg::Matrixd &M, const urdf::Material* mat);
   inline void addVisualNode(osg::ref_ptr<osg::Node> frame, const osg::Matrixd &M, const urdf::Material* mat);
   std::vector<Visual> visuals;
 

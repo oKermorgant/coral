@@ -8,6 +8,22 @@
 #include <coral/OceanScene.h>
 #include <coral/osg_make_ref.h>
 
+
+template<>
+struct std::less<urdf::Color>
+{
+  inline bool operator()(const urdf::Color &c1, const urdf::Color &c2) const
+  {
+    if(c1.r != c2.r)
+      return c1.r < c2.r;
+    if(c1.g != c2.g)
+      return c1.g < c2.g;
+    if(c1.b != c2.b)
+      return c1.b < c2.b;
+    return c1.a < c2.a;
+  }
+};
+
 namespace coral
 {
 
@@ -39,47 +55,28 @@ void Link::addVisual(urdf::VisualSharedPtr visual, const osg::Matrixd &M)
   if(visual->geometry->type == visual->geometry->BOX)
   {
     const auto info = static_cast<urdf::Box*>(visual->geometry.get());
-    addVisualBox(osgVecFrom(info->dim), Mm, mat);
+    addVisualShape(osg::make_ref<osg::Box>(osg::Vec3d{}, info->dim.x, info->dim.y, info->dim.z),
+                   Mm, mat);
   }
   else if(visual->geometry->type == visual->geometry->SPHERE)
   {
     const auto info = static_cast<urdf::Sphere*>(visual->geometry.get());
-    addVisualSphere(info->radius, Mm, mat);
+    addVisualShape(osg::make_ref<osg::Sphere>(osg::Vec3d{}, info->radius),
+                   Mm, mat);
   }
   else
   {
     const auto info = static_cast<urdf::Cylinder*>(visual->geometry.get());
-    addVisualCylinder(info->radius, info->length, Mm, mat);
+    addVisualShape(osg::make_ref<osg::Cylinder>(osg::Vec3d{}, info->radius, info->length),
+                   Mm, mat);
   }
 }
 
-void Link::addVisualBox(const osg::Vec3d &dim, const osg::Matrixd &M, const urdf::Material* mat)
+void Link::addVisualShape(osg::ref_ptr<osg::Shape> shape, const osg::Matrixd &M, const urdf::Material *mat)
 {
-  auto box = osg::make_ref<osg::Box>(osg::Vec3d{}, dim.x(), dim.y(), dim.z());
-  auto shape = osg::make_ref<osg::ShapeDrawable>(box);
-  osg::ref_ptr<osg::Geode> geode = new osg::Geode();
-  geode->addDrawable(shape);
-
-  addVisualNode(geode, M, mat);
-}
-
-void Link::addVisualSphere(double radius, const osg::Matrixd &M, const urdf::Material *mat)
-{
-  osg::Sphere *sphere = new osg::Sphere({}, radius);
-
-  osg::ShapeDrawable *shape = new osg::ShapeDrawable(sphere);
-  osg::ref_ptr<osg::Geode> geode = new osg::Geode();
-  geode->addDrawable(shape);
-  addVisualNode(geode, M, mat);
-}
-
-void Link::addVisualCylinder(double radius, double length, const osg::Matrixd &M, const urdf::Material* mat)
-{
-  osg::Cylinder *cylinder = new osg::Cylinder({}, radius, length);
-
-  osg::ShapeDrawable *shape = new osg::ShapeDrawable(cylinder);
-    osg::ref_ptr<osg::Geode> geode = new osg::Geode();
-  geode->addDrawable(shape);
+  auto drawable = osg::make_ref<osg::ShapeDrawable>(shape);
+  auto geode = osg::make_ref<osg::Geode>();
+  geode->addDrawable(drawable);
   addVisualNode(geode, M, mat);
 }
 
@@ -104,16 +101,21 @@ void Link::addVisualNode(osg::ref_ptr<osg::Node> node, const osg::Matrixd &M, co
     }
     else
     {
-      auto stateset = osg::make_ref<osg::StateSet>();
-      auto material = osg::make_ref<osg::Material>();
-      material->setDiffuse(
-            osg::Material::FRONT_AND_BACK,
-      {mat->color.r, mat->color.g,mat->color.b, mat->color.a});
-      stateset->setAttribute(material);
-      if (mat->color.a < 1)
+      static std::map<urdf::Color, osg::ref_ptr<osg::StateSet>> rgbaCache;
+      auto& stateset = rgbaCache[mat->color];
+      if(!stateset.valid())
       {
-        stateset->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
-        stateset->setMode(GL_BLEND, osg::StateAttribute::ON);
+        stateset = osg::make_ref<osg::StateSet>();
+        auto material = osg::make_ref<osg::Material>();
+        material->setDiffuse(
+              osg::Material::FRONT_AND_BACK,
+              {mat->color.r, mat->color.g,mat->color.b, mat->color.a});
+        stateset->setAttribute(material);
+        if (mat->color.a < 1)
+        {
+          stateset->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+          stateset->setMode(GL_BLEND, osg::StateAttribute::ON);
+        }
       }
       node->setStateSet(stateset);
     }
