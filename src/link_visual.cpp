@@ -17,7 +17,7 @@ class ShapeWrapper
   double radius, length;
   std::string name;
 
-  inline static std::string hash(urdf::MaterialConstSharedPtr mat)
+  inline static std::string serialize(urdf::MaterialConstSharedPtr mat)
   {
     if(!mat->texture_filename.empty())
       return mat->texture_filename;
@@ -67,13 +67,13 @@ public:
       length = info->length;
       name = "cyl_"+std::to_string(radius)+std::to_string(length);
     }
-    name += hash(mat);
+    name += serialize(mat);
   }
 
   // cache
   static osg::ref_ptr<osg::Shape>& createOrReuse(const ShapeWrapper &shape)
   {
-    static std::map<std::string, osg::ref_ptr<osg::Shape>> cache;
+    static std::unordered_map<std::string, osg::ref_ptr<osg::Shape>> cache;
     auto &cached{cache[shape.name]};
     if(!cached.valid())
       cached = shape.create();
@@ -82,8 +82,8 @@ public:
 
   static osg::ref_ptr<osg::StateSet> & StateSet(urdf::MaterialConstSharedPtr mat)
   {
-    static std::map<std::string, osg::ref_ptr<osg::StateSet>> cache;
-    auto &stateset{cache[hash(mat)]};
+    static std::unordered_map<std::string, osg::ref_ptr<osg::StateSet>> cache;
+    auto &stateset{cache[serialize(mat)]};
 
     if(!stateset.valid())
     {
