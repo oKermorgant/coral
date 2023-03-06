@@ -29,7 +29,6 @@ private:
   osg::ref_ptr <osg::MatrixTransform> cam_pose = new osg::MatrixTransform;
   osg::ref_ptr <osgGA::TrackballManipulator> free_manip = new osgGA::TrackballManipulator;
   osg::ref_ptr <osgGA::NodeTrackerManipulator> tracking_manip = new osgGA::NodeTrackerManipulator;
-  bool cam_is_free = true;
 
   // detect when window has been resized
   osg::ref_ptr<osgWidget::WindowManager> wm;

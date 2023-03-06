@@ -33,7 +33,6 @@ Viewer::Viewer(OceanScene *scene) : scene(scene)
   osg::Vec3 eye(scene->params.initialCameraPosition);
   free_manip->setHomePosition( eye, eye + osg::Vec3(0,20,0), osg::Vec3f(0,0,1) );
   free_manip->setVerticalAxisFixed(true);
-  cam_is_free = true;
   setCameraManipulator(free_manip);
 
   // init tracking cam
@@ -90,22 +89,16 @@ void Viewer::frame(double simTime)
 
 void Viewer::freeCamera()
 {
-  if(!cam_is_free)
-  {
-    cam_is_free = true;
+  if(getCameraManipulator() != free_manip)
     setCameraManipulator(free_manip, false);
-  }
 }
 
 void Viewer::lockCamera(const osg::Matrixd &M)
 {
   cam_pose->setMatrix(M);
 
-  if(cam_is_free)
-  {
-    cam_is_free = false;
+  if(getCameraManipulator() == free_manip)
     setCameraManipulator(tracking_manip);
-  }
 }
 
 bool Viewer::windowWasResized()
@@ -169,13 +162,6 @@ bool Viewer::EventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIAc
       viewer->changeMood( Weather::Mood::NIGHT);
       return true;
     }
-    else if (key == '0')
-    {
-      static bool surface0(true);
-      surface0 = !surface0;
-      viewer->scene->setOceanSurfaceHeight(surface0 ? 0. : -1000.);
-      return true;
-    }
   }
   return false;
 }
@@ -186,6 +172,5 @@ void Viewer::EventHandler::getUsage(osg::ApplicationUsage& usage) const
   usage.addKeyboardMouseBinding("1","Select scene \"Clear Blue Sky\"");
   usage.addKeyboardMouseBinding("2","Select scene \"Dusk\"");
   usage.addKeyboardMouseBinding("3","Select scene \"Pacific Cloudy\"");
-  usage.addKeyboardMouseBinding("4","Select scene \"Night\"");
-  usage.addKeyboardMouseBinding("0","Toggle ocean surface");
+  usage.addKeyboardMouseBinding("4","Select scene \"Night\"");  
 }

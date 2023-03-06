@@ -169,74 +169,77 @@ bool OceanScene::EventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::G
 {
   if (ea.getHandled()) return false;
 
-  switch(ea.getEventType())
+  if(ea.getEventType() == osgGA::GUIEventAdapter::KEYUP)
   {
-    case(osgGA::GUIEventAdapter::KEYUP):
-      {
-        // Reflections
-        if (ea.getKey() == 'r')
-        {
-          _oceanScene->switchParam(_oceanScene->params.reflections);
-          return true;
-        }
-        // Refractions
-        if (ea.getKey() == 'R')
-        {
-          _oceanScene->switchParam(_oceanScene->params.refractions);
-          return true;
-        }
-        // DOF
-        if (ea.getKey() == 'o')
-        {
-          _oceanScene->switchParam(_oceanScene->params.underwaterDOF);
-          return true;
-        }
-        // Glare
-        if (ea.getKey() == 'g')
-        {
-          _oceanScene->switchParam(_oceanScene->params.glare);
-          return true;
-        }
-        // God rays
-        if (ea.getKey() == 'G')
-        {
-          _oceanScene->switchParam(_oceanScene->params.godrays);
-          return true;
-        }
-        // Silt
-        if (ea.getKey() == 'u')
-        {
-          _oceanScene->switchParam(_oceanScene->params.silt);
-          return true;
-        }
-        // Underwater scattering
-        if (ea.getKey() == 'T')
-        {
-          _oceanScene->switchParam(_oceanScene->params.underwaterScattering);
-          return true;
-        }
-        // Height map
-        if (ea.getKey() == 'H')
-        {
-          _oceanScene->switchParam(_oceanScene->params.heightmap);
-          _oceanScene->surface()->dirty();      // Make it reload shaders.
-          return true;
-        }
-        // Ocean surface height
-        if (ea.getKey() == '+')
-        {
-          _oceanScene->setOceanSurfaceHeight(_oceanScene->getOceanSurfaceHeight() + 1.0);
-          return true;
-        }
-        if (ea.getKey() == '-')
-        {
-          _oceanScene->setOceanSurfaceHeight(_oceanScene->getOceanSurfaceHeight() - 1.0);
-          return true;
-        }
-        break;
-      }
-    default:
-      break;
+    const auto key{ea.getKey()};
+    // Reflections
+    if (key == 'r')
+    {
+      _oceanScene->switchParam(_oceanScene->params.reflections);
+      return true;
+    }
+    // Refractions
+    if (key == 'R')
+    {
+      _oceanScene->switchParam(_oceanScene->params.refractions);
+      return true;
+    }
+    // DOF
+    if (key == 'o')
+    {
+      _oceanScene->switchParam(_oceanScene->params.underwaterDOF);
+      return true;
+    }
+    // Glare
+    if (key == 'g')
+    {
+      _oceanScene->switchParam(_oceanScene->params.glare);
+      return true;
+    }
+    // God rays
+    if (key == 'G')
+    {
+      _oceanScene->switchParam(_oceanScene->params.godrays);
+      return true;
+    }
+    // Silt
+    if (key == 'u')
+    {
+      _oceanScene->switchParam(_oceanScene->params.silt);
+      return true;
+    }
+    // Underwater scattering
+    if (key == 'T')
+    {
+      _oceanScene->switchParam(_oceanScene->params.underwaterScattering);
+      return true;
+    }
+    // Height map
+    if (key == 'H')
+    {
+      _oceanScene->switchParam(_oceanScene->params.heightmap);
+      _oceanScene->surface()->dirty();      // Make it reload shaders.
+      return true;
+    }
+    // Ocean surface height
+    if (key == '+')
+    {
+      _oceanScene->setOceanSurfaceHeight(_oceanScene->getOceanSurfaceHeight() + 1.0);
+      return true;
+    }
+    if (key == '-')
+    {
+      _oceanScene->setOceanSurfaceHeight(_oceanScene->getOceanSurfaceHeight() - 1.0);
+      return true;
+    }
+    else if (key == '0')
+    {
+      static bool surface0(true);
+      surface0 = !surface0;
+      _oceanScene->setOceanSurfaceHeight(surface0 ? 0. : -1000.);
+      return true;
+    }
+
   }
   return false;
 }
@@ -254,6 +257,7 @@ void OceanScene::EventHandler::getUsage(osg::ApplicationUsage& usage) const
   usage.addKeyboardMouseBinding("H","Toggle Height lookup for shoreline foam and sine shape (above water)");
   usage.addKeyboardMouseBinding("+","Raise ocean surface");
   usage.addKeyboardMouseBinding("-","Lower ocean surface");
+  usage.addKeyboardMouseBinding("0","Toggle ocean surface");
 }
 
 void OceanScene::loadCubeMapTextures( const std::string& dir )
