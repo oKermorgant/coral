@@ -786,9 +786,9 @@ void OceanScene::ViewData::cull( bool eyeAboveWater, bool surfaceVisible )
         _refractionCamera->accept( *_cv );
 
         // Update inverse view and projection matrix
-        osg::Matrixd viewMatrix = _refractionCamera->getViewMatrix();
-        osg::Matrixd projectionMatrix = _refractionCamera->getProjectionMatrix();
-        osg::Matrixd inverseViewProjectionMatrix = osg::Matrixd::inverse(viewMatrix * projectionMatrix);
+        osg::Matrix viewMatrix = _refractionCamera->getViewMatrix();
+        osg::Matrix projectionMatrix = _refractionCamera->getProjectionMatrix();
+        osg::Matrix inverseViewProjectionMatrix = osg::Matrix::inverse(viewMatrix * projectionMatrix);
         _surfaceStateSet->getUniform("osgOcean_RefractionInverseTransformation")->set(inverseViewProjectionMatrix);
     }
 

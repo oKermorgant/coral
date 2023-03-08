@@ -5,8 +5,6 @@
 #include <rclcpp/node.hpp>
 #include <image_transport/image_transport.hpp>
 #include <geometry_msgs/msg/pose.hpp>
-#include <tf2_ros/transform_listener.h>
-#include <tf2_ros/buffer.h>
 #include <rosgraph_msgs/msg/clock.hpp>
 
 #include <coral/srv/spawn.hpp>
@@ -15,11 +13,10 @@
 #include <coral/viewer.h>
 #include <coral/link.h>
 #include <coral/camera.h>
+#include <coral/marker.h>
 
 namespace coral
 {
-
-
 
 using geometry_msgs::msg::Pose;
 using coral::srv::Spawn;
@@ -27,8 +24,6 @@ using coral::srv::Surface;
 
 class CoralNode : public rclcpp::Node
 {
- using GeometryType = decltype(urdf::Geometry::MESH);
-
 public:
   CoralNode();
   inline Viewer* getViewer()
@@ -49,9 +44,8 @@ private:
 
   // tf interface
   rclcpp::TimerBase::SharedPtr pose_update_timer;
-  void refreshLinkPoses();
-  tf2_ros::Buffer tf_buffer;
-  tf2_ros::TransformListener tf_listener;
+  void refreshLinkPoses();  
+  Buffer tf_buffer;
 
   // ground truth subscribers from Gazebo or other Pose topic
   std::vector<rclcpp::Subscription<Pose>::SharedPtr> pose_subs;
@@ -78,6 +72,12 @@ private:
   const std::string coral_cam_link = "coral_cam_view";
   bool has_cam_view = false;
   Link* getKnownCamParent();
+
+  // markers
+  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_sub;
+  rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr path_sub;
+  std::unique_ptr<Goal> goal;
+  Path path;
 };
 
 }

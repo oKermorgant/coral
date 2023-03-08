@@ -38,17 +38,14 @@
 #include <osgGA/GUIEventHandler>
 
 #include <coral/osg_make_ref.h>
+#include <coral/masks.h>
 #include <coral/scene_params.h>
 #include <coral/weather.h>
 #include <coral/SkyDome.h>
 
 #include <map>
 
-#define CORAL_WITH_SCENE_LOCK
 
-#ifdef CORAL_WITH_SCENE_LOCK
-#include <mutex>
-#endif
 
 namespace coral
 {
@@ -91,10 +88,6 @@ private:
   osg::ref_ptr<SkyDome> skyDome;
   osg::ref_ptr<osg::Light> sun;
 
-#ifdef CORAL_WITH_SCENE_LOCK
-  std::mutex mutex;
-#endif
-
   osg::ref_ptr<osgOcean::FFTOceanTechnique> oceanSurface{nullptr};
   osg::ref_ptr<EventHandler> eventHandler;
 
@@ -110,13 +103,6 @@ private:
   int _refractionUnit             {2};
   int _refractionDepthUnit        {3};
   int _heightmapUnit              {7};
-
-  constexpr static unsigned int reflectionSceneMask {0x1};
-  constexpr static unsigned int refractionSceneMask {0x2};
-  constexpr static unsigned int heightmapMask       {0x20};
-  constexpr static unsigned int surfaceMask         {0x8};
-  constexpr static unsigned int normalSceneMask     {0x4};
-  constexpr static unsigned int siltMask            {0x10};
 
   unsigned int _lightID           {0};
 
@@ -227,12 +213,6 @@ public:
   explicit OceanScene(const SceneParams &params);
   SceneParams params;
 
-#ifdef CORAL_WITH_SCENE_LOCK
-  [[nodiscard]] inline auto scoped_lock() {return std::lock_guard(mutex);}
-#else
-  inline auto scoped_lock() {return nullptr;}
-#endif
-
   inline auto scaleUnderwaterColor(float f = 1.f)
   {
     weather.underwaterDiffuse = weather.underwaterFogColor = base_water_color * f;
@@ -307,7 +287,7 @@ public:
 
   /// Set whether the ocean surface is visible or not.
   void setOceanVisible(bool visible){
-    _oceanTransform->setNodeMask( visible ? normalSceneMask | surfaceMask : 0 );
+    _oceanTransform->setNodeMask( visible ? Mask::normal | Mask::surface : 0 );
   }
 
   /// Check whether the ocean surface is visible or not.
@@ -486,9 +466,19 @@ public:
     _isDirty = true;
   }
 
-  static inline void setupMeshNode(osg::Node *mesh)
+  static inline void registerVisual(osg::Node *mesh)
   {
-    mesh->setNodeMask(normalSceneMask | reflectionSceneMask | refractionSceneMask);
+    mesh->setNodeMask(Mask::normal | Mask::reflection | Mask::refraction);
+  }
+
+  static inline void registerMarker(osg::Node *mesh)
+  {
+    mesh->setNodeMask(Mask::marker);
+  }
+
+  static inline void removeMarkersFrom(osg::Camera *cam)
+  {
+    cam->setCullMask(cam->getCullMask() & ~Mask::marker);
   }
 
   /// Get the current ocean surface

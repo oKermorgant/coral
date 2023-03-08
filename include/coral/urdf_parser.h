@@ -2,6 +2,7 @@
 #define CORAL_URDF_PARSER_H
 
 #include <urdf/model.h>
+#include <coral/transforms.h>
 #include <osg/MatrixTransform>
 #include <optional>
 
@@ -9,22 +10,6 @@ struct TiXmlElement;
 
 namespace coral
 {
-
-// some conversions
-osg::Matrixd osgMatFrom(const std::vector<double> &xyz,
-                        const std::vector<double> &rpy,
-                        const std::vector<double> &scale = {1,1,1});
-osg::Matrixd osgMatFrom(const urdf::Vector3 &t,
-                        const urdf::Rotation &q,
-                        const urdf::Vector3 &scale = {1,1,1});
-inline osg::Vec3 osgVecFrom(const std::vector<double> &xyz)
-{
-  return osg::Vec3(xyz[0], xyz[1], xyz[2]);
-}
-inline osg::Vec3 osgVecFrom(const urdf::Vector3 &t)
-{
-  return osg::Vec3(t.x, t.y, t.z);
-}
 
 namespace urdf_parser
 {
@@ -50,15 +35,11 @@ struct CameraInfo
   static std::vector<CameraInfo> extractFrom(const std::string &description);
 };
 
-
-
 // helper struct to simplify kinematic chains
-
-
 
 struct LinkInfo
 {
-  using Visual = std::pair<urdf::VisualSharedPtr, osg::Matrixd>;
+  using Visual = std::pair<urdf::VisualSharedPtr, osg::Matrix>;
   std::string name;
   LinkInfo* parent = nullptr;
   std::vector<LinkInfo*> children;
@@ -66,7 +47,7 @@ struct LinkInfo
   std::vector<Visual> visuals;
   std::vector<CameraInfo> cameras;
 
-  std::optional<osg::Matrixd> pose = std::nullopt;
+  std::optional<osg::Matrix> pose = std::nullopt;
 
   explicit LinkInfo(const std::string &name) : name{name} {}
 

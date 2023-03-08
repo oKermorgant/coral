@@ -18,7 +18,7 @@ public:
 
   void frame(double simulationTime=USE_REFERENCE_TIME) override;
 
-  void lockCamera(const osg::Matrixd &M);
+  void lockCamera(const osg::Matrix &M);
   void freeCamera();
 
 private:  

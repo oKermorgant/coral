@@ -2,20 +2,12 @@
 #define CORAL_VISUAL_LINK_H
 
 #include <string>
-#include <tf2_ros/buffer.h>
 #include <coral/urdf_parser.h>
+#include <coral/visual.h>
 #include <geometry_msgs/msg/pose.hpp>
 
 namespace coral
 {
-
-template <class Translation>
-inline osg::Matrixd osgMatFrom(const Translation &t, const geometry_msgs::msg::Quaternion &q)
-{
-  osg::Matrixd M(osg::Quat{q.x, q.y, q.z, q.w});
-  M.setTrans(t.x, t.y, t.z);
-  return M;
-}
 
 class Link
 {
@@ -32,20 +24,23 @@ public:
 
   void addElements(const urdf_parser::LinkInfo &info)
   {
-    for(const auto &[visual,M]: info.visuals)
-      addVisual(visual, M);
+    for(const auto &[urdf,M]: info.visuals)
+    {
+      auto visual{Visual::fromURDF(*urdf, M)};
+      if(visual.has_value())
+      {
+        visual->configure(true, osg::Object::STATIC);
+        pose->addChild(visual->frame());
+      }
+    }
     //for(auto &cam: info.cameras)
-      //pose->addChild(cam.pose);
+    //pose->addChild(cam.pose);
   }
 
-  auto frame() const {return pose.get();}
+  inline auto frame() const {return pose.get();}
   inline std::string getName() const {return name;}
-  void refreshFrom(const tf2_ros::Buffer &tf_buffer);
-  inline void refreshFromTopic()
-  {
-    setPending(osgMatFrom(last.position, last.orientation));
-  }
-  inline void setPending(const osg::Matrixd &M)
+  void refreshFrom(const Buffer &buffer);
+  inline void setPending(const osg::Matrix &M)
   {
     M_pending = M;
   }
@@ -53,16 +48,6 @@ public:
   {
     pose->setMatrix(M_pending);
   }
-
-  // visual things
-  struct Visual
-  {
-    osg::ref_ptr<osg::Node> mesh;
-    osg::ref_ptr<osg::MatrixTransform> pose;
-    Visual(osg::ref_ptr<osg::Node> mesh, const osg::Matrixd &M);
-  };
-
-  inline bool hasVisuals() const {return !visuals.empty();}
 
   inline bool operator==(const std::string &name) const
   {
@@ -76,35 +61,31 @@ public:
 
   inline void setParent(const Link &root)
   {
-      root.pose->addChild(pose);
-      parent = root.name;
+    root.pose->addChild(pose);
+    parent = root.name;
   }
 
-  auto poseCallback()
+  inline auto poseCallback()
   {
-      pose_from_topic = true;
-      return [&](geometry_msgs::msg::Pose::SharedPtr msg){last = *msg;};
+    last.emplace();
+    return [&](geometry_msgs::msg::Pose::SharedPtr msg)
+    {
+      setPending(osgMatFrom(msg->position, msg->orientation));
+    };
   }
 
-  inline void ignoreTF() {pose_from_topic = true;}
-  inline bool updatedFromTF() const {return !pose_from_topic;}
+  inline void ignoreTF() {last.emplace();}
 
 private:
 
   const std::string name;
   std::string parent;
-  osg::Matrixd M_pending;
+  osg::Matrix M_pending;
   osg::ref_ptr <osg::MatrixTransform> pose = new osg::MatrixTransform;
-  geometry_msgs::msg::Pose last;
 
-  bool pose_from_topic{false};
-  void addVisual(urdf::VisualSharedPtr visual, const osg::Matrixd &M);
-  void addVisualShape(osg::ref_ptr<osg::Shape> shape, const osg::Matrixd &M, urdf::MaterialConstSharedPtr mat);
-  inline void addVisualNode(osg::ref_ptr<osg::Node> frame, const osg::Matrixd &M, urdf::MaterialConstSharedPtr mat);
-  std::vector<Visual> visuals;
+  std::optional<geometry_msgs::msg::Pose> last;
 
 };
 
 }
 #endif
-

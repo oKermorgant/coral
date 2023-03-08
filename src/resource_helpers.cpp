@@ -3,41 +3,24 @@
 #include <filesystem>
 #include <osgDB/ReadFile>
 
-
 namespace coral
 {
 
 namespace fs = std::filesystem;
 
-// try to find similar mesh file with OSG extension
-fs::path toOSGMesh(const fs::path &path)
+inline void addResourcePath(const std::string &path)
 {
-  const std::vector<std::string> osg_ext{".ive", ".osg",".osgb", ".osgt"};
-
-  // already OSG mesh?
-  if(std::find(osg_ext.begin(), osg_ext.end(), path.extension())
-     != osg_ext.end())
-    return path;
-
-  // find if any
-  auto new_path{path};
-
-  for(const auto &ext: osg_ext)
-  {
-    new_path.replace_extension(ext);
-    if(fs::exists(new_path))
-      return new_path;
-  }
-  return path;
+  static auto &paths(osgDB::Registry::instance()->getDataFilePathList());
+  if(std::find(paths.begin(), paths.end(), path) == paths.end())
+    paths.insert(paths.begin(), path);
 }
-
 
 void initCoralResources()
 {
   // shaders and textures from Coral
   const auto coral_resources(ament_index_cpp::get_package_share_directory("coral") + "/resources");
   addResourcePath(coral_resources);
-  for(auto &p: fs::directory_iterator(coral_resources))
+  for(const auto &p: fs::directory_iterator(coral_resources))
   {
     if(p.is_directory())
       addResourcePath(p.path());
@@ -66,22 +49,5 @@ fs::path resolvePath(const std::string &file)
   }
   return abs_path;
 }
-
-osg::ref_ptr<osg::Node> extractMesh(const std::string &mesh)
-{
-  const auto fullpath{toOSGMesh(resolvePath(mesh))};
-  const auto filename(fullpath.filename());
-  const auto path(fullpath.parent_path());
-
-  addResourcePath(path);
-  osg::ref_ptr<osg::Node> node{osgDB::readNodeFile(filename)};
-
-  if(!node.valid())
-  {
-    OSG_FATAL << "Cannot find mesh file '"
-              << fullpath << "'\n";
-    return nullptr;
-  }
-  return node.release();
 }
-}
+

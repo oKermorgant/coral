@@ -84,10 +84,12 @@ add_executable(coral_gui
                   src/coral_node.cpp
                   src/camera.cpp
                   src/link.cpp
-                  src/link_visual.cpp
                   src/urdf_parser.cpp
                   src/resource_helpers.cpp
                   src/viewer.cpp
+                  src/marker.cpp
+                  src/transforms.cpp
+                  src/visual.cpp
 
                   # adapted from osgOcean + example
                   src/OceanScene.cpp

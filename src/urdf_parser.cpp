@@ -9,25 +9,6 @@ using std::vector, std::string;
 namespace coral
 {
 
-osg::Matrixd osgMatFrom(const std::vector<double> &xyz, const std::vector<double> &rpy, const std::vector<double> &scale)
-{
-  const osg::Vec3d X(1,0,0);
-  const osg::Vec3d Y(0,1,0);
-  const osg::Vec3d Z(0,0,1);
-  osg::Matrixd M(-osg::Quat(rpy[0], X, rpy[1], Y, rpy[2], Z));
-  M.setTrans(osgVecFrom(xyz));
-  M.preMultScale(osgVecFrom(scale));
-  return M;
-}
-
-osg::Matrixd osgMatFrom(const urdf::Vector3 &t, const urdf::Rotation &q, const urdf::Vector3 &scale)
-{
-  osg::Matrixd M(-osg::Quat{q.x, q.y, q.z, q.w});
-  M.setTrans(osgVecFrom(t));
-  M.preMultScale(osgVecFrom(scale));
-  return M;
-}
-
 namespace urdf_parser
 {
 
@@ -216,7 +197,7 @@ Tree::Tree(const string &description, const bool keep_thrusters)
 
     auto &info{add(name)};
     std::transform(link->visual_array.begin(), link->visual_array.end(), std::back_inserter(info.visuals),
-                   [](const auto &visual){return LinkInfo::Visual{visual, osg::Matrixd::identity()};});
+                   [](const auto &visual){return LinkInfo::Visual{visual, osg::Matrix::identity()};});
     std::copy_if(cameras.begin(), cameras.end(), std::back_inserter(info.cameras),
                  [&](const auto &cam){return cam.link_name == name;});
   }

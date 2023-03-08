@@ -1,5 +1,7 @@
 #include <coral/coral_node.h>
 #include <coral/urdf_parser.h>
+#include <coral/scene_lock.h>
+
 #include <std_srvs/srv/empty.hpp>
 
 using namespace coral;
@@ -10,8 +12,10 @@ CoralNode::CoralNode()
   : rclcpp::Node("coral"),
     scene{osg::make_ref<OceanScene>(parameters())},
     viewer(scene.get()),
-    tf_buffer(get_clock()), tf_listener(tf_buffer)
-{  
+    tf_buffer(get_clock())
+{
+  Marker::setWorld(scene.get());
+
   pose_update_timer = create_wall_timer(50ms, [&](){refreshLinkPoses();});
 
   display_thrusters = declare_parameter("with_thrusters", false);
@@ -20,7 +24,7 @@ CoralNode::CoralNode()
       ("/coral/spawn",
        [&](const Spawn::Request::SharedPtr request, [[maybe_unused]] Spawn::Response::SharedPtr response)
   {
-    [[maybe_unused]] const auto lock{scene->scoped_lock()};
+    [[maybe_unused]] const auto lock{coral_lock()};
     spawnModel(request->robot_namespace, request->pose_topic, request->world_model);
   });
 
@@ -41,6 +45,19 @@ CoralNode::CoralNode()
       findModels();
     });
   }
+
+  // marker space
+  goal_sub = create_subscription<geometry_msgs::msg::PoseStamped>("/coral/goal", 1, [&](geometry_msgs::msg::PoseStamped::SharedPtr msg)
+  {
+      if(!goal)
+      goal = std::make_unique<Goal>();
+      goal->update(tf_buffer, *msg);
+  });
+
+  path_sub = create_subscription<nav_msgs::msg::Path>("/coral/path", 1, [&](nav_msgs::msg::Path msg)
+  {
+      path.update(tf_buffer, msg);
+  });
 }
 
 SceneParams CoralNode::parameters()
@@ -71,7 +88,6 @@ SceneParams CoralNode::parameters()
   updateParam("ocean.depth", params.depth);
   updateParam("ocean.attenuation", params.depth_attn);
 
-
   // ocean surface params
   updateParam("surface.reflection_damping", params.reflectionDamping);
 
@@ -87,9 +103,8 @@ Link* CoralNode::getKnownCamParent()
 {
   static Link* prev_link{};
 
-  std::string parent;
-  tf_buffer._getParent(coral_cam_link, tf2::TimePointZero, parent);
-  if(prev_link != nullptr && parent == prev_link->getName())
+  auto parent{tf_buffer.getParent(coral_cam_link)};
+  if(prev_link != nullptr && parent.has_value() && parent.value() == prev_link->getName())
     return prev_link;
 
   prev_link = nullptr;
@@ -98,7 +113,7 @@ Link* CoralNode::getKnownCamParent()
   while(true)
   {
     // if we have reached the world frame
-    if(parent == world_link.getName())
+    if(parent.value() == world_link.getName())
     {
       prev_link = &world_link;
       break;
@@ -111,7 +126,8 @@ Link* CoralNode::getKnownCamParent()
       break;
     }
     // continue parenting
-    if(!tf_buffer._getParent(parent, tf2::TimePointZero, parent))
+    parent = tf_buffer.getParent(parent.value());
+    if(!parent.has_value())
       break;
   }
   return prev_link;
@@ -119,21 +135,16 @@ Link* CoralNode::getKnownCamParent()
 
 void CoralNode::refreshLinkPoses()
 {
-  if(tf_buffer._frameExists("world"))
+  if(tf_buffer.ready())
   {
     // cache retrieval of pending new poses
     for(auto &link: links)
-    {
-      if(link.updatedFromTF())
-        link.refreshFrom(tf_buffer);
-      else
-        link.refreshFromTopic();
-    }
+      link.refreshFrom(tf_buffer);
   }
 
   {
     // locked while forwarding poses to scene
-    [[maybe_unused]] const auto lock{scene->scoped_lock()};
+    [[maybe_unused]] const auto lock{coral_lock()};
     for(auto &link: links)
       link.applyNewPose();
   }
@@ -253,11 +264,11 @@ void CoralNode::spawnModel(const std::string &model_ns,
                 pose_topic.c_str(),
                 this_root_link.getName().c_str());
 
-    links[root_link_idx].ignoreTF();
+    /*links[root_link_idx].ignoreTF();
     pose_subs.push_back(create_subscription<Pose>(model_ns + "/" + pose_topic, 1, [&,root_link_idx](Pose::SharedPtr msg)
     {
       links[root_link_idx].setPending(osgMatFrom(msg->position, msg->orientation));
-    }));
+    }));*/
 
     pose_subs.push_back(create_subscription<Pose>(model_ns + "/" + pose_topic, 1, this_root_link.poseCallback()));
   }
@@ -316,4 +327,3 @@ void CoralNode::addCameras(const std::vector<urdf_parser::CameraInfo> &cams)
     cameras.emplace_back(this, cam);
   }
 }
-

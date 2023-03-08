@@ -3,6 +3,7 @@
 #include <osgGA/StateSetManipulator>
 #include <chrono>
 #include <coral/debug_msg.h>
+#include <coral/scene_lock.h>
 
 int DebugMsg::indent{};
 
@@ -19,11 +20,9 @@ Viewer::Viewer(OceanScene *scene) : scene(scene)
 
   addEventHandler( new osgViewer::StatsHandler );
   addEventHandler( new osgGA::StateSetManipulator( getCamera()->getOrCreateStateSet() ) );
-
   event_handler = osg::make_ref<Viewer::EventHandler>(this);
   addEventHandler(event_handler);
   addEventHandler(scene->getEventHandler());
-  //addEventHandler(scene->surface()->getEventHandler());
   addEventHandler( new osgViewer::HelpHandler);
 
   getCamera()->setName("MainCamera");
@@ -81,7 +80,7 @@ void Viewer::frame(double simTime)
 
   advance(simTime);
   {
-    [[maybe_unused]] const auto lock{scene->scoped_lock()};
+    [[maybe_unused]] const auto lock{coral_lock()};
     eventTraversal();
     updateTraversal();
   }
@@ -94,7 +93,7 @@ void Viewer::freeCamera()
     setCameraManipulator(free_manip, false);
 }
 
-void Viewer::lockCamera(const osg::Matrixd &M)
+void Viewer::lockCamera(const osg::Matrix &M)
 {
   cam_pose->setMatrix(M);
 

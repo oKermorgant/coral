@@ -27,6 +27,7 @@
 #include <osg/TextureCubeMap>
 #include <osgText/Text>
 #include <osg/LightSource>
+#include <osg/Camera>
 
 #include <coral/OceanScene.h>
 #include <coral/resource_helpers.h>
@@ -400,7 +401,7 @@ OceanScene::OceanScene(const SceneParams &params) : params{params}
   // create sky dome and add to ocean scene
   // set masks so it appears in reflected scene and normal scene
   skyDome = osg::make_ref<SkyDome>( 1900.f, 16, 16, cubemap.get() );
-  setupMeshNode(skyDome);
+  registerVisual(skyDome);
 
   // add a pat to track the camera
   auto transform = osg::make_ref<osg::MatrixTransform>();
@@ -467,15 +468,15 @@ OceanScene::OceanScene(const SceneParams &params) : params{params}
   _oceanCylinderMT->setMatrix( osg::Matrix::translate(0, 0, -OCEAN_CYLINDER_HEIGHT) );
   _oceanCylinderMT->setDataVariance( osg::Object::DYNAMIC );
   _oceanCylinderMT->setCullCallback( osg::make_ref<CameraTrackCallback>(this));
-  _oceanCylinderMT->setNodeMask( normalSceneMask | refractionSceneMask );
+  _oceanCylinderMT->setNodeMask( Mask::normal | Mask::refraction );
   _oceanCylinderMT->addChild( cylinderGeode );
 
   _oceanTransform->addChild( _oceanCylinderMT.get() );
 
-  _oceanTransform->setNodeMask( normalSceneMask | surfaceMask );
+  _oceanTransform->setNodeMask( Mask::normal | Mask::surface );
   addChild( _oceanTransform.get() );
 
-  oceanSurface->setNodeMask( surfaceMask );
+  oceanSurface->setNodeMask( Mask::surface );
   _oceanTransform->addChild( oceanSurface.get() );
 
   setNumChildrenRequiringUpdateTraversal(1);
@@ -677,7 +678,7 @@ void OceanScene::init( void )
       silt->getOrCreateStateSet()->setMode( GL_CLIP_PLANE0+1, osg::StateAttribute::ON );
       silt->setIntensity(0.07f);
       silt->setParticleSpeed(0.025f);
-      silt->setNodeMask(siltMask);
+      silt->setNodeMask(Mask::silt);
 
       osg::ClipPlane* siltClipPlane = new osg::ClipPlane();
       siltClipPlane->setClipPlaneNum(1);
@@ -775,7 +776,7 @@ void OceanScene::ViewData::init( OceanScene *oceanScene, osgUtil::CullVisitor * 
     _reflectionCamera = _oceanScene->renderToTexturePass( reflectionTexture.get() );
     _reflectionCamera->setClearColor( osg::Vec4( 0.0, 0.0, 0.0, 0.0 ) );
     _reflectionCamera->setComputeNearFarMode( osg::Camera::DO_NOT_COMPUTE_NEAR_FAR );
-    _reflectionCamera->setCullMask( _oceanScene->reflectionSceneMask );
+    _reflectionCamera->setCullMask( Mask::reflection );
     _reflectionCamera->setCullCallback( new CameraCullCallback(_oceanScene.get()) );
     _reflectionCamera->getOrCreateStateSet()->setMode( GL_CLIP_PLANE0+0, osg::StateAttribute::ON );
     _reflectionCamera->getOrCreateStateSet()->setMode( GL_CULL_FACE, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
@@ -798,7 +799,7 @@ void OceanScene::ViewData::init( OceanScene *oceanScene, osgUtil::CullVisitor * 
     _refractionCamera->setClearDepth( 1.0 );
     _refractionCamera->setClearColor( osg::Vec4( 0.0, 0.0, 0.0, 0.0 ) );
     _refractionCamera->setComputeNearFarMode( osg::Camera::DO_NOT_COMPUTE_NEAR_FAR );
-    _refractionCamera->setCullMask( _oceanScene->refractionSceneMask );
+    _refractionCamera->setCullMask( Mask::refraction );
     _refractionCamera->setCullCallback( new CameraCullCallback(_oceanScene.get()) );
 
     _surfaceStateSet->setTextureAttributeAndModes( _oceanScene->_refractionUnit, refractionTexture, osg::StateAttribute::ON );
@@ -822,7 +823,7 @@ void OceanScene::ViewData::init( OceanScene *oceanScene, osgUtil::CullVisitor * 
     _heightmapCamera->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
     _heightmapCamera->attach( osg::Camera::DEPTH_BUFFER, heightmapTexture );
 
-    _heightmapCamera->setCullMask( _oceanScene->heightmapMask );
+    _heightmapCamera->setCullMask( Mask::heightmap );
     _heightmapCamera->setCullCallback( new CameraCullCallback(_oceanScene.get()) );
 
     static const char osgOcean_heightmap_vert_file[] = "osgOcean_heightmap.vert";
@@ -912,9 +913,9 @@ void OceanScene::ViewData::cull(bool surfaceVisible )
     _refractionCamera->accept( *_cv );
 
     // Update inverse view and projection matrix
-    osg::Matrixd viewMatrix = _refractionCamera->getViewMatrix();
-    osg::Matrixd projectionMatrix = _refractionCamera->getProjectionMatrix();
-    osg::Matrixd inverseViewProjectionMatrix = osg::Matrixd::inverse(viewMatrix * projectionMatrix);
+    osg::Matrix viewMatrix = _refractionCamera->getViewMatrix();
+    osg::Matrix projectionMatrix = _refractionCamera->getProjectionMatrix();
+    osg::Matrix inverseViewProjectionMatrix = osg::Matrix::inverse(viewMatrix * projectionMatrix);
     _surfaceStateSet->getUniform("osgOcean_RefractionInverseTransformation")->set(inverseViewProjectionMatrix);
   }
 
@@ -1150,7 +1151,7 @@ void OceanScene::cull(osgUtil::CullVisitor& cv, bool eyeAboveWater, bool surface
     {
       osg::Node* child = getChild(i);
       if (child->getNodeMask() != 0 && child != _oceanTransform.get() && child != _siltClipNode.get())
-        child->setNodeMask((child->getNodeMask() & ~surfaceMask & ~siltMask) | normalSceneMask | reflectionSceneMask | refractionSceneMask);
+        child->setNodeMask((child->getNodeMask() & ~Mask::surface & ~Mask::silt) | Mask::normal | Mask::reflection | Mask::refraction);
     }
 
     // Push the view-dependent surface stateset.
@@ -1160,7 +1161,7 @@ void OceanScene::cull(osgUtil::CullVisitor& cv, bool eyeAboveWater, bool surface
       cv.pushStateSet( vd->_surfaceStateSet.get() );
     }
 
-    cv.setTraversalMask( mask & surfaceMask );
+    cv.setTraversalMask( mask & Mask::surface );
     osg::Group::traverse(cv);
 
     if (vd)
@@ -1170,7 +1171,7 @@ void OceanScene::cull(osgUtil::CullVisitor& cv, bool eyeAboveWater, bool surface
   }
 
   // render rest of scene
-  cv.setTraversalMask( mask & normalSceneMask );
+  cv.setTraversalMask( mask & Mask::normal );
   osg::Group::traverse(cv);
 
   // pop globalStateSet
@@ -1180,7 +1181,7 @@ void OceanScene::cull(osgUtil::CullVisitor& cv, bool eyeAboveWater, bool surface
   {
     if( params.silt )
     {
-      cv.setTraversalMask( mask & siltMask );
+      cv.setTraversalMask( mask & Mask::silt );
       osg::Group::traverse(cv);
     }
   }
