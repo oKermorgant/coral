@@ -147,9 +147,6 @@ void Goal::update(const Buffer &buffer, const geometry_msgs::msg::PoseStamped &m
   pose->setMatrix(Mw);
 }
 
-
-osg::StateSet* Path::color;
-
 void Path::reset(size_t dim)
 {
   segments.clear();

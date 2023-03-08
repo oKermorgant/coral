@@ -53,7 +53,7 @@ class Path
 {
   // how much we approximate a sequence of point with cylinders
   constexpr static float radius{0.02f};
-  static osg::StateSet* color;
+  osg::StateSet* color;
 
 private:
   std::vector<osg::Vec3d> points;
@@ -64,8 +64,7 @@ private:
 public:
   Path(const osg::Vec4 &rgba = {.2, .7, .7, 1.})
   {
-    if(!color)
-      color = Visual::makeStateSet(rgba);
+    color = Visual::makeStateSet(rgba);
   }
   void update(const Buffer &buffer, const nav_msgs::msg::Path &path);
 
