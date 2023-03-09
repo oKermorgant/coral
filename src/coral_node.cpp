@@ -285,7 +285,6 @@ void CoralNode::parseModel(const string &description)
   const auto tree{urdf_parser::Tree(description, display_thrusters)};
   links.reserve(links.size() + tree.size());
   const auto root{links.begin()+links.size()};
-  std::vector<urdf_parser::CameraInfo> new_cameras;
 
   for(const auto &link: tree)
   {
@@ -308,27 +307,5 @@ void CoralNode::parseModel(const string &description)
         last.setParent(*parent_link);
       }
     }
-    std::copy(link.cameras.begin(), link.cameras.end(), std::back_inserter(new_cameras));
-  }
-
-  addCameras(new_cameras);
-
-}
-
-void CoralNode::addCameras(const std::vector<urdf_parser::CameraInfo> &cams)
-{
-  if(cams.empty()) return;
-  if(!it) it = std::make_unique<image_transport::ImageTransport>(shared_from_this());
-  // check if someone is already publishing images, if any
-  const auto current_topics{get_topic_names_and_types()};
-  for(auto &cam: cams)
-  {
-
-    if(current_topics.find(cam.topic) != current_topics.end())
-      RCLCPP_WARN(get_logger(),
-                  "Image topic %s seems already advertized by Gazebo, use `unset DISPLAY` in the Gazebo terminal and run without GUI",
-                  cam.topic.c_str());
-
-    cameras.emplace_back(this, cam);
   }
 }

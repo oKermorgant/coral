@@ -1,12 +1,9 @@
 #ifndef CORAL_CAMERA_SIM_H
 #define CORAL_CAMERA_SIM_H
 
-#include <string>
-#include <vector>
 #include <osg/Camera>
-#include <image_transport/image_transport.hpp>
 #include <coral/urdf_parser.h>
-
+#include <image_transport/image_transport.hpp>
 
 namespace coral
 {
@@ -15,9 +12,15 @@ class CoralNode;
 
 class Camera
 {
-public:
-  Camera(CoralNode *node, const urdf_parser::CameraInfo &info);
+  static std::unique_ptr<image_transport::ImageTransport> transport;
+  static rclcpp::Node::SharedPtr node;
+  static std::vector<Camera> cameras;
 
+  Camera(const urdf_parser::CameraInfo &info);
+
+public:
+
+  static void addCameras(osg::Group* link, const std::vector<urdf_parser::CameraInfo> &infos);
 
 private:
   osg::ref_ptr<osg::Camera> cam;
@@ -32,7 +35,6 @@ private:
 
 
 };
-
 }
 #endif
 

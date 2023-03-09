@@ -47,8 +47,7 @@ struct Material
     stateset = osg::make_ref<osg::StateSet>();
     if(!texture.empty())
     {
-      auto image = osgDB::readImageFile(texture);
-      auto texture2d = osg::make_ref<osg::Texture2D>(image);
+      auto texture2d = osg::make_ref<osg::Texture2D>(osgDB::readImageFile(texture));
       texture2d->setFilter(osg::Texture2D::FilterParameter::MIN_FILTER,osg::Texture2D::FilterMode::LINEAR);
       texture2d->setFilter(osg::Texture2D::FilterParameter::MAG_FILTER,osg::Texture2D::FilterMode::LINEAR);
 
@@ -125,32 +124,25 @@ osg::ref_ptr<osg::Node> extractMesh(const std::string &mesh)
 osg::ref_ptr<osg::Shape> shapeCache(urdf::Geometry const* geometry, const Material &mat)
 {
   // extract info
-  enum class Type {SPHERE, BOX, CYLINDER} type;
-  double radius, length;
-  urdf::Vector3 box;
-  std::string name;
+  std::vector<double> params;
 
   if(geometry->type == geometry->BOX)
   {
-    type = Type::BOX;
-    box = static_cast<urdf::Box const *>(geometry)->dim;
-    name = "box_"+std::to_string(box.x)+std::to_string(box.y)+std::to_string(box.z);
+    const auto box{static_cast<urdf::Box const *>(geometry)->dim};
+    params = {box.x, box.y, box.z};
   }
   else if(geometry->type == geometry->SPHERE)
   {
-    type = Type::SPHERE;
-    radius = static_cast<urdf::Sphere const *>(geometry)->radius;
-    name = "sph_"+std::to_string(radius);
+    params = {static_cast<urdf::Sphere const *>(geometry)->radius};
   }
   else
   {
-    type = Type::CYLINDER;
-    const auto info = static_cast<urdf::Cylinder const *>(geometry);
-    radius = info->radius;
-    length = info->length;
-    name = "cyl_"+std::to_string(radius)+std::to_string(length);
-  }
-  name += mat.serialize();
+    const auto cyl{static_cast<urdf::Cylinder const *>(geometry)};
+    params = {cyl->radius, cyl->length};
+  }  
+
+  const auto concat = [](const std::string &prev, double v){return prev + std::to_string(v);};
+  const auto name = std::accumulate(params.begin(), params.end(), std::string{}, concat) + mat.serialize();
 
   // to shape
   static std::map<std::string, osg::ref_ptr<osg::Shape>> cache;
@@ -158,12 +150,12 @@ osg::ref_ptr<osg::Shape> shapeCache(urdf::Geometry const* geometry, const Materi
   if(cached.valid())
     return cached;
 
-  if(type == Type::BOX)
-    cached = osg::make_ref<osg::Box>(osg::Vec3d{}, box.x, box.y, box.z);
-  else if(type == Type::SPHERE)
-    cached = osg::make_ref<osg::Sphere>(osg::Vec3d{}, radius);
-  else if(type == Type::CYLINDER)
-    cached = osg::make_ref<osg::Cylinder>(osg::Vec3d{}, radius, length);
+  if(geometry->type == geometry->BOX)
+    cached = osg::make_ref<osg::Box>(osg::Vec3d{}, params[0], params[1], params[2]);
+  else if(geometry->type == geometry->SPHERE)
+    cached = osg::make_ref<osg::Sphere>(osg::Vec3d{}, params[0]);
+  else if(geometry->type == geometry->CYLINDER)
+    cached = osg::make_ref<osg::Cylinder>(osg::Vec3d{}, params[0], params[1]);
   return cached;
 }
 

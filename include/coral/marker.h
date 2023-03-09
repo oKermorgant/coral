@@ -63,9 +63,9 @@ public:
 
 class Path
 {
-  // how much we approximate a sequence of point with cylinders
-  constexpr static float radius{0.02f};
+  // how much we approximate a sequence of point with cylinders  
   osg::StateSet* color;
+  float radius;
 
 private:
   std::vector<osg::Vec3d> points;
@@ -75,10 +75,11 @@ private:
   void reset(size_t dim = 0);
 
 public:
-  Path(const osg::Vec4 &rgba = {.2, .7, .7, 1.})
-  {
-    color = Visual::makeStateSet(rgba);
-  }
+  Path(const osg::Vec4 &rgba = {.2, .7, .7, 1.}, float radius = 0.02f)
+    : color{Visual::makeStateSet(rgba)},
+      radius{radius}
+  {}
+  Path(float radius) : Path({.2, .7, .7, 1.}, radius) {}
   inline void setPending(const nav_msgs::msg::Path &path)
   {
     pending = path;

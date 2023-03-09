@@ -168,6 +168,7 @@ void Path::refreshFrom(const Buffer &buffer)
     reset();
     return;
   }
+
   bool update_segments{true};
   const auto world_path{pending.header.frame_id == "world"};
 
@@ -222,7 +223,8 @@ void Path::refreshFrom(const Buffer &buffer)
   // compute segments from new points
   const auto segments{piecewiseLinear(points, radius)};
   [[maybe_unused]] const auto lock{coral_lock()};
-  reset(segments.size());
+  reset(segments.size()); 
+
   for(const auto &segment: segments)
-    this->segments.emplace_back(Visual::Shapes{osg::make_ref<osg::Cylinder>(osg::Vec3{}, radius, segment.length)}, segment.pose, color);
+    this->segments.emplace_back(Visual::Shapes{osg::make_ref<osg::Capsule>(osg::Vec3{}, radius, segment.length)}, segment.pose, color);
 }

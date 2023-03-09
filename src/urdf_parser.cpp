@@ -83,8 +83,8 @@ vector<CameraInfo> CameraInfo::extractFrom(const string &description)
   return cameras;
 }
 
-CameraInfo::CameraInfo(std::string link, const TiXmlElement* sensor_elem)
-  : link_name(link)
+CameraInfo::CameraInfo(const std::string &link, const TiXmlElement* sensor_elem)
+  : frame_id(link)
 {
 
   std::cout << "Adding camera @ " << link << std::endl;
@@ -199,7 +199,7 @@ Tree::Tree(const string &description, const bool keep_thrusters)
     std::transform(link->visual_array.begin(), link->visual_array.end(), std::back_inserter(info.visuals),
                    [](const auto &visual){return LinkInfo::Visual{visual, osg::Matrix::identity()};});
     std::copy_if(cameras.begin(), cameras.end(), std::back_inserter(info.cameras),
-                 [&](const auto &cam){return cam.link_name == name;});
+                 [&](const auto &cam){return cam.frame_id == name;});
   }
 
   // build hierarchy from model joints

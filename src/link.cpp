@@ -1,4 +1,5 @@
 #include <coral/link.h>
+#include <coral/camera.h>
 
 namespace coral
 {
@@ -16,5 +17,26 @@ void Link::refreshFrom(const Buffer &buffer)
       setPending(osgMatFrom(pose->translation, pose->rotation));
   }
 }
+
+
+void Link::addElements(const urdf_parser::LinkInfo &info)
+{
+  for(const auto &[urdf,M]: info.visuals)
+  {
+    auto visual{Visual::fromURDF(*urdf, M)};
+    if(visual.has_value())
+    {
+      visual->configure(true, osg::Object::STATIC);
+      pose->addChild(visual->frame());
+    }
+  }
+
+  if(info.cameras.empty())
+    return;
+
+  Camera::addCameras(pose, info.cameras);
+
+}
+
 
 }

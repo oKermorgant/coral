@@ -22,24 +22,12 @@ public:
     addElements(info);
   }
 
-  void addElements(const urdf_parser::LinkInfo &info)
-  {
-    for(const auto &[urdf,M]: info.visuals)
-    {
-      auto visual{Visual::fromURDF(*urdf, M)};
-      if(visual.has_value())
-      {
-        visual->configure(true, osg::Object::STATIC);
-        pose->addChild(visual->frame());
-      }
-    }
-    //for(auto &cam: info.cameras)
-    //pose->addChild(cam.pose);
-  }
-
   inline auto frame() const {return pose.get();}
   inline std::string getName() const {return name;}
+
+  void addElements(const urdf_parser::LinkInfo &info);
   void refreshFrom(const Buffer &buffer);
+
   inline void setPending(const osg::Matrix &M)
   {
     M_pending = M;
@@ -52,11 +40,6 @@ public:
   inline bool operator==(const std::string &name) const
   {
     return this->name == name;
-  }
-
-  inline std::string describe() const
-  {
-    return name + " (" + parent + ")";
   }
 
   inline void setParent(const Link &root)

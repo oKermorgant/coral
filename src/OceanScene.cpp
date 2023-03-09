@@ -71,8 +71,7 @@ public:
       osg::MatrixTransform* mt = static_cast<osg::MatrixTransform*>(node);
       bool follow = true;
 
-      osgOcean::FFTOceanTechnique* oceanTechnique = dynamic_cast<osgOcean::FFTOceanTechnique*>(_oceanScene->surface());
-      if (oceanTechnique && !oceanTechnique->isEndlessOceanEnabled())
+      if (_oceanScene->surface() && !_oceanScene->surface()->isEndlessOceanEnabled())
       {
         // Do not follow the eye when the ocean is constrained
         // to an area.
@@ -371,6 +370,7 @@ OceanScene::OceanScene(const SceneParams &params) : params{params}
   // Set up surface
   oceanSurface = osg::make_ref<osgOcean::FFTOceanSurface>(
         64, 256, 17,
+        //128, 128, 17, // some tests
         params.windDirection,
         params.windSpeed, params.depth,
         params.reflectionDamping,

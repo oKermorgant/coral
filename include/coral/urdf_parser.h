@@ -21,11 +21,11 @@ struct CameraInfo
   double fov;
   double clip_near, clip_far;
   std::string topic;
-  std::string link_name;
+  std::string frame_id;
   int period_ms;
   osg::ref_ptr<osg::MatrixTransform> pose = new osg::MatrixTransform;
 
-  CameraInfo(std::string link, const TiXmlElement* sensor_elem);
+  CameraInfo(const std::string &link, const TiXmlElement* sensor_elem);
   inline CameraInfo(const CameraInfo &src, const osg::Matrix &M) : CameraInfo{src}
   {
     // copy with change in the matrix

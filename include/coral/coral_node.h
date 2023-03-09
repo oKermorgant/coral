@@ -3,7 +3,6 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/node.hpp>
-#include <image_transport/image_transport.hpp>
 #include <geometry_msgs/msg/pose.hpp>
 #include <rosgraph_msgs/msg/clock.hpp>
 
@@ -12,7 +11,6 @@
 #include <coral/OceanScene.h>
 #include <coral/viewer.h>
 #include <coral/link.h>
-#include <coral/camera.h>
 #include <coral/marker.h>
 
 namespace coral
@@ -32,8 +30,6 @@ public:
   }
 
   SceneParams parameters();
-
-  image_transport::ImageTransport& image_transport() const {return *it;}
 
   void findModels();
 
@@ -58,9 +54,6 @@ private:
   }
   bool display_thrusters = false;
   std::vector<Link> links;
-  std::vector<Camera> cameras;
-  std::unique_ptr<image_transport::ImageTransport> it;
-  void addCameras(const std::vector<urdf_parser::CameraInfo> &cams);
 
   // how to get them
   rclcpp::Service<Spawn>::SharedPtr spawn_srv;
