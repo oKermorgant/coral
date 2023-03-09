@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
-<robot name="islands">    
-  
+<robot name="islands">
+
 <link name="world"/>
 
-<link name="islands/base_link"> 
+<link name="islands/base_link">
     <visual>
     <geometry>
         <mesh filename="package://coral/resources/island/islands.ive"  scale=".2 .2 .2"/>

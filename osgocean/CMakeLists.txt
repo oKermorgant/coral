@@ -65,8 +65,8 @@ find_package (OpenGL REQUIRED)
 include_directories (${OPENGL_INCLUDE_DIR})
 
 OPTION(USE_FFTW3 "Use FFTW3 (double-precision) (GPL) as FFT library." OFF) # Use FFTW3 by default.
-OPTION(USE_FFTW3F "Use FFTW3 (single-precision) (GPL) as FFT library." ON) 
-OPTION(USE_FFTSS "Use FFTSS (LGPL) as FFT library." OFF)                       
+OPTION(USE_FFTW3F "Use FFTW3 (single-precision) (GPL) as FFT library." ON)
+OPTION(USE_FFTSS "Use FFTSS (LGPL) as FFT library." OFF)
 
 set(CMAKE_MODULE_PATH "${OSGOCEAN_SRC}/CMakeModules;${CMAKE_MODULE_PATH}")
 
@@ -150,7 +150,7 @@ SET( SHADER_FILES
   ${OSGOCEAN_SRC}/resources/shaders/osgOcean_ocean_scene.frag
   ${OSGOCEAN_SRC}/resources/shaders/osgOcean_ocean_scene_lispsm.vert
   ${OSGOCEAN_SRC}/resources/shaders/osgOcean_ocean_scene_lispsm.frag
-  
+
   ${OSGOCEAN_SRC}/resources/shaders/osgOcean_heightmap.vert
   ${OSGOCEAN_SRC}/resources/shaders/osgOcean_heightmap.frag
 )

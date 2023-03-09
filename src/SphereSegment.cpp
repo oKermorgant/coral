@@ -1,9 +1,9 @@
 /*
 * This source file is part of the osgOcean library
-* 
+*
 * Copyright (C) 2009 Kim Bale
 * Copyright (C) 2009 The University of Hull, UK
-* 
+*
 * This program is free software; you can redistribute it and/or modify it under
 * the terms of the GNU Lesser General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
@@ -23,14 +23,14 @@ using namespace coral;
 SphereSegment::SphereSegment(void)
 {}
 
-SphereSegment::SphereSegment(float radius, 
-                                      unsigned int longitudeSteps, 
+SphereSegment::SphereSegment(float radius,
+                                      unsigned int longitudeSteps,
                                       unsigned int lattitudeSteps,
                                       float longStart,
                                       float longEnd,
                                       float latStart,
                                       float latEnd )
-{ 
+{
     compute(radius,longitudeSteps,lattitudeSteps,longStart,longEnd,latStart,latEnd);
 }
 
@@ -45,8 +45,8 @@ SphereSegment::~SphereSegment(void)
 // 0 >= longStart/longEnd <= 180
 // 0 >= latStart/latEnd <= 360
 
-void SphereSegment::compute( float radius, 
-                                      unsigned int longitudeSteps, 
+void SphereSegment::compute( float radius,
+                                      unsigned int longitudeSteps,
                                       unsigned int lattitudeSteps,
                                       float longStart,
                                       float longEnd,
@@ -74,7 +74,7 @@ void SphereSegment::compute( float radius,
         const auto cos_t{cos(t)};
 
         for( unsigned int j = 0; j <= lattitudeSteps; ++j)
-        {        
+        {
             const auto p{osg::DegreesToRadians( phi )};
 
             const auto x{radius * sin_t * cos(p)};
@@ -98,7 +98,7 @@ void SphereSegment::compute( float radius,
         auto indices = new osg::DrawElementsUInt( osg::PrimitiveSet::TRIANGLE_STRIP, 0 );
 
         for(unsigned int c = 0; c <= lattitudeSteps; c += 1 )
-        {    
+        {
             indices->push_back( idx( r,    c,  lattitudeSteps+1 ) );
             indices->push_back( idx( r+1,    c,  lattitudeSteps+1 ) );
         }
@@ -124,7 +124,7 @@ osg::Vec2 SphereSegment::sphereMap( osg::Vec3& vertex, float radius)
     float TWOPI = osg::PI * 2.f;
 
     v = acos( vertex.y() / radius ) / osg::PI;
-    
+
     if (vertex.z() >= 0.f)
         u = acos( vertex.x() / (radius * sin( osg::PI*v ) ) )  / TWOPI;
     else

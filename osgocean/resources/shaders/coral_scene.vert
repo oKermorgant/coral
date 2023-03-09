@@ -20,9 +20,9 @@ varying vec4 color;
 void computeScattering( in vec3 eye, in vec3 worldVertex, out vec3 extinction, out vec3 inScattering )
 {
 	float viewDist = length(eye-worldVertex);
-	
+
 	float depth = max(osgOcean_WaterHeight-worldVertex.z, 0.0);
-	
+
 	extinction = exp(-osgOcean_UnderwaterAttenuation*viewDist*2.0);
 
 	// Need to compute accurate kd constant.

@@ -140,7 +140,7 @@ bool LinkInfo::canBeMerged(const LinkInfo &link)
 }
 
 void LinkInfo::mergeIntoParent()
-{  
+{
   parent->children.erase(std::find(parent->children.begin(),
                                    parent->children.end(),
                                    this));

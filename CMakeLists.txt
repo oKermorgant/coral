@@ -44,24 +44,24 @@ endif()
 
 if(OSGOCEAN_EXTERNAL)
 
-    # manual compile 
+    # manual compile
     SET(OSGOCEAN_BUILD_DIR ${PROJECT_SOURCE_DIR}/osgocean/build)
     set(OSGOCEAN_LIBRARIES ${OSGOCEAN_BUILD_DIR}/libosgOcean.so)
-        
+
     if(NOT EXISTS ${OSGOCEAN_LIBRARIES})
         file(MAKE_DIRECTORY ${OSGOCEAN_BUILD_DIR})
-        execute_process(COMMAND cmake .. WORKING_DIRECTORY ${OSGOCEAN_BUILD_DIR})        
+        execute_process(COMMAND cmake .. WORKING_DIRECTORY ${OSGOCEAN_BUILD_DIR})
     endif()
-    
+
     execute_process(COMMAND cmake --build . WORKING_DIRECTORY ${OSGOCEAN_BUILD_DIR})
-    
+
     # manual install, ament-wise
     if(NOT EXISTS ${CMAKE_INSTALL_PREFIX}/lib/libosgOcean.so)
         file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX})
         file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX}/lib)
         file(COPY ${OSGOCEAN_LIBRARIES} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/)
     endif()
-    
+
     # register lib for dependency
     add_library(osgOcean SHARED IMPORTED)
     set_target_properties(osgOcean PROPERTIES IMPORTED_LOCATION ${CMAKE_INSTALL_PREFIX}/lib/libosgOcean.so)
@@ -131,14 +131,14 @@ install(TARGETS osgOcean
   RUNTIME DESTINATION lib/${PROJECT_NAME})
 endif()
 
-install(DIRECTORY launch DESTINATION share/${PROJECT_NAME}) 
+install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 
 # common osgocean resources
 install(DIRECTORY ${OSGOCEAN_SRC}/resources/shaders DESTINATION share/${PROJECT_NAME}/resources)
 install(DIRECTORY ${OSGOCEAN_SRC}/demo/island DESTINATION share/${PROJECT_NAME}/resources)
 
 # override some shaders if needed
-install(DIRECTORY osgocean/resources DESTINATION share/${PROJECT_NAME}) 
+install(DIRECTORY osgocean/resources DESTINATION share/${PROJECT_NAME})
 
 ament_export_libraries(osgOcean)
 ament_package()

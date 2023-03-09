@@ -8,11 +8,11 @@ Contrary to UWSim, Coral is not a simulator at all and only renders available mo
 
  - Coral can detect `robot_description` topics and will then monitor the poses of the discovered frames through `/tf`
  - a special frame is `coral_cam_view`: if available in the TF tree then Coral will use this frame to place its camera. If the frame is not refreshed for 1 sec then the camera will be free-flying again
- 
+
  `coral_gui` is the main node and has parameters to tune the scene rendering: wind, waves and foam, initial camera position, water surface reflection and refraction, or toggle glare or godrays.
 
  - one parameter is `spawn_auto` (default 2): the delay before Coral tries to spawn all available `robot_description`. Set to 0 to deactivate this feature.
- 
+
 ## Spawning a robot
 
 `coral_gui` provides the `/coral/spawn` service defined as:
@@ -33,7 +33,7 @@ If both `world_model` and `robot_namespace` are empty (default) then Coral will 
  - if a topic in the same namespace is carrying `geometry_msgs/Pose` data, Coral will assume it is the ground truth for this model
 
 The `spawn` executable is a wrapper around the `Spawn` service that is used to add a new model in the simulation. when run without parameters, will have Coral spawn all available `robot_description`.
- 
+
 ## Controlling the point of view
 
 A helper launch file is `track_launch.py` and simply publishes a static transform between the given `link` and the `coral_cam_node` link, in order to automatically track the corresponding link inside Coral.

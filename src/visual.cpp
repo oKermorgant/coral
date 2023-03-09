@@ -9,6 +9,7 @@
 #include <urdf/model.h>
 #include <filesystem>
 #include <osgDB/ReadFile>
+#include <osgUtil/Optimizer>
 
 namespace coral
 {
@@ -101,8 +102,15 @@ osg::ref_ptr<osg::Node> extractMesh(const std::string &mesh)
   const auto path(fullpath.parent_path());
 
   addResourcePath(path);
-  osgDB::Registry::instance()->getOptions()->setObjectCacheHint(osgDB::Options::CACHE_ALL);
-  auto node{osgDB::readNodeFile(filename)};
+  static auto opt = osg::ref_ptr<osgDB::Options>([]() -> osgDB::Options*
+                                                 {
+                                                   auto opt{new osgDB::Options};
+                                                   opt->setObjectCacheHint(osgDB::Options::CACHE_ALL);
+                                                   opt->setPrecisionHint(osgDB::Options::FLOAT_PRECISION_ALL);
+                                                   return opt;
+                                                 }());
+
+  auto node{osgDB::readNodeFile(filename, opt)};
 
   if(!node)
   {
@@ -161,16 +169,6 @@ osg::ref_ptr<osg::Shape> shapeCache(urdf::Geometry const* geometry, const Materi
 
 
 // factories
-namespace detail
-{
-
-Visual fromMesh(osg::ref_ptr<osg::Node> mesh, const osg::Matrix &M, osg::StateSet* stateset = nullptr)
-{
-  if(stateset)
-    mesh->setStateSet(stateset);
-  return Visual(M, mesh);
-}
-}
 
 std::optional<Visual> Visual::fromURDF(const urdf::Visual &visual, const osg::Matrix &M)
 {
@@ -185,15 +183,14 @@ std::optional<Visual> Visual::fromURDF(const urdf::Visual &visual, const osg::Ma
       return {};
     const auto Mv(osgMatFrom(visual.origin.position,visual.origin.rotation, mesh_info->scale)*M);
     if(mat)
-      return detail::fromMesh(mesh, Mv, Material(*mat).toStateSet());
-    return detail::fromMesh(mesh, Mv);
+      mesh->setStateSet(Material(*mat).toStateSet());
+    return Visual(Mv, mesh);
   }
 
   // we do not know how to display a geometric shape without material
   if(!mat)
     return {};
   const auto material{Material(*mat)};
-
   const auto Mv(osgMatFrom(visual.origin.position, visual.origin.rotation) *M);
   return fromShapes({shapeCache(geometry, material)}, Mv, material.toStateSet());
 }
@@ -203,13 +200,22 @@ Visual Visual::fromShapes(const Visual::Shapes &shapes, const osg::Matrix &M, os
   auto geode = osg::make_ref<osg::Geode>();
   for(auto &shape: shapes)
     geode->addDrawable(osg::make_ref<osg::ShapeDrawable>(shape));
-  return detail::fromMesh(geode, M, stateset);
+  geode->setStateSet(stateset);
+  return Visual(M, geode);
 }
 
 // return the stateset corresponding to the texture or color, with cache
 osg::StateSet* Visual::makeStateSet(osg::Vec4f rgba, const std::string &texture)
 {
   return Material(rgba, texture).toStateSet();
+}
+
+void Visual::configure(bool render, decltype (osg::Object::STATIC) variance)
+{
+  pose->setDataVariance(variance);
+  pose->setNodeMask(Mask::getMask(render));
+  static osgUtil::Optimizer optim;
+  optim.optimize(pose, optim.ALL_OPTIMIZATIONS);
 }
 
 }

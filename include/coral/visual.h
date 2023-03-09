@@ -10,8 +10,6 @@
 
 namespace urdf
 {
-class Material;
-class Color;
 class Visual;
 }
 
@@ -22,7 +20,7 @@ class Visual
 {
 protected:
 
-  osg::ref_ptr<osg::MatrixTransform> pose;
+  osg::ref_ptr<osg::Group> pose;
 
 public:
 
@@ -35,11 +33,7 @@ public:
       pose->addChild(mesh);
   }
 
-  inline void configure(bool render, decltype (osg::Object::STATIC) variance)
-  {
-    pose->setDataVariance(variance);
-    pose->setNodeMask(Mask::getMask(render));
-  }
+  void configure(bool render, decltype (osg::Object::STATIC) variance);
 
   inline auto frame() {return pose.get();}
 

@@ -32,7 +32,7 @@ SET( ISLAND_RESOURCES
   ${osgOcean_SOURCE_DIR}/demo/island/islands.ive
 )
 
-SET( BOAT_RESOURCES 
+SET( BOAT_RESOURCES
   ${osgOcean_SOURCE_DIR}/resources/boat/boat.3ds
 )
 
@@ -61,7 +61,7 @@ ADD_EXECUTABLE(
   Scene.cpp
   SkyDome.cpp
   SphereSegment.cpp
-  
+
 
   ${HEADER_PATH}/SceneEventHandler.h
   ${HEADER_PATH}/Scene.h
@@ -74,7 +74,7 @@ ADD_EXECUTABLE(
 )
 
 TARGET_LINK_LIBRARIES(
-  
+
 
   oceanExample
 

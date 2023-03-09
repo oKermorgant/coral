@@ -172,5 +172,5 @@ void Viewer::EventHandler::getUsage(osg::ApplicationUsage& usage) const
   usage.addKeyboardMouseBinding("1","Select scene \"Clear Blue Sky\"");
   usage.addKeyboardMouseBinding("2","Select scene \"Dusk\"");
   usage.addKeyboardMouseBinding("3","Select scene \"Pacific Cloudy\"");
-  usage.addKeyboardMouseBinding("4","Select scene \"Night\"");  
+  usage.addKeyboardMouseBinding("4","Select scene \"Night\"");
 }

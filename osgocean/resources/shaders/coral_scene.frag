@@ -76,7 +76,7 @@ void main(void)
     vec4 final_color;
 
     vec4 textureColor = texture2D( uTextureMap, gl_TexCoord[0].st ) * color;
-    
+
 
     // Underwater
     // +2 tweak here as waves peak above average wave height,
@@ -112,7 +112,7 @@ void main(void)
         final_color = mix( osgOcean_AboveWaterFogColor, final_color, fogFactor );
 
         // write to luminance buffer
-        // might not need the IF here, glsl compiler doesn't complain if 
+        // might not need the IF here, glsl compiler doesn't complain if
         // you try and write to a FragData index that doesn't exist. But since
         // Mac GLSL support seems so fussy I'll leave it in.
         if(osgOcean_EnableGlare)

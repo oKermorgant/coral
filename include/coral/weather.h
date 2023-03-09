@@ -11,7 +11,7 @@ namespace coral
 
 struct Weather
 {
-  enum class Mood{ CLEAR, DUSK, CLOUDY, NIGHT }; 
+  enum class Mood{ CLEAR, DUSK, CLOUDY, NIGHT };
 
   std::string cubemap;
   osg::Vec4f lightColor;

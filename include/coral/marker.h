@@ -15,7 +15,7 @@ class Marker : public Visual
 {
   friend class Path;
   static osg::Group* world;
-public:  
+public:
   Marker(const Visual &visual, bool moving = false);
   Marker(const Shapes &shapes, const osg::Matrix &M, osg::StateSet *stateset, bool moving = false)
     : Marker(fromShapes(shapes, M, stateset), moving) {}
@@ -38,14 +38,26 @@ class Goal : public Marker
 
 private:
 
+  inline void setMatrix(const osg::Matrix &M)
+  {
+    pose->asTransform()->asMatrixTransform()->setMatrix(M);
+  }
+
   inline void hide()
   {
-    pose->setMatrix(osg::Matrix::translate(0,0,-1000));
+    setMatrix(osg::Matrix::translate(0,0,-1000));
+   // pose->asTransform().setMatrix(osg::Matrix::translate(0,0,-1000));
   }
+
+  std::optional<geometry_msgs::msg::PoseStamped> pending;
 
 public:
   Goal(const osg::Vec4 &rgba = {1.f, 0.f, 0.f, 1.f});
-  void update(const Buffer &buffer, const geometry_msgs::msg::PoseStamped &msg);
+  inline void setPending(const geometry_msgs::msg::PoseStamped &msg)
+  {
+    pending = msg;
+  }
+  void refreshFrom(const Buffer &buffer);
 };
 
 
@@ -58,6 +70,7 @@ class Path
 private:
   std::vector<osg::Vec3d> points;
   std::vector<Marker> segments;
+  nav_msgs::msg::Path pending;
 
   void reset(size_t dim = 0);
 
@@ -66,7 +79,11 @@ public:
   {
     color = Visual::makeStateSet(rgba);
   }
-  void update(const Buffer &buffer, const nav_msgs::msg::Path &path);
+  inline void setPending(const nav_msgs::msg::Path &path)
+  {
+    pending = path;
+  }
+  void refreshFrom(const Buffer &buffer);
 
 };
 

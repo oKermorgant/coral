@@ -88,10 +88,10 @@ struct LinkInfo
 };
 
 struct Tree : public std::list<LinkInfo>
-{  
+{
   explicit Tree(const std::string &description, const bool keep_thrusters);
   inline LinkInfo& add(const std::string &name)
-  {    
+  {
     return emplace_back(name);
   }
   auto find(const std::string &name);

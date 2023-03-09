@@ -44,7 +44,7 @@ private:
 
   // tf interface
   rclcpp::TimerBase::SharedPtr pose_update_timer;
-  void refreshLinkPoses();  
+  void refreshLinkPoses();
   Buffer tf_buffer;
 
   // ground truth subscribers from Gazebo or other Pose topic
@@ -63,7 +63,7 @@ private:
   void addCameras(const std::vector<urdf_parser::CameraInfo> &cams);
 
   // how to get them
-  rclcpp::Service<Spawn>::SharedPtr spawn_srv;  
+  rclcpp::Service<Spawn>::SharedPtr spawn_srv;
   void spawnModel(const std::string &model_ns, const std::string &pose_topic = "", const std::string &world_model = "");
   void parseModel(const std::string &model);
   rclcpp::Subscription<rosgraph_msgs::msg::Clock>::SharedPtr clock_sub;
@@ -74,6 +74,7 @@ private:
   Link* getKnownCamParent();
 
   // markers
+  rclcpp::TimerBase::SharedPtr marker_update_timer;
   rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_sub;
   rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr path_sub;
   std::unique_ptr<Goal> goal;

@@ -10,8 +10,8 @@
 class ScopedTimer
 {
 public:
-    ScopedTimer( const std::string& description, 
-                 std::ostream& output_stream = std::cout, 
+    ScopedTimer( const std::string& description,
+                 std::ostream& output_stream = std::cout,
                  bool endline_after_time = true)
         : _output_stream(output_stream)
         , _start()
@@ -26,7 +26,7 @@ public:
         osg::Timer_t end = osg::Timer::instance()->tick();
 
         _output_stream << osg::Timer::instance()->delta_s(_start, end) << "s";
-        
+
         if (_endline_after_time)
         {
             _output_stream << std::endl;

@@ -21,7 +21,7 @@ public:
   void lockCamera(const osg::Matrix &M);
   void freeCamera();
 
-private:  
+private:
   OceanScene* scene;
 
   // free / tracking manipulators

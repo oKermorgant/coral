@@ -28,15 +28,15 @@ public:
             mt->setMatrix( osg::Matrix::translate( eye.x(), eye.y(), mt->getMatrix().getTrans().z() ) );
         }
 
-        traverse(node, nv); 
+        traverse(node, nv);
     }
 };
 
 // ----------------------------------------------------
-//                       Scene 
+//                       Scene
 // ----------------------------------------------------
 
-Scene::Scene( 
+Scene::Scene(
     const osg::Vec2f& windDirection,
     float windSpeed,
     float depth,
@@ -86,7 +86,7 @@ Scene::Scene(
     build(windDirection, windSpeed, depth, reflectionDamping, scale, isChoppy, choppyFactor, crestFoamHeight, _useVBO, terrain_shader_basename);
 }
 
-void Scene::build( 
+void Scene::build(
     const osg::Vec2f& windDirection,
     float windSpeed,
     float depth,
@@ -101,7 +101,7 @@ void Scene::build(
     {
         //ScopedTimer buildSceneTimer("Building scene... \n", osg::notify(osg::NOTICE));
 
-        _scene = new osg::Group; 
+        _scene = new osg::Group;
 
         {
             //ScopedTimer cubemapTimer("  . Loading cubemaps: ", osg::notify(osg::NOTICE));
@@ -114,24 +114,24 @@ void Scene::build(
 
             if (useVBO)
             {
-                _FFToceanSurface = 
-                    new osgOcean::FFTOceanSurfaceVBO( 
-                    64, 256, 17, 
-                    windDirection, 
-                    windSpeed, depth, 
-                    reflectionDamping, 
-                    waveScale, isChoppy, 
+                _FFToceanSurface =
+                    new osgOcean::FFTOceanSurfaceVBO(
+                    64, 256, 17,
+                    windDirection,
+                    windSpeed, depth,
+                    reflectionDamping,
+                    waveScale, isChoppy,
                     choppyFactor, 10.f, 256 );
             }
             else
             {
-                _FFToceanSurface = 
-                    new osgOcean::FFTOceanSurface( 
-                    64, 256, 17, 
-                    windDirection, 
-                    windSpeed, depth, 
-                    reflectionDamping, 
-                    waveScale, isChoppy, 
+                _FFToceanSurface =
+                    new osgOcean::FFTOceanSurface(
+                    64, 256, 17,
+                    windDirection,
+                    windSpeed, depth,
+                    reflectionDamping,
+                    waveScale, isChoppy,
                     choppyFactor, 10.f, 256 );
             }
 
@@ -157,8 +157,8 @@ void Scene::build(
             _oceanScene->enableRefractions(true);
             _oceanScene->enableHeightmap(true);
 
-            // Set the size of _oceanCylinder which follows the camera underwater. 
-            // This cylinder prevents the clear from being visible past the far plane 
+            // Set the size of _oceanCylinder which follows the camera underwater.
+            // This cylinder prevents the clear from being visible past the far plane
             // instead it will be the fog color.
             // The size of the cylinder should be changed according the size of the ocean surface.
             _oceanScene->setCylinderSize( 1900.f, 4000.f );
@@ -180,8 +180,8 @@ void Scene::build(
             // create sky dome and add to ocean scene
             // set masks so it appears in reflected scene and normal scene
             _skyDome = new SkyDome( 1900.f, 16, 16, _cubemap.get() );
-            _skyDome->setNodeMask( _oceanScene->getReflectedSceneMask() | 
-                                   _oceanScene->getNormalSceneMask()    | 
+            _skyDome->setNodeMask( _oceanScene->getReflectedSceneMask() |
+                                   _oceanScene->getNormalSceneMask()    |
                                    _oceanScene->getRefractedSceneMask());
 
             // add a pat to track the camera
@@ -196,7 +196,7 @@ void Scene::build(
 
             {
                 // Create and add fake texture for use with nodes without any texture
-                // since the OceanScene default scene shader assumes that texture unit 
+                // since the OceanScene default scene shader assumes that texture unit
                 // 0 is used as a base texture map.
                 osg::Image * image = new osg::Image;
                 image->allocateImage( 1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE );
@@ -225,11 +225,11 @@ void Scene::build(
             {
                 _islandSwitch = new osg::Switch;
                 _islandSwitch->addChild( islandModel.get(), true );
-                
-                _islandSwitch->setNodeMask( _oceanScene->getNormalSceneMask()    | 
-                                            _oceanScene->getReflectedSceneMask() | 
+
+                _islandSwitch->setNodeMask( _oceanScene->getNormalSceneMask()    |
+                                            _oceanScene->getReflectedSceneMask() |
                                             _oceanScene->getRefractedSceneMask() |
-                                            _oceanScene->getHeightmapMask()      | 
+                                            _oceanScene->getHeightmapMask()      |
                                             RECEIVE_SHADOW);
 
                 _oceanScene->addChild( _islandSwitch.get() );
@@ -322,15 +322,15 @@ osg::Node* Scene::loadIslands(const std::string& terrain_shader_basename)
 #ifdef USE_CUSTOM_SHADER
     const std::string terrain_vertex   = terrain_shader_basename + ".vert";
     const std::string terrain_fragment = terrain_shader_basename + ".frag";
-    
+
     osg::Program* program = osgOcean::ShaderManager::instance().createProgram("terrain", terrain_vertex, terrain_fragment, "", "" );
     if(program) program->addBindAttribLocation("aTangent", 6);
 
 #endif
-    island->setNodeMask( _oceanScene->getNormalSceneMask()    | 
-                         _oceanScene->getReflectedSceneMask() | 
-                         _oceanScene->getRefractedSceneMask() | 
-                         _oceanScene->getHeightmapMask()      | 
+    island->setNodeMask( _oceanScene->getNormalSceneMask()    |
+                         _oceanScene->getReflectedSceneMask() |
+                         _oceanScene->getRefractedSceneMask() |
+                         _oceanScene->getHeightmapMask()      |
                          RECEIVE_SHADOW);
     island->getStateSet()->addUniform( new osg::Uniform( "uTextureMap", 0 ) );
 

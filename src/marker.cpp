@@ -2,6 +2,7 @@
 #include <coral/transforms.h>
 #include <coral/osg_make_ref.h>
 #include <coral/resource_helpers.h>
+#include <coral/scene_lock.h>
 #include <osg/Shape>
 
 using namespace coral;
@@ -15,7 +16,7 @@ using PointIt = std::vector<osg::Vec3d>::const_iterator;
 
 /// a 3D line described by a point x0 and a direction u
 struct Line
-{  
+{
   struct Segment
   {
     osg::Matrix pose;
@@ -131,12 +132,15 @@ Goal::Goal(const osg::Vec4 &rgba) : Marker({osg::make_ref<osg::Cylinder>(osg::Ve
 
 }
 
-void Goal::update(const Buffer &buffer, const geometry_msgs::msg::PoseStamped &msg)
+void Goal::refreshFrom(const Buffer &buffer)
 {
-  auto Mw{osgMatFrom(msg.pose.position, msg.pose.orientation)};
-  if(msg.header.frame_id != "world")
+  if(!pending.has_value())
+    return;
+
+  auto Mw{osgMatFrom(pending->pose.position, pending->pose.orientation)};
+  if(pending->header.frame_id != "world")
   {
-    const auto tr{buffer.lookup(msg.header.frame_id)};
+    const auto tr{buffer.lookup(pending->header.frame_id)};
     if(!tr.has_value())
     {
       hide();
@@ -144,7 +148,8 @@ void Goal::update(const Buffer &buffer, const geometry_msgs::msg::PoseStamped &m
     }
     Mw = osgMatFrom(tr->translation, tr->rotation) * Mw;
   }
-  pose->setMatrix(Mw);
+  [[maybe_unused]] const auto lock{coral_lock()};
+  setMatrix(Mw);
 }
 
 void Path::reset(size_t dim)
@@ -153,10 +158,10 @@ void Path::reset(size_t dim)
   segments.reserve(dim);
 }
 
-void Path::update(const Buffer &buffer, const nav_msgs::msg::Path &path)
+void Path::refreshFrom(const Buffer &buffer)
 {
   // check if the same path is already registered
-  const auto &poses{path.poses};
+  const auto &poses{pending.poses};
 
   if(poses.size() < 2)
   {
@@ -164,12 +169,12 @@ void Path::update(const Buffer &buffer, const nav_msgs::msg::Path &path)
     return;
   }
   bool update_segments{true};
-  const auto world_path{path.header.frame_id == "world"};
+  const auto world_path{pending.header.frame_id == "world"};
 
   std::optional<osg::Matrix> M;
   if(!world_path)
   {
-    const auto pose{buffer.lookup(path.header.frame_id)};
+    const auto pose{buffer.lookup(pending.header.frame_id)};
     if(!pose.has_value())
       return;
     M = osgMatFrom(pose->translation, pose->rotation);
@@ -216,6 +221,7 @@ void Path::update(const Buffer &buffer, const nav_msgs::msg::Path &path)
 
   // compute segments from new points
   const auto segments{piecewiseLinear(points, radius)};
+  [[maybe_unused]] const auto lock{coral_lock()};
   reset(segments.size());
   for(const auto &segment: segments)
     this->segments.emplace_back(Visual::Shapes{osg::make_ref<osg::Cylinder>(osg::Vec3{}, radius, segment.length)}, segment.pose, color);

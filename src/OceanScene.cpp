@@ -1,9 +1,9 @@
 /*
 * This source file is part of the osgOcean library
-* 
+*
 * Copyright (C) 2009 Kim Bale
 * Copyright (C) 2009 The University of Hull, UK
-* 
+*
 * This program is free software; you can redistribute it and/or modify it under
 * the terms of the GNU Lesser General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
@@ -613,7 +613,7 @@ void OceanScene::init( void )
       // Post render pass
       _dofPasses.push_back( dofFinalPass( combinedTexture ) );
     }
-    
+
     if( params.glare )
     {
       _glarePasses.clear();
@@ -1211,7 +1211,7 @@ osg::Camera* OceanScene::renderToTexturePass( osg::Texture* textureBuffer )
   return camera;
 }
 
-osg::Camera* OceanScene::multipleRenderTargetPass(osg::Texture* texture0, osg::Camera::BufferComponent buffer0, 
+osg::Camera* OceanScene::multipleRenderTargetPass(osg::Texture* texture0, osg::Camera::BufferComponent buffer0,
                                                   osg::Texture* texture1, osg::Camera::BufferComponent buffer1 )
 {
   osg::Camera* camera = new osg::Camera;
@@ -1247,7 +1247,7 @@ osg::Camera* OceanScene::godrayFinalPass( void )
 #include <osgOcean/shaders/osgOcean_downsample_frag.inl>
 #include <osgOcean/shaders/osgOcean_downsample_glare_frag.inl>
 
-osg::Camera* OceanScene::downsamplePass(osg::TextureRectangle* colorBuffer, 
+osg::Camera* OceanScene::downsamplePass(osg::TextureRectangle* colorBuffer,
                                         osg::TextureRectangle* auxBuffer,
                                         osg::TextureRectangle* outputTexture,
                                         bool isGlareEffect )
@@ -1344,7 +1344,7 @@ osg::Camera* OceanScene::gaussianPass( osg::TextureRectangle* inputTexture, osg:
 #include <osgOcean/shaders/osgOcean_dof_combiner_vert.inl>
 #include <osgOcean/shaders/osgOcean_dof_combiner_frag.inl>
 
-osg::Camera* OceanScene::dofCombinerPass(osg::TextureRectangle* fullscreenTexture, 
+osg::Camera* OceanScene::dofCombinerPass(osg::TextureRectangle* fullscreenTexture,
                                          osg::TextureRectangle* fullDepthTexture,
                                          osg::TextureRectangle* blurTexture,
                                          osg::TextureRectangle* outputTexture )
@@ -1403,7 +1403,7 @@ osg::Camera* OceanScene::dofFinalPass( osg::TextureRectangle* combinedTexture )
 #include <osgOcean/shaders/osgOcean_streak_vert.inl>
 #include <osgOcean/shaders/osgOcean_streak_frag.inl>
 
-osg::Camera* OceanScene::glarePass(osg::TextureRectangle* streakInput, 
+osg::Camera* OceanScene::glarePass(osg::TextureRectangle* streakInput,
                                    osg::TextureRectangle* steakOutput,
                                    int pass,
                                    osg::Vec2f direction )
@@ -1570,7 +1570,7 @@ void OceanScene::PrerenderCameraCullCallback::operator()(osg::Node*, osg::NodeVi
 }
 /*
 REGISTER_DOTOSGWRAPPER(OceanScene)
-(    
+(
     new osgOcean::OceanScene,
     "OceanScene",
     "Object Node OceanScene Group",

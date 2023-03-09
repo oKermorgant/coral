@@ -18,7 +18,7 @@ struct SceneParams
   static inline std::vector<double> asVector(const osg::Vec3 &vec)
   {
     return {vec.x(), vec.y(), vec.z()};
-  }    
+  }
 
   // will be updated from node param if any
   osg::Vec2f windDirection        {1,1};

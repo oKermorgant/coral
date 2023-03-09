@@ -4,7 +4,7 @@ namespace coral
 {
 
 void Link::refreshFrom(const Buffer &buffer)
-{  
+{
   if(last.has_value())
   {
     setPending(osgMatFrom(last->position, last->orientation));

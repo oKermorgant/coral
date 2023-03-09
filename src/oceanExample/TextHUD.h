@@ -14,8 +14,8 @@ class TextHUD : public osg::Referenced
 {
 private:
     osg::ref_ptr< osg::Camera > _camera;
-    osg::ref_ptr< osgText::Text > _modeText;    
-    osg::ref_ptr< osgText::Text > _cameraModeText;    
+    osg::ref_ptr< osgText::Text > _modeText;
+    osg::ref_ptr< osgText::Text > _cameraModeText;
 
 public:
     TextHUD( void ){
@@ -46,9 +46,9 @@ public:
         title->setCharacterSize(14);
         title->setLineSpacing(0.4f);
 
-        std::string versionText = 
-            std::string("osgOcean ") + 
-            std::string(osgOceanGetVersion()) + 
+        std::string versionText =
+            std::string("osgOcean ") +
+            std::string(osgOceanGetVersion()) +
             std::string("\nPress 'h' for options");
 
         title->setText(versionText);

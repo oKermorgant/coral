@@ -47,16 +47,21 @@ CoralNode::CoralNode()
   }
 
   // marker space
-  goal_sub = create_subscription<geometry_msgs::msg::PoseStamped>("/coral/goal", 1, [&](geometry_msgs::msg::PoseStamped::SharedPtr msg)
+  goal_sub = create_subscription<geometry_msgs::msg::PoseStamped>("/coral/goal", 1, [&](const geometry_msgs::msg::PoseStamped &msg)
   {
       if(!goal)
-      goal = std::make_unique<Goal>();
-      goal->update(tf_buffer, *msg);
+        goal = std::make_unique<Goal>();
+      goal->setPending(msg);
   });
 
-  path_sub = create_subscription<nav_msgs::msg::Path>("/coral/path", 1, [&](nav_msgs::msg::Path msg)
+  path_sub = create_subscription<nav_msgs::msg::Path>("/coral/path", 1, [&](const nav_msgs::msg::Path &msg)
   {
-      path.update(tf_buffer, msg);
+      path.setPending(msg);
+  });
+  marker_update_timer = create_wall_timer(100ms, [&]()
+  {
+    if(goal) goal->refreshFrom(tf_buffer);
+    path.refreshFrom(tf_buffer);
   });
 }
 
