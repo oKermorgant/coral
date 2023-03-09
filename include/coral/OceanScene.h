@@ -336,8 +336,7 @@ public:
   inline void switchParam(bool &param)
   {
     param = !param;
-    if(param)
-      _isDirty = true;
+    _isDirty = true;
   }
 
   /// If the eye is higher than this value above the ocean surface,
