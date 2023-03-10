@@ -2,7 +2,6 @@
 #define CORAL_VISUAL_H
 
 #include <memory>
-#include <osg/ref_ptr>
 #include <osg/Node>
 #include <osg/MatrixTransform>
 #include <coral/masks.h>
@@ -20,30 +19,28 @@ class Visual
 {
 protected:
 
-  osg::ref_ptr<osg::Group> pose;
+  osg::ref_ptr<osg::Group> base;
 
 public:
 
   using Shapes = std::vector<osg::ref_ptr<osg::Shape>>;
 
-  Visual() = default;
-  Visual(const osg::Matrix &M, osg::ref_ptr<osg::Node> mesh = {}) : pose{new osg::MatrixTransform(M)}
-  {
-    if(mesh)
-      pose->addChild(mesh);
-  }
+  Visual(osg::ref_ptr<osg::Group> mesh = {}, const std::optional<osg::Matrix> &M = std::nullopt);
+  void configure(bool moving = false, bool seen_by_cameras = true);
 
-  void configure(bool render, decltype (osg::Object::STATIC) variance);
-
-  inline auto frame() {return pose.get();}
+  inline auto frame() {return base.get();}
 
   // factories
-  static std::optional<Visual> fromURDF(const urdf::Visual &visual, const osg::Matrix &M);
-  static Visual fromShapes(const Shapes &shapes, const osg::Matrix &M, osg::StateSet *stateset);
+  static std::optional<Visual> fromURDF(const urdf::Visual &urdf, const osg::Matrix &M);
+  static Visual fromShapes(const Shapes &shapes, osg::StateSet *stateset, const std::optional<osg::Matrix> &M = std::nullopt);
 
   // utilities and cache
   // return the stateset corresponding to the texture or color, with cache
-  static osg::StateSet* makeStateSet(osg::Vec4f rgba, const std::string &texture="");
+  static osg::StateSet* makeStateSet(const osg::Vec4 &rgba, const std::string &texture="");
+  static inline auto makeStateSet(const std::array<float, 3> &rgb)
+  {
+    return makeStateSet({rgb[0],rgb[1],rgb[2],1.f});
+  }
 };
 
 }

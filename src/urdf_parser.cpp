@@ -188,10 +188,8 @@ Tree::Tree(const string &description, const bool keep_thrusters)
   const auto model(urdf::parseURDF(description));
 
   // extract all links
-  for(const auto &elem: model->links_)
+  for(const auto &[name, link]: model->links_)
   {
-    const auto &name{elem.first};
-    const auto &link{elem.second};
     if(!keep_thrusters && name.find("thruster") != name.npos)
       continue;
 
@@ -206,11 +204,14 @@ Tree::Tree(const string &description, const bool keep_thrusters)
   for(const auto &[name,joint]: model->joints_)
   {
     auto link{find(joint->child_link_name)};
+    if(link)
+    {
     link->setParent(find(joint->parent_link_name));
     auto limits(joint->limits);
     if(joint->type == urdf::Joint::FIXED || (limits && limits->lower == limits->upper))
       link->pose = osgMatFrom(joint->parent_to_joint_origin_transform.position,
                               joint->parent_to_joint_origin_transform.rotation);
+    }
   }
 
   // merge / remove merged links

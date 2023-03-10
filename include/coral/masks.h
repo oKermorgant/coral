@@ -16,9 +16,9 @@ constexpr static unsigned int normal      {0x4};
 constexpr static unsigned int silt        {0x10};
 constexpr static unsigned int marker      {0x32};
 
-inline auto getMask(bool render = true)
+inline auto getMask(bool seen_by_cameras = true)
 {
-  if(render)
+  if(seen_by_cameras)
     return normal | reflection | refraction;
   return marker;
 }

@@ -12,25 +12,33 @@ namespace coral
 {
 
 class Marker : public Visual
-{
-  friend class Path;
+{ 
+protected:
   static osg::Group* world;
+  static rclcpp::Node* node;
+  static Buffer* buffer;
+  rclcpp::SubscriptionBase::SharedPtr sub;
+  std::string frame_id;
 public:
-  Marker(const Visual &visual, bool moving = false);
-  Marker(const Shapes &shapes, const osg::Matrix &M, osg::StateSet *stateset, bool moving = false)
-    : Marker(fromShapes(shapes, M, stateset), moving) {}
-  inline static void setWorld(osg::Group* world)
+  inline virtual ~Marker()
   {
-    Marker::world = world;
+    if(base.valid())
+      world->removeChild(base);
   }
-  inline ~Marker()
+  virtual void refresh() = 0;
+  inline void configure(bool moving)
   {
-    world->removeChild(pose);
+    Visual::configure(moving, false);
+    world->addChild(base);
   }
+  inline auto topic() const {return sub->get_topic_name();}
+  static void spawnThrough(rclcpp::Node* node, osg::Group* world, Buffer* buffer);
 };
 
+namespace markers
+{
 
-class Goal : public Marker
+class Pose : public Marker
 {
   constexpr static auto length{1.f};
   constexpr static auto radius{.1f};
@@ -38,9 +46,11 @@ class Goal : public Marker
 
 private:
 
+  Pose(const std::string &topic, const std::array<float,3> &rgb, bool pose_stamped = false);
+
   inline void setMatrix(const osg::Matrix &M)
   {
-    pose->asTransform()->asMatrixTransform()->setMatrix(M);
+    base->asTransform()->asMatrixTransform()->setMatrix(M);
   }
 
   inline void hide()
@@ -49,46 +59,31 @@ private:
    // pose->asTransform().setMatrix(osg::Matrix::translate(0,0,-1000));
   }
 
-  std::optional<geometry_msgs::msg::PoseStamped> pending;
+  std::optional<geometry_msgs::msg::Pose> pending;
 
 public:
-  Goal(const osg::Vec4 &rgba = {1.f, 0.f, 0.f, 1.f});
-  inline void setPending(const geometry_msgs::msg::PoseStamped &msg)
-  {
-    pending = msg;
-  }
-  void refreshFrom(const Buffer &buffer);
+  Pose(const osg::Vec4 &rgba = {1.f, 0.f, 0.f, 1.f});
+  void refresh() override;
 };
 
 
-class Path
+class Path : public Marker
 {
+  constexpr static float radius = 0.02f;
+
   // how much we approximate a sequence of point with cylinders  
   osg::StateSet* color;
-  float radius;
 
 private:
   std::vector<osg::Vec3d> points;
-  std::vector<Marker> segments;
-  nav_msgs::msg::Path pending;
-
-  void reset(size_t dim = 0);
+  std::optional<std::vector<geometry_msgs::msg::PoseStamped>> pending;
 
 public:
-  Path(const osg::Vec4 &rgba = {.2, .7, .7, 1.}, float radius = 0.02f)
-    : color{Visual::makeStateSet(rgba)},
-      radius{radius}
-  {}
-  Path(float radius) : Path({.2, .7, .7, 1.}, radius) {}
-  inline void setPending(const nav_msgs::msg::Path &path)
-  {
-    pending = path;
-  }
-  void refreshFrom(const Buffer &buffer);
-
+  Path(const std::string &topic, const std::array<float,3> &rgb);
+  void refresh() override;
 };
 
-
+}
 }
 
 #endif // CORAL_MARKER_H

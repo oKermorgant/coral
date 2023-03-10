@@ -24,7 +24,6 @@
 #include <osgOcean/DistortionSurface>
 #include <osgOcean/GodRays>
 #include <osgOcean/SiltEffect>
-#include <osgOcean/Cylinder>
 
 #include <osg/Group>
 #include <osg/Camera>
@@ -80,8 +79,6 @@ public:
   }
 
 private:
-  static constexpr float OCEAN_CYLINDER_HEIGHT = 4000.f;
-
   Weather weather;
   osg::Vec4f base_water_color;
   osg::ref_ptr<osg::TextureCubeMap> cubemap;
@@ -119,8 +116,6 @@ private:
   float _surfaceHeight            {0};
 
   osg::ref_ptr<osg::MatrixTransform>  _oceanTransform{new osg::MatrixTransform};
-  osg::ref_ptr<osg::MatrixTransform>  _oceanCylinderMT{new osg::MatrixTransform};
-  osg::ref_ptr<osgOcean::Cylinder>    _oceanCylinder{new osgOcean::Cylinder(1900.f, OCEAN_CYLINDER_HEIGHT, 16, false, true)};
 
   osg::ref_ptr<osg::Camera> _godrayPreRender;
   osg::ref_ptr<osg::Camera> _godrayPostRender;
@@ -206,7 +201,7 @@ private:
 
   ViewData * initViewDependentData( osgUtil::CullVisitor *cv, OceanScene::ViewData * vd );
 
-  // NOTE: Remember to add new variables to the copy constructor.
+  std::vector<osg::ref_ptr<osg::Camera>> cameras;
 public:
 
   explicit OceanScene() {}
@@ -224,6 +219,13 @@ public:
   {
     changeMood(Weather::from(type));
   }
+  inline void registerCamera(osg::Camera* cam)
+  {
+    cam->setClearColor(weather.underwaterFogColor);
+    cameras.push_back(cam);
+  }
+
+
 
   void loadCubeMapTextures( const std::string& dir );
 
@@ -292,35 +294,6 @@ public:
 
   /// Check whether the ocean surface is visible or not.
   bool isOceanVisible() const { return _oceanTransform->getNodeMask() != 0; }
-
-  /// Get the ocean cylinder.
-  osgOcean::Cylinder* getOceanCylinder() const{
-    return _oceanCylinder.get();
-  }
-
-  /// Get the ocean cylinder's transform node.
-  osg::MatrixTransform* getOceanCylinderTransform() const{
-    return _oceanCylinderMT.get();
-  }
-
-  /// Set the size of _oceanCylinder which follows the camera underwater, so that the clear
-  /// color is not visible past the far plane - it will be the fog color.
-  /// Height is a positive number which represents depth.
-  /// Default values are Radius: 1900 and Height: 4000
-  inline void setCylinderSize( float radius, float height ){
-    _oceanCylinder->build( radius, height, 16, false, true );
-    _oceanCylinderMT->setMatrix( osg::Matrixf::translate(osg::Vec3f(0.f,0.f,-height-0.2f)) );
-  }
-
-  /// Get the radius of the ocean cylinder.
-  inline float getCylinderRadius( void ) const{
-    return _oceanCylinder->getRadius();
-  }
-
-  /// Get the height of the ocean cylinder.
-  inline float getCylinderHeight( void ) const{
-    return _oceanCylinder->getHeight();
-  }
 
   /// Enable/disable RTT effects (reflection, refraction, height map)
   /// for the given view.
@@ -509,8 +482,6 @@ public:
   /// EXP2 fog
   inline void refreshUnderwaterFog()
   {
-    _oceanCylinder->setColor(weather.underwaterFogColor);
-
     const float LOG2E = 1.442695;
     if( _globalStateSet.valid() ){
       _globalStateSet->getUniform("osgOcean_UnderwaterFogDensity")->set(-weather.underwaterFogDensity*weather.underwaterFogDensity*LOG2E);

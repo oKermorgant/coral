@@ -26,7 +26,7 @@ void Link::addElements(const urdf_parser::LinkInfo &info)
     auto visual{Visual::fromURDF(*urdf, M)};
     if(visual.has_value())
     {
-      visual->configure(true, osg::Object::STATIC);
+      visual->configure();
       pose->addChild(visual->frame());
     }
   }

@@ -26,7 +26,7 @@ Viewer::Viewer(OceanScene *scene) : scene(scene)
   addEventHandler( new osgViewer::HelpHandler);
 
   getCamera()->setName("MainCamera");
-  getCamera()->setClearColor(scene->scaleUnderwaterColor());
+  scene->registerCamera(getCamera());
 
   // init free-flying cam + default
   osg::Vec3 eye(scene->params.initialCameraPosition);
@@ -66,11 +66,6 @@ void Viewer::frame(double simTime)
   const auto z{getCameraManipulator()->getMatrix().getTrans().z()};
   const auto zSurf{scene->getOceanSurfaceHeight()};
   const auto underwater(z < zSurf);
-
-  if(underwater && scene->params.depth_attn > 0.f)
-  {
-    getCamera()->setClearColor(scene->scaleUnderwaterColor(1.f+z/scene->params.depth_attn));
-  }
 
   if(underwater != prev_underwater)
   {

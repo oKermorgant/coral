@@ -5,7 +5,6 @@
 #include <osgWidget/WindowManager>
 #include <osgGA/TrackballManipulator>
 #include <osgGA/NodeTrackerManipulator>
-#include <osg/Camera>
 #include <coral/OceanScene.h>
 
 namespace coral

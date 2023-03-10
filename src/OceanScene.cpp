@@ -31,6 +31,7 @@
 
 #include <coral/OceanScene.h>
 #include <coral/resource_helpers.h>
+#include <coral/scene_lock.h>
 
 using namespace coral;
 
@@ -41,125 +42,6 @@ enum DrawMask
 {
   CAST_SHADOW             = (0x1<<30),
   RECEIVE_SHADOW          = (0x1<<29),
-};
-
-
-// CameraTrackCallback used by osgOcean with the undersea cylinder.
-// Note: only set on MatrixTransform.
-class CameraTrackCallback: public osg::NodeCallback
-{
-public:
-  explicit CameraTrackCallback(OceanScene* oceanScene)
-    : _oceanScene (oceanScene)
-    , _currentMatrix(0)
-    , _traversalNumber(0)
-  {
-  }
-
-  virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
-  {
-    if( nv->getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
-    {
-      osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
-
-      if (nv->getTraversalNumber() >= _traversalNumber)
-      {
-        // Rendering new frame, reuse matrices used in the last frame.
-        _currentMatrix = 0;
-      }
-
-      osg::MatrixTransform* mt = static_cast<osg::MatrixTransform*>(node);
-      bool follow = true;
-
-      if (_oceanScene->surface() && !_oceanScene->surface()->isEndlessOceanEnabled())
-      {
-        // Do not follow the eye when the ocean is constrained
-        // to an area.
-        follow = false;
-
-        // The ocean cylinder should not be visible if the ocean
-        // is constrained to an area, since the ocean will often
-        // be in a pool or a river which already has walls.
-        mt->getChild(0)->setNodeMask(0);
-      }
-
-      if (follow)
-      {
-        osg::Vec3f centre,up,eye;
-        // get MAIN camera eye,centre,up
-        cv->getRenderStage()->getCamera()->getViewMatrixAsLookAt(eye,centre,up);
-
-        bool eyeAboveWater = _oceanScene->isEyeAboveWater(eye);
-        float mult = 1.0;
-        if (eyeAboveWater) mult = -1.0;
-
-        // Translate the ocean cylinder down by the surface height
-        // if the eye went from below to above the surface (so the
-        // cylinder doesn't peek through the waves) and inversely
-        // when the eye goes from above to below the surface (so
-        // we don't see cracks between the cylinder's edge and the
-        // waves).
-
-        // Note, we set the ocean cylinder's own matrixTransform
-        // to identity, and push the relevant matrix onto the
-        // modelView matrix stack, because it is viewpoint
-        // dependent.
-        mt->setMatrix(osg::Matrix::identity());
-
-        osg::Camera* currentCamera = cv->getCurrentRenderBin()->getStage()->getCamera();
-
-        double z = -_oceanScene->getOceanCylinder()->getHeight() +                      // So the cylinder is underwater
-            _oceanScene->getOceanSurfaceHeight() +                              // Follow the ocean surface's height
-            mult * _oceanScene->surface()->getMaximumHeight();        // Offset either up or down by a bit.
-        z *= 0;
-        osg::RefMatrix* cylinderMatrix = createOrReuseMatrix(osg::Matrix::translate(eye.x(), eye.y(), z) * currentCamera->getViewMatrix());
-        cv->pushModelViewMatrix(cylinderMatrix, osg::Transform::ABSOLUTE_RF);
-      }
-
-      traverse(node, nv);
-
-      if (follow)
-      {
-        cv->popModelViewMatrix();
-      }
-    }
-    else
-    {
-      traverse(node, nv);
-    }
-  }
-
-  // See osg::CullStack::createOrReuseMatrix()
-  osg::RefMatrix* createOrReuseMatrix(const osg::Matrix& value)
-  {
-    // skip of any already reused matrix.
-    while (_currentMatrix < _matrices.size() &&
-           _matrices[_currentMatrix]->referenceCount()>1)
-    {
-      ++_currentMatrix;
-    }
-
-    // if still within list, element must be singularly referenced
-    // there return it to be reused.
-    if (_currentMatrix < _matrices.size())
-    {
-      osg::RefMatrix* matrix = _matrices[_currentMatrix++].get();
-      matrix->set(value);
-      return matrix;
-    }
-
-    // otherwise need to create new matrix.
-    osg::RefMatrix* matrix = new osg::RefMatrix(value);
-    _matrices.push_back(matrix);
-    ++_currentMatrix;
-    return matrix;
-  }
-
-  OceanScene* _oceanScene;
-  std::vector< osg::ref_ptr<osg::RefMatrix> > _matrices;
-  unsigned int _currentMatrix;
-
-  unsigned int _traversalNumber;
 };
 
 }
@@ -239,6 +121,7 @@ bool OceanScene::EventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::G
     }
     else if (key == osgGA::GUIEventAdapter::KEY_End)
     {
+      _oceanScene->setOceanVisible(!_oceanScene->isOceanVisible());
       _oceanScene->setOceanSurfaceHeight(-1000.);
       return true;
     }
@@ -356,6 +239,9 @@ void OceanScene::changeMood(const Weather::Mood &mood)
   sun->setAmbient( weather.sunAmbient);
   sun->setDiffuse( weather.sunDiffuse);
 
+  for(auto cam: cameras)
+    cam->setClearColor(weather.underwaterFogColor);
+
   _isDirty = true;
 }
 
@@ -393,7 +279,7 @@ OceanScene::OceanScene(const SceneParams &params) : params{params}
   // This cylinder prevents the clear from being visible past the far plane
   // instead it will be the fog color.
   // The size of the cylinder should be changed according the size of the ocean surface.
-  setCylinderSize( 1900.f, 4000.f );
+  //setCylinderSize( 1900.f, 4000.f );
 
   setGlareAttenuation(0.8f);
   fitToSize(params.width, params.height);
@@ -454,25 +340,6 @@ OceanScene::OceanScene(const SceneParams &params) : params{params}
 
   setOceanSurfaceHeight(0);
 
-
-  //-----------------------------------------------------------------------
-  // _oceanCylinder follows the camera underwater, so that the clear
-  // color is not visible past the far plane - it will be the fog color.
-  _oceanCylinder->setColor( weather.underwaterFogColor );
-  _oceanCylinder->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-  _oceanCylinder->getOrCreateStateSet()->setMode(GL_FOG, osg::StateAttribute::OFF);
-
-  auto cylinderGeode = osg::make_ref<osg::Geode>();
-  cylinderGeode->addDrawable( _oceanCylinder.get() );
-
-  _oceanCylinderMT->setMatrix( osg::Matrix::translate(0, 0, -OCEAN_CYLINDER_HEIGHT) );
-  _oceanCylinderMT->setDataVariance( osg::Object::DYNAMIC );
-  _oceanCylinderMT->setCullCallback( osg::make_ref<CameraTrackCallback>(this));
-  _oceanCylinderMT->setNodeMask( Mask::normal | Mask::refraction );
-  _oceanCylinderMT->addChild( cylinderGeode );
-
-  _oceanTransform->addChild( _oceanCylinderMT.get() );
-
   _oceanTransform->setNodeMask( Mask::normal | Mask::surface );
   addChild( _oceanTransform.get() );
 
@@ -489,6 +356,7 @@ OceanScene::OceanScene(const SceneParams &params) : params{params}
 void OceanScene::init( void )
 {
   osg::notify(osg::INFO) << "OceanScene::init()" << std::endl;
+
 
   _godrayPreRender  = NULL;
   _godrayPostRender = NULL;

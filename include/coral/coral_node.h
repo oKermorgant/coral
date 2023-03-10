@@ -65,13 +65,6 @@ private:
   const std::string coral_cam_link = "coral_cam_view";
   bool has_cam_view = false;
   Link* getKnownCamParent();
-
-  // markers
-  rclcpp::TimerBase::SharedPtr marker_update_timer;
-  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_sub;
-  rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr path_sub;
-  std::unique_ptr<Goal> goal;
-  Path path;
 };
 
 }

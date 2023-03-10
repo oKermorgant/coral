@@ -3,11 +3,14 @@
 #include <coral/osg_make_ref.h>
 #include <coral/resource_helpers.h>
 #include <coral/scene_lock.h>
-#include <osg/Shape>
+#include <osg/ShapeDrawable>
+
 
 using namespace coral;
 
 osg::Group* Marker::world;
+rclcpp::Node* Marker::node;
+Buffer* Marker::buffer;
 
 namespace
 {
@@ -119,28 +122,71 @@ std::vector<Line::Segment> piecewiseLinear(const std::vector<osg::Vec3d> &path, 
 }
 }
 
-Marker::Marker(const Visual &visual, bool moving) : Visual(visual)
+void Marker::spawnThrough(rclcpp::Node* node, osg::Group* world, Buffer* buffer)
 {
-  configure(false, moving ? osg::Object::DYNAMIC : osg::Object::STATIC);
-  world->addChild(pose);
+  Marker::world = world;
+  Marker::node = node;
+  Marker::buffer = buffer;
+  static std::vector<std::unique_ptr<Marker>> markers;
+
+  /*
+  // marker space
+  goal_sub = create_subscription<geometry_msgs::msg::PoseStamped>("/coral/goal", 1, [&](const geometry_msgs::msg::PoseStamped &msg)
+  {
+      if(!goal)
+        goal = std::make_unique<Goal>();
+      goal->setPending(msg);
+  });
+
+  path_sub = create_subscription<nav_msgs::msg::Path>("/coral/path", 1, [&](const nav_msgs::msg::Path &msg)
+  {
+      path.setPending(msg);
+  });
+  marker_update_timer = create_wall_timer(100ms, [&]()
+  {
+    if(goal) goal->refreshFrom(tf_buffer);
+    path.refreshFrom(tf_buffer);
+  });
+*/
+
+
+
 }
 
-Goal::Goal(const osg::Vec4 &rgba) : Marker({osg::make_ref<osg::Cylinder>(osg::Vec3{0,0,length/2}, radius, length),
-                                           osg::make_ref<osg::Cone>(osg::Vec3{0,0,length}, radius*1.5, head)},
-{},Visual::makeStateSet(rgba),true)
-{
+markers::Pose::Pose(const std::string &topic, const std::array<float,3> &rgb, bool pose_stamped)
+{  
+  base = Visual::fromShapes({osg::make_ref<osg::Cylinder>(osg::Vec3{0,0,length/2}, radius, length),
+                             osg::make_ref<osg::Cone>(osg::Vec3{0,0,length}, radius*1.5, head)},
+                            makeStateSet(rgb), osg::Matrix::identity()).frame();
+  configure(true);
 
+  if(pose_stamped)
+  {
+    sub = node->create_subscription<geometry_msgs::msg::PoseStamped>(topic, 1, [&](geometry_msgs::msg::PoseStamped::SharedPtr msg)
+    {
+        frame_id = msg->header.frame_id;
+        pending = msg->pose;
+  });
+  }
+  else
+  {
+    frame_id = "world";
+    sub = node->create_subscription<geometry_msgs::msg::Pose>(topic, 1, [&](geometry_msgs::msg::Pose::SharedPtr msg)
+    {
+        pending = *msg;
+  });
+  }
 }
 
-void Goal::refreshFrom(const Buffer &buffer)
+void markers::Pose::refresh()
 {
   if(!pending.has_value())
     return;
 
-  auto Mw{osgMatFrom(pending->pose.position, pending->pose.orientation)};
-  if(pending->header.frame_id != "world")
+  auto Mw{osgMatFrom(pending->position, pending->orientation)};
+  if(frame_id != "world")
   {
-    const auto tr{buffer.lookup(pending->header.frame_id)};
+    const auto tr{buffer->lookup(frame_id)};
     if(!tr.has_value())
     {
       hide();
@@ -152,30 +198,38 @@ void Goal::refreshFrom(const Buffer &buffer)
   setMatrix(Mw);
 }
 
-void Path::reset(size_t dim)
+
+markers::Path::Path(const std::string &topic, const std::array<float,3> &rgb)
 {
-  segments.clear();
-  segments.reserve(dim);
+  base = Visual::fromShapes({}, makeStateSet(rgb)).frame();
+  configure(false);
+
+  sub = node->create_subscription<nav_msgs::msg::Path>(topic, 1, [&](nav_msgs::msg::Path::SharedPtr msg)
+  {
+      frame_id = msg->header.frame_id;
+      pending = msg->poses;
+});
 }
 
-void Path::refreshFrom(const Buffer &buffer)
+void markers::Path::refresh()
 {
-  // check if the same path is already registered
-  const auto &poses{pending.poses};
+  if(!pending.has_value())
+    return;
 
-  if(poses.size() < 2)
+  // check if the same path is already registered
+
+  if(pending->size() < 2)
   {
-    reset();
+    points.clear();
+    base->removeChildren(0, base->getNumChildren());
     return;
   }
 
   bool update_segments{true};
-  const auto world_path{pending.header.frame_id == "world"};
-
   std::optional<osg::Matrix> M;
-  if(!world_path)
+  if(frame_id != "world")
   {
-    const auto pose{buffer.lookup(pending.header.frame_id)};
+    const auto pose{buffer->lookup(frame_id)};
     if(!pose.has_value())
       return;
     M = osgMatFrom(pose->translation, pose->rotation);
@@ -189,11 +243,11 @@ void Path::refreshFrom(const Buffer &buffer)
     return M.value() * p;
   };
 
-  if(points.size() != poses.size())
+  if(points.size() != pending->size())
   {
     points.clear();
-    points.reserve(poses.size());
-    std::transform(poses.begin(), poses.end(), std::back_inserter(points),
+    points.reserve(pending->size());
+    std::transform(pending->begin(), pending->end(), std::back_inserter(points),
                    [&](const geometry_msgs::msg::PoseStamped &pose)
     {
       return toWorld(pose.pose.position);
@@ -204,7 +258,7 @@ void Path::refreshFrom(const Buffer &buffer)
     update_segments = false;
     {
       auto point{points.begin()};
-      auto pose{poses.begin()};
+      auto pose{pending->begin()};
       for(; point != points.end(); point++, pose++)
       {
         if(const auto abs_point{toWorld(pose->pose.position)};
@@ -223,8 +277,22 @@ void Path::refreshFrom(const Buffer &buffer)
   // compute segments from new points
   const auto segments{piecewiseLinear(points, radius)};
   [[maybe_unused]] const auto lock{coral_lock()};
-  reset(segments.size()); 
 
-  for(const auto &segment: segments)
-    this->segments.emplace_back(Visual::Shapes{osg::make_ref<osg::Capsule>(osg::Vec3{}, radius, segment.length)}, segment.pose, color);
+  const auto prev_size{base->getNumChildren()};
+  const auto new_size{segments.size()};
+
+  if(new_size < prev_size)
+    base->removeChildren(new_size, prev_size-new_size);
+
+  const auto createCylinder = [](const Line::Segment &segment)
+  {
+    auto cyl = osg::make_ref<osg::Cylinder>(segment.pose.getTrans(), radius, segment.length);
+    cyl->setRotation(segment.pose.getRotate());
+    return osg::make_ref<osg::ShapeDrawable>(cyl);
+  };
+
+  for(size_t i = 0; i < prev_size; ++i)
+    base->setChild(i, createCylinder(segments[i]).get());
+  for(size_t i = prev_size; i < new_size; ++i)
+    base->addChild(createCylinder(segments[i]));
 }

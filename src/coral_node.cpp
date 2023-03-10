@@ -14,7 +14,7 @@ CoralNode::CoralNode()
     viewer(scene.get()),
     tf_buffer(get_clock())
 {
-  Marker::setWorld(scene.get());
+  Marker::spawnThrough(this, scene.get(), &tf_buffer);
 
   pose_update_timer = create_wall_timer(50ms, [&](){refreshLinkPoses();});
 
@@ -45,24 +45,6 @@ CoralNode::CoralNode()
       findModels();
     });
   }
-
-  // marker space
-  goal_sub = create_subscription<geometry_msgs::msg::PoseStamped>("/coral/goal", 1, [&](const geometry_msgs::msg::PoseStamped &msg)
-  {
-      if(!goal)
-        goal = std::make_unique<Goal>();
-      goal->setPending(msg);
-  });
-
-  path_sub = create_subscription<nav_msgs::msg::Path>("/coral/path", 1, [&](const nav_msgs::msg::Path &msg)
-  {
-      path.setPending(msg);
-  });
-  marker_update_timer = create_wall_timer(100ms, [&]()
-  {
-    if(goal) goal->refreshFrom(tf_buffer);
-    path.refreshFrom(tf_buffer);
-  });
 }
 
 SceneParams CoralNode::parameters()

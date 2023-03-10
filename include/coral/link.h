@@ -50,7 +50,7 @@ public:
 
   inline auto poseCallback()
   {
-    last.emplace();
+    last = geometry_msgs::msg::Pose();
     return [&](geometry_msgs::msg::Pose::SharedPtr msg)
     {
       setPending(osgMatFrom(msg->position, msg->orientation));
