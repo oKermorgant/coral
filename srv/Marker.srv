@@ -1,0 +1,10 @@
+# message type, empty for delete
+string message
+
+# topic to subscribe for this marker
+string topic
+
+# color of the marker
+float32[3] rgb
+
+---

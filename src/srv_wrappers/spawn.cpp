@@ -2,13 +2,14 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <coral/srv/spawn.hpp>
+#include "random_node.h"
 
 using coral::srv::Spawn;
 
 int main(int argc, char** argv)
 {
   rclcpp::init(argc, argv);
-  auto node = rclcpp::Node::make_shared("coral_spawner");
+  auto node = random_node("coral_spawner");
 
   // arguments reflect service call
   auto request = std::make_shared<Spawn::Request>();

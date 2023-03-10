@@ -19,7 +19,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
-rosidl_generate_interfaces(${PROJECT_NAME} "srv/Spawn.srv"
+rosidl_generate_interfaces(${PROJECT_NAME} "srv/Spawn.srv" "srv/Marker.srv"
 DEPENDENCIES geometry_msgs)
 
 if("$ENV{ROS_DISTRO}" STREQUAL "galactic" OR "$ENV{ROS_DISTRO}" STREQUAL "foxy")
@@ -108,7 +108,7 @@ else()
 endif()
 
 # spawn service wrapper
-add_executable(spawn src/spawn.cpp)
+add_executable(spawn src/srv_wrappers/spawn.cpp)
 ament_target_dependencies(spawn rclcpp)
 if(${LEGACY_IDL})
     rosidl_target_interfaces(spawn ${PROJECT_NAME} "rosidl_typesupport_cpp")
@@ -116,7 +116,16 @@ else()
     target_link_libraries(spawn "${cpp_typesupport_target}")
 endif()
 
-install(TARGETS coral_gui spawn DESTINATION lib/${PROJECT_NAME})
+# marker service wrapper
+add_executable(marker src/srv_wrappers/marker.cpp)
+ament_target_dependencies(marker rclcpp)
+if(${LEGACY_IDL})
+    rosidl_target_interfaces(marker ${PROJECT_NAME} "rosidl_typesupport_cpp")
+else()
+    target_link_libraries(marker "${cpp_typesupport_target}")
+endif()
+
+install(TARGETS coral_gui spawn marker DESTINATION lib/${PROJECT_NAME})
 
 FILE(GLOB SCRIPTS scripts/*.py)
 install(PROGRAMS ${SCRIPTS}
