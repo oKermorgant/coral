@@ -5,6 +5,8 @@
 #include <coral/scene_lock.h>
 #include <osg/ShapeDrawable>
 
+#include <coral/srv/marker.hpp>
+
 
 using namespace coral;
 
@@ -81,7 +83,6 @@ struct Line
 };
 
 
-
 std::vector<Line::Segment> piecewiseLinear(const std::vector<osg::Vec3d> &path, double threshold)
 {
   if(path.size() < 2)
@@ -127,7 +128,41 @@ void Marker::spawnThrough(rclcpp::Node* node, osg::Group* world, Buffer* buffer)
   Marker::world = world;
   Marker::node = node;
   Marker::buffer = buffer;
-  static std::vector<std::unique_ptr<Marker>> markers;
+  using MarkerPtr = std::unique_ptr<Marker>;
+  static std::vector<MarkerPtr> markers;
+
+  static auto service = node->create_service<srv::Marker>("/coral/marker",[&]
+                                                   (const srv::Marker::Request::SharedPtr request,
+                                                   [[maybe_unused]] srv::Marker::Response::SharedPtr response)
+  {
+    [[maybe_unused]] const auto lock{coral_lock()};
+
+    if(request->topic.empty())
+      return;
+
+    const auto twin{std::find_if(markers.begin(), markers.end(), [&](const MarkerPtr &marker)
+      {return marker->topic() == request->topic;})};
+
+    if(twin != markers.end())
+    {
+      if(request->message.empty())
+        markers.erase(twin);
+      return;
+    }
+
+    if(request->message == "nav_msgs/msg/Path")
+      markers.push_back(std::make_unique<markers::Path>(request->topic, request->rgb));
+    else if(request->message == "geometry_msgs/msg/Pose")
+      markers.push_back(std::make_unique<markers::Pose>(request->topic, request->rgb, false));
+    else if(request->message == "geometry_msgs/msg/PoseStamped")
+      markers.push_back(std::make_unique<markers::Pose>(request->topic, request->rgb, true));
+  });
+
+  static auto refreshMarkers = node->create_wall_timer(std::chrono::milliseconds(100),[&]()
+  {
+    for(auto &marker: markers)
+      marker->refresh();
+  });
 
   /*
   // marker space
@@ -153,12 +188,12 @@ void Marker::spawnThrough(rclcpp::Node* node, osg::Group* world, Buffer* buffer)
 
 }
 
-markers::Pose::Pose(const std::string &topic, const std::array<float,3> &rgb, bool pose_stamped)
+markers::Pose::Pose(const std::string &topic, const std::array<double,3> &rgb, bool pose_stamped)
 {  
   base = Visual::fromShapes({osg::make_ref<osg::Cylinder>(osg::Vec3{0,0,length/2}, radius, length),
                              osg::make_ref<osg::Cone>(osg::Vec3{0,0,length}, radius*1.5, head)},
                             makeStateSet(rgb), osg::Matrix::identity()).frame();
-  configure(true);
+  attachTo(true);
 
   if(pose_stamped)
   {
@@ -199,10 +234,10 @@ void markers::Pose::refresh()
 }
 
 
-markers::Path::Path(const std::string &topic, const std::array<float,3> &rgb)
+markers::Path::Path(const std::string &topic, const std::array<double,3> &rgb)
 {
   base = Visual::fromShapes({}, makeStateSet(rgb)).frame();
-  configure(false);
+  attachTo(false);
 
   sub = node->create_subscription<nav_msgs::msg::Path>(topic, 1, [&](nav_msgs::msg::Path::SharedPtr msg)
   {

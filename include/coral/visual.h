@@ -26,7 +26,7 @@ public:
   using Shapes = std::vector<osg::ref_ptr<osg::Shape>>;
 
   Visual(osg::ref_ptr<osg::Group> mesh = {}, const std::optional<osg::Matrix> &M = std::nullopt);
-  void configure(bool moving = false, bool seen_by_cameras = true);
+  void attachTo(osg::Group* parent, bool moving = false, bool seen_by_cameras = true);
 
   inline auto frame() {return base.get();}
 
@@ -37,7 +37,8 @@ public:
   // utilities and cache
   // return the stateset corresponding to the texture or color, with cache
   static osg::StateSet* makeStateSet(const osg::Vec4 &rgba, const std::string &texture="");
-  static inline auto makeStateSet(const std::array<float, 3> &rgb)
+  template <typename Numeric>
+  static inline auto makeStateSet(const std::array<Numeric, 3> &rgb)
   {
     return makeStateSet({rgb[0],rgb[1],rgb[2],1.f});
   }

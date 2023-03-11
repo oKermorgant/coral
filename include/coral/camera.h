@@ -20,7 +20,7 @@ class Camera
 
 public:
 
-  static void addCameras(osg::Group* link, const std::vector<urdf_parser::CameraInfo> &infos);
+  static void addCameras(osg::Group* parent, const std::vector<urdf_parser::CameraInfo> &infos);
 
 private:
   osg::ref_ptr<osg::Camera> cam;

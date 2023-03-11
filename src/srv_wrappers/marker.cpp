@@ -29,6 +29,9 @@ int main(int argc, char** argv)
       if(here != topics.end() && !here->second.empty())
       {
        request->message = here->second[0];
+       RCLCPP_INFO(node->get_logger(), "Spawn marker for %s on topic %s",
+                   request->message.c_str(),
+                   request->topic.c_str());
        break;
       }
       rclcpp::spin_some(node);

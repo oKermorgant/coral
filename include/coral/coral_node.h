@@ -39,7 +39,6 @@ private:
   Viewer viewer;
 
   // tf interface
-  rclcpp::TimerBase::SharedPtr pose_update_timer;
   void refreshLinkPoses();
   Buffer tf_buffer;
 
@@ -56,7 +55,6 @@ private:
   std::vector<Link> links;
 
   // how to get them
-  rclcpp::Service<Spawn>::SharedPtr spawn_srv;
   void spawnModel(const std::string &model_ns, const std::string &pose_topic = "", const std::string &world_model = "");
   void parseModel(const std::string &model);
   rclcpp::Subscription<rosgraph_msgs::msg::Clock>::SharedPtr clock_sub;

@@ -19,6 +19,7 @@ protected:
   static Buffer* buffer;
   rclcpp::SubscriptionBase::SharedPtr sub;
   std::string frame_id;
+  Marker() = default;
 public:
   inline virtual ~Marker()
   {
@@ -26,10 +27,9 @@ public:
       world->removeChild(base);
   }
   virtual void refresh() = 0;
-  inline void configure(bool moving)
+  inline void attachTo(bool moving)
   {
-    Visual::configure(moving, false);
-    world->addChild(base);
+    Visual::attachTo(world, moving, false);
   }
   inline auto topic() const {return sub->get_topic_name();}
   static void spawnThrough(rclcpp::Node* node, osg::Group* world, Buffer* buffer);
@@ -43,11 +43,6 @@ class Pose : public Marker
   constexpr static auto length{1.f};
   constexpr static auto radius{.1f};
   constexpr static auto head{.2f};
-
-private:
-
-  Pose(const std::string &topic, const std::array<float,3> &rgb, bool pose_stamped = false);
-
   inline void setMatrix(const osg::Matrix &M)
   {
     base->asTransform()->asMatrixTransform()->setMatrix(M);
@@ -62,7 +57,8 @@ private:
   std::optional<geometry_msgs::msg::Pose> pending;
 
 public:
-  Pose(const osg::Vec4 &rgba = {1.f, 0.f, 0.f, 1.f});
+
+  Pose(const std::string &topic, const std::array<double,3> &rgb, bool pose_stamped = false);
   void refresh() override;
 };
 
@@ -79,7 +75,7 @@ private:
   std::optional<std::vector<geometry_msgs::msg::PoseStamped>> pending;
 
 public:
-  Path(const std::string &topic, const std::array<float,3> &rgb);
+  Path(const std::string &topic, const std::array<double,3> &rgb);
   void refresh() override;
 };
 

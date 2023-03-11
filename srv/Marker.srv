@@ -5,6 +5,6 @@ string message
 string topic
 
 # color of the marker
-float32[3] rgb
+float64[3] rgb
 
 ---

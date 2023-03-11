@@ -16,11 +16,11 @@ CoralNode::CoralNode()
 {
   Marker::spawnThrough(this, scene.get(), &tf_buffer);
 
-  pose_update_timer = create_wall_timer(50ms, [&](){refreshLinkPoses();});
+  static auto pose_update_timer = create_wall_timer(50ms, [&](){refreshLinkPoses();});
 
   display_thrusters = declare_parameter("with_thrusters", false);
 
-  spawn_srv = create_service<Spawn>
+  static auto spawn_srv = create_service<Spawn>
       ("/coral/spawn",
        [&](const Spawn::Request::SharedPtr request, [[maybe_unused]] Spawn::Response::SharedPtr response)
   {

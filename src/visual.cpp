@@ -217,12 +217,13 @@ osg::StateSet* Visual::makeStateSet(const osg::Vec4 &rgba, const std::string &te
   return Material(rgba, texture).toStateSet();
 }
 
-void Visual::configure(bool moving, bool seen_by_cameras)
+void Visual::attachTo(osg::Group *parent, bool moving, bool seen_by_cameras)
 {
   base->setDataVariance(moving ? osg::Object::DYNAMIC : osg::Object::STATIC);
   base->setNodeMask(Mask::getMask(seen_by_cameras));
   static osgUtil::Optimizer optim;
-  optim.optimize(base, optim.ALL_OPTIMIZATIONS);
+  optim.optimize(base, optim.ALL_OPTIMIZATIONS);  
+  parent->addChild(base);
 }
 
 }

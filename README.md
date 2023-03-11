@@ -37,3 +37,13 @@ The `spawn` executable is a wrapper around the `Spawn` service that is used to a
 ## Controlling the point of view
 
 A helper launch file is `track_launch.py` and simply publishes a static transform between the given `link` and the `coral_cam_node` link, in order to automatically track the corresponding link inside Coral.
+
+## Spawning a marker
+
+The `marker` node takes three parameters to spawn a given marker:
+    - `topic` (string): which topic to subscribe to
+    - `color` (0-1 RGB): the color of the marker
+    - `delete` (bool): whether the marker from this topic should now be deleted
+The node will identify which message type goes through the given topic and forward it to `coral_gui`.
+For now only `geometry_msgs/Pose`, `geometry_msgs/PoseStamped` and `nav_msgs/Path` are supported.
+

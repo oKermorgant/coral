@@ -25,10 +25,7 @@ void Link::addElements(const urdf_parser::LinkInfo &info)
   {
     auto visual{Visual::fromURDF(*urdf, M)};
     if(visual.has_value())
-    {
-      visual->configure();
-      pose->addChild(visual->frame());
-    }
+      visual->attachTo(pose);
   }
 
   if(info.cameras.empty())
