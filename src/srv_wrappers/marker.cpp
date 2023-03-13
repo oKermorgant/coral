@@ -20,7 +20,7 @@ int main(int argc, char** argv)
   std::copy(rgb.begin(), rgb.end(), request->rgb.begin());
 
   if(!node->declare_parameter("delete", false))
-  {    
+  {
     // wait for this topic to spawn and identify the message type
     while(true)
     {

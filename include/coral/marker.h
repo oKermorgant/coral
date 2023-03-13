@@ -12,13 +12,14 @@ namespace coral
 {
 
 class Marker : public Visual
-{ 
+{
 protected:
   static osg::Group* world;
   static rclcpp::Node* node;
   static Buffer* buffer;
   rclcpp::SubscriptionBase::SharedPtr sub;
   std::string frame_id;
+  using RGB = std::array<double,3>;
   Marker() = default;
 public:
   inline virtual ~Marker()
@@ -58,7 +59,7 @@ class Pose : public Marker
 
 public:
 
-  Pose(const std::string &topic, const std::array<double,3> &rgb, bool pose_stamped = false);
+  Pose(const std::string &topic, const RGB &rgb, bool pose_stamped = false);
   void refresh() override;
 };
 
@@ -67,7 +68,7 @@ class Path : public Marker
 {
   constexpr static float radius = 0.02f;
 
-  // how much we approximate a sequence of point with cylinders  
+  // how much we approximate a sequence of point with cylinders
   osg::StateSet* color;
 
 private:
@@ -75,7 +76,7 @@ private:
   std::optional<std::vector<geometry_msgs::msg::PoseStamped>> pending;
 
 public:
-  Path(const std::string &topic, const std::array<double,3> &rgb);
+  Path(const std::string &topic, const RGB &rgb);
   void refresh() override;
 };
 

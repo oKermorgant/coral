@@ -139,7 +139,7 @@ osg::ref_ptr<osg::Shape> shapeCache(urdf::Geometry const* geometry, const Materi
   {
     const auto cyl{static_cast<urdf::Cylinder const *>(geometry)};
     params = {cyl->radius, cyl->length};
-  }  
+  }
 
   const auto concat = [](const std::string &prev, double v){return prev + std::to_string(v);};
   const auto name = std::accumulate(params.begin(), params.end(), std::string{}, concat) + mat.serialize();
@@ -222,7 +222,7 @@ void Visual::attachTo(osg::Group *parent, bool moving, bool seen_by_cameras)
   base->setDataVariance(moving ? osg::Object::DYNAMIC : osg::Object::STATIC);
   base->setNodeMask(Mask::getMask(seen_by_cameras));
   static osgUtil::Optimizer optim;
-  optim.optimize(base, optim.ALL_OPTIMIZATIONS);  
+  optim.optimize(base, optim.ALL_OPTIMIZATIONS);
   parent->addChild(base);
 }
 

@@ -37,10 +37,9 @@ public:
   // utilities and cache
   // return the stateset corresponding to the texture or color, with cache
   static osg::StateSet* makeStateSet(const osg::Vec4 &rgba, const std::string &texture="");
-  template <typename Numeric>
-  static inline auto makeStateSet(const std::array<Numeric, 3> &rgb)
+  static inline auto makeStateSet(const std::array<double,3> &rgb)
   {
-    return makeStateSet({rgb[0],rgb[1],rgb[2],1.f});
+    return makeStateSet(osg::Vec4(rgb[0],rgb[1],rgb[2],1.f));
   }
 };
 

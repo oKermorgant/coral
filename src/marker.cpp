@@ -132,11 +132,9 @@ void Marker::spawnThrough(rclcpp::Node* node, osg::Group* world, Buffer* buffer)
   static std::vector<MarkerPtr> markers;
 
   static auto service = node->create_service<srv::Marker>("/coral/marker",[&]
-                                                   (const srv::Marker::Request::SharedPtr request,
-                                                   [[maybe_unused]] srv::Marker::Response::SharedPtr response)
+                                                          (const srv::Marker::Request::SharedPtr request,
+                                                          [[maybe_unused]] srv::Marker::Response::SharedPtr response)
   {
-    [[maybe_unused]] const auto lock{coral_lock()};
-
     if(request->topic.empty())
       return;
 
@@ -150,11 +148,17 @@ void Marker::spawnThrough(rclcpp::Node* node, osg::Group* world, Buffer* buffer)
       return;
     }
 
-    if(request->message == "nav_msgs/msg/Path")
+    const auto msg_ends_with = [request](const std::string &ending)
+    {
+        if (ending.size() > request->message.size()) return false;
+        return std::equal(ending.rbegin(), ending.rend(), request->message.rbegin());
+    };
+
+    if(msg_ends_with("Path"))
       markers.push_back(std::make_unique<markers::Path>(request->topic, request->rgb));
-    else if(request->message == "geometry_msgs/msg/Pose")
+    else if(msg_ends_with("Pose"))
       markers.push_back(std::make_unique<markers::Pose>(request->topic, request->rgb, false));
-    else if(request->message == "geometry_msgs/msg/PoseStamped")
+    else if(msg_ends_with("PoseStamped"))
       markers.push_back(std::make_unique<markers::Pose>(request->topic, request->rgb, true));
   });
 
@@ -163,33 +167,10 @@ void Marker::spawnThrough(rclcpp::Node* node, osg::Group* world, Buffer* buffer)
     for(auto &marker: markers)
       marker->refresh();
   });
-
-  /*
-  // marker space
-  goal_sub = create_subscription<geometry_msgs::msg::PoseStamped>("/coral/goal", 1, [&](const geometry_msgs::msg::PoseStamped &msg)
-  {
-      if(!goal)
-        goal = std::make_unique<Goal>();
-      goal->setPending(msg);
-  });
-
-  path_sub = create_subscription<nav_msgs::msg::Path>("/coral/path", 1, [&](const nav_msgs::msg::Path &msg)
-  {
-      path.setPending(msg);
-  });
-  marker_update_timer = create_wall_timer(100ms, [&]()
-  {
-    if(goal) goal->refreshFrom(tf_buffer);
-    path.refreshFrom(tf_buffer);
-  });
-*/
-
-
-
 }
 
-markers::Pose::Pose(const std::string &topic, const std::array<double,3> &rgb, bool pose_stamped)
-{  
+markers::Pose::Pose(const std::string &topic, const std::array<double, 3> &rgb, bool pose_stamped)
+{
   base = Visual::fromShapes({osg::make_ref<osg::Cylinder>(osg::Vec3{0,0,length/2}, radius, length),
                              osg::make_ref<osg::Cone>(osg::Vec3{0,0,length}, radius*1.5, head)},
                             makeStateSet(rgb), osg::Matrix::identity()).frame();
@@ -234,7 +215,7 @@ void markers::Pose::refresh()
 }
 
 
-markers::Path::Path(const std::string &topic, const std::array<double,3> &rgb)
+markers::Path::Path(const std::string &topic, const RGB &rgb)
 {
   base = Visual::fromShapes({}, makeStateSet(rgb)).frame();
   attachTo(false);
