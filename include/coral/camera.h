@@ -12,15 +12,14 @@ class CoralNode;
 
 class Camera
 {
-  static std::unique_ptr<image_transport::ImageTransport> transport;
-  static rclcpp::Node::SharedPtr node;
-  static std::vector<Camera> cameras;
-
-  Camera(const urdf_parser::CameraInfo &info);
+  static inline std::unique_ptr<image_transport::ImageTransport> transport;
+  static inline rclcpp::Node::SharedPtr node;
+  static inline std::vector<std::unique_ptr<Camera>> cameras;
 
 public:
 
   static void addCameras(osg::Group* parent, const std::vector<urdf_parser::CameraInfo> &infos);
+  Camera(const urdf_parser::CameraInfo &info);
 
 private:
   osg::ref_ptr<osg::Camera> cam;

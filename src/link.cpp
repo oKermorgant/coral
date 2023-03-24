@@ -1,5 +1,4 @@
 #include <coral/link.h>
-#include <coral/camera.h>
 
 namespace coral
 {
@@ -27,12 +26,6 @@ void Link::addElements(const urdf_parser::LinkInfo &info)
     if(visual.has_value())
       visual->attachTo(pose);
   }
-
-  if(info.cameras.empty())
-    return;
-
-  Camera::addCameras(pose, info.cameras);
-
 }
 
 

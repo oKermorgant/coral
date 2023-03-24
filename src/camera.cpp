@@ -6,16 +6,18 @@ using std::vector, std::string;
 
 namespace coral
 {
-std::unique_ptr<image_transport::ImageTransport> Camera::transport;
-rclcpp::Node::SharedPtr Camera::node;
-std::vector<Camera> Camera::cameras;
 
 void Camera::addCameras(osg::Group* link, const std::vector<urdf_parser::CameraInfo> &infos)
 {
+  if(infos.empty())
+    return;
+
   if(!transport)
   {
-    node = std::make_unique<rclcpp::Node>("coral_camera_transport");
+    node = std::make_unique<rclcpp::Node>("camera_transport", "coral");
+    node->set_parameter(rclcpp::Parameter("use_sim_time", true));
     transport = std::make_unique<image_transport::ImageTransport>(node);
+    static auto cam_thread{std::thread([&](){rclcpp::spin(node);})};
   }
 
   const auto current_topics{node->get_topic_names_and_types()};
@@ -29,16 +31,13 @@ void Camera::addCameras(osg::Group* link, const std::vector<urdf_parser::CameraI
 
     cam.pose->setDataVariance(osg::Object::STATIC);
     link->addChild(cam.pose);
-    cameras.push_back(Camera(cam));
+    cameras.push_back(std::make_unique<Camera>(cam));
   }
 }
 
 Camera::Camera(const urdf_parser::CameraInfo &info)
 {
-
-
-
-
+  std::cout << "Adding a camera for " << info.frame_id << std::endl;
   // init image
   image = osg::make_ref<osg::Image>();
   image->allocateImage(info.width, info.height, 1, GL_RGB, GL_UNSIGNED_BYTE);
@@ -76,7 +75,8 @@ Camera::Camera(const urdf_parser::CameraInfo &info)
 
 void Camera::publish()
 {
-  //msg.header.stamp = node->now();
+  std::cout << "Publishing images from " << msg.header.frame_id << std::endl;
+  msg.header.stamp = node->now();
   const auto &height(msg.height);
   const auto data(static_cast<unsigned char*>(image->data()));
 
@@ -88,6 +88,8 @@ void Camera::publish()
     for(uint col = 0; col < msg.step; ++col)
       dst_row[col] = src_row[col];
   }
+
+  std::cout << "would publish on " << publisher.getTopic() << std::endl;
 
   publisher.publish(msg);
 }

@@ -14,7 +14,7 @@ class Buffer : public tf2_ros::Buffer
   constexpr static auto timeout{std::chrono::milliseconds(10)};
   constexpr static auto world{"world"};
 public:
-  explicit Buffer(rclcpp::Clock::SharedPtr clock);
+  explicit Buffer(rclcpp::Node *spinning_node);
   inline std::optional<geometry_msgs::msg::Transform> lookup(const std::string &frame,const std::string &reference = world) const
   {
     if(canTransform(reference, frame, tf2::TimePointZero, timeout))

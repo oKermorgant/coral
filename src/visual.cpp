@@ -14,8 +14,12 @@
 namespace coral
 {
 
-namespace fs = std::filesystem;
 
+
+
+namespace
+{
+namespace fs = std::filesystem;
 /// wraps a material (color + texture) to osg::StateSet
 struct Material
 {
@@ -101,13 +105,13 @@ osg::ref_ptr<osg::Group> extractMesh(const std::string &mesh)
   const auto path(fullpath.parent_path());
 
   addResourcePath(path);
-  static auto opt = osg::ref_ptr<osgDB::Options>([]() -> osgDB::Options*
-                                                 {
-                                                   auto opt{new osgDB::Options};
-                                                   opt->setObjectCacheHint(osgDB::Options::CACHE_ALL);
-                                                   opt->setPrecisionHint(osgDB::Options::FLOAT_PRECISION_ALL);
-                                                   return opt;
-                                                 }());
+  static auto opt = []()
+  {
+    auto opt{osg::make_ref<osgDB::Options>()};
+    opt->setObjectCacheHint(osgDB::Options::CACHE_ALL);
+    opt->setPrecisionHint(osgDB::Options::FLOAT_PRECISION_ALL);
+    return opt;
+  }();
 
   auto node{osgDB::readNodeFile(filename, opt)};
 
@@ -158,6 +162,7 @@ osg::ref_ptr<osg::Shape> shapeCache(urdf::Geometry const* geometry, const Materi
     cached = osg::make_ref<osg::Cylinder>(osg::Vec3d{}, params[0], params[1]);
   return cached;
 }
+}
 
 Visual::Visual(osg::ref_ptr<osg::Group> mesh, const std::optional<osg::Matrix> &M)
 {
@@ -184,7 +189,7 @@ std::optional<Visual> Visual::fromURDF(const urdf::Visual &urdf, const osg::Matr
 
   if(geometry->type == geometry->MESH)
   {
-    const auto mesh_info = static_cast<urdf::Mesh*>(geometry);
+    const auto mesh_info{static_cast<urdf::Mesh*>(geometry)};
     const auto mesh{extractMesh(mesh_info->filename)};
     if(!mesh)
       return {};

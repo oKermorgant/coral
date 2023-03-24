@@ -8,13 +8,15 @@
 
 #include <coral/srv/spawn.hpp>
 #include <coral/srv/surface.hpp>
-#include <coral/OceanScene.h>
+#include <coral/scene_params.h>
 #include <coral/viewer.h>
 #include <coral/link.h>
-#include <coral/marker.h>
 
 namespace coral
 {
+
+class OceanScene;
+class Viewer;
 
 using geometry_msgs::msg::Pose;
 using coral::srv::Spawn;
@@ -24,10 +26,8 @@ class CoralNode : public rclcpp::Node
 {
 public:
   CoralNode();
-  inline Viewer* getViewer()
-  {
-    return &viewer;
-  }
+
+  void manage(osg::ref_ptr<OceanScene> scene, Viewer &viewer);
 
   SceneParams parameters();
 
@@ -35,8 +35,8 @@ public:
 
 private:
   Link world_link{"world"};
-  osg::ref_ptr<OceanScene> scene;
-  Viewer viewer;
+  OceanScene* scene;
+  Viewer* viewer;
 
   // tf interface
   void refreshLinkPoses();
@@ -59,8 +59,7 @@ private:
   void parseModel(const std::string &model);
   rclcpp::Subscription<rosgraph_msgs::msg::Clock>::SharedPtr clock_sub;
 
-  // camera view point
-  const std::string coral_cam_link = "coral_cam_view";
+  // camera view point 
   bool has_cam_view = false;
   Link* getKnownCamParent();
 };

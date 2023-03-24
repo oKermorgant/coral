@@ -66,18 +66,17 @@ vector<CameraInfo> CameraInfo::extractFrom(const string &description)
       gazebo_elem != nullptr;
       gazebo_elem = gazebo_elem->NextSiblingElement("gazebo"))
   {
-    const auto sensor(gazebo_elem->FirstChildElement("sensor"));
+    if(!gazebo_elem->Attribute("reference"))
+      continue;
 
-    if(sensor != nullptr &&
-       std::string(sensor->Attribute("type")) == "camera" &&
-       sensor->FirstChildElement("plugin") != nullptr)
+    const string link(gazebo_elem->Attribute("reference"));
+    for(auto sensor = gazebo_elem->FirstChildElement("sensor");
+        sensor != nullptr;
+        sensor = sensor->NextSiblingElement("sensor"))
     {
-      const string link(gazebo_elem->Attribute("reference"));
-
-      if(link.find("right") == link.npos && link.find("left") == link.npos)
-      {
-        cameras.emplace_back(link, sensor);
-      }
+      if(sensor->Attribute("type") != std::string{"camera"})
+        continue;
+      cameras.emplace_back(link, sensor);
     }
   }
   return cameras;
@@ -86,9 +85,6 @@ vector<CameraInfo> CameraInfo::extractFrom(const string &description)
 CameraInfo::CameraInfo(const std::string &link, const TiXmlElement* sensor_elem)
   : frame_id(link)
 {
-
-  std::cout << "Adding camera @ " << link << std::endl;
-
   const auto sensor(NestedXML{sensor_elem});
   const auto cam(NestedXML{sensor_elem->FirstChildElement("camera")});
 
@@ -102,21 +98,10 @@ CameraInfo::CameraInfo(const std::string &link, const TiXmlElement* sensor_elem)
   sensor.read({"update_rate"}, rate);
   period_ms = 1000/rate;
 
-  // topic namespace
-  sensor.read({"plugin", "camera_name"}, topic);
+  // gz topic
+  sensor.read({"topic"}, topic);
   if(topic[0] != '/')
     topic = "/" + topic;
-
-  // image topic in namespace
-  string im_topic = "image_raw";
-  /*const bool remapped = sensor.read({"plugin", "ros", "remapping"}, im_topic);
-  if(remapped)
-  {
-    const auto idx(im_topic.find('='));
-    if(idx != im_topic.npos)
-      im_topic = im_topic.substr(idx+1);
-  }*/
-  topic += '/' + im_topic;
 }
 
 
@@ -197,7 +182,7 @@ Tree::Tree(const string &description, const bool keep_thrusters)
     std::transform(link->visual_array.begin(), link->visual_array.end(), std::back_inserter(info.visuals),
                    [](const auto &visual){return LinkInfo::Visual{visual, osg::Matrix::identity()};});
     std::copy_if(cameras.begin(), cameras.end(), std::back_inserter(info.cameras),
-                 [&](const auto &cam){return cam.frame_id == name;});
+                 [&name=name](const auto &cam){return cam.frame_id == name;});
   }
 
   // build hierarchy from model joints

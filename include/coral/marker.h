@@ -14,9 +14,9 @@ namespace coral
 class Marker : public Visual
 {
 protected:
-  static osg::Group* world;
-  static rclcpp::Node* node;
-  static Buffer* buffer;
+  static inline osg::Group* world;
+  static inline rclcpp::Node* node;
+  static inline Buffer* buffer;
   rclcpp::SubscriptionBase::SharedPtr sub;
   std::string frame_id;
   using RGB = std::array<double,3>;

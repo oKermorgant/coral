@@ -7,12 +7,7 @@
 
 #include <coral/srv/marker.hpp>
 
-
 using namespace coral;
-
-osg::Group* Marker::world;
-rclcpp::Node* Marker::node;
-Buffer* Marker::buffer;
 
 namespace
 {
