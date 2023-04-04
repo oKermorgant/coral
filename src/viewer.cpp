@@ -14,8 +14,7 @@ Viewer::Viewer(OceanScene *scene) : scene(scene)
 {
   width = scene->params.width;
   height = scene->params.height;
-  setUpViewInWindow( 150, 150, width, height, 0 );
-
+  setUpViewInWindow( 150, 150, width, height, 0 );  
   setSceneData(scene);
 
   addEventHandler( new osgViewer::StatsHandler );
@@ -50,7 +49,9 @@ Viewer::Viewer(OceanScene *scene) : scene(scene)
 
   getCamera()->addChild(camera);
 
+  osg::DisplaySettings::instance()->setNumMultiSamples(16);
   realize();
+
   osgViewer::Viewer::Windows windows;
   getWindows(windows);
   window = windows[0];

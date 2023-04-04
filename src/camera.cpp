@@ -9,7 +9,7 @@ namespace coral
 
 void Camera::addCameras(osg::Group* link, const std::vector<urdf_parser::CameraInfo> &infos)
 {
-  if(infos.empty())
+  if(link == nullptr || infos.empty())
     return;
 
   if(!transport)
@@ -20,9 +20,12 @@ void Camera::addCameras(osg::Group* link, const std::vector<urdf_parser::CameraI
     static auto cam_thread{std::thread([&](){rclcpp::spin(node);})};
   }
 
-  const auto current_topics{node->get_topic_names_and_types()};
+  using CamPtr = std::unique_ptr<Camera>;
 
+  const auto current_topics{node->get_topic_names_and_types()};
+  static std::vector<CamPtr> cameras;
   cameras.reserve(cameras.size() + infos.size());
+
   for(auto &cam: infos)
   {
 
@@ -31,13 +34,13 @@ void Camera::addCameras(osg::Group* link, const std::vector<urdf_parser::CameraI
 
     cam.pose->setDataVariance(osg::Object::STATIC);
     link->addChild(cam.pose);
-    cameras.push_back(std::make_unique<Camera>(cam));
+    cameras.push_back(CamPtr(new Camera(cam)));
   }
 }
 
 Camera::Camera(const urdf_parser::CameraInfo &info)
 {
-  std::cout << "Adding a camera for " << info.frame_id << std::endl;
+  RCLCPP_INFO(node->get_logger(), "Rendering images for camera frame %s", info.frame_id.c_str());
   // init image
   image = osg::make_ref<osg::Image>();
   image->allocateImage(info.width, info.height, 1, GL_RGB, GL_UNSIGNED_BYTE);
@@ -75,9 +78,10 @@ Camera::Camera(const urdf_parser::CameraInfo &info)
 
 void Camera::publish()
 {
-  std::cout << "Publishing images from " << msg.header.frame_id << std::endl;
   msg.header.stamp = node->now();
   const auto &height(msg.height);
+
+  // TODO find how to get the actual data here
   const auto data(static_cast<unsigned char*>(image->data()));
 
   for(uint row = 0; row < height; ++row)
@@ -88,8 +92,6 @@ void Camera::publish()
     for(uint col = 0; col < msg.step; ++col)
       dst_row[col] = src_row[col];
   }
-
-  std::cout << "would publish on " << publisher.getTopic() << std::endl;
 
   publisher.publish(msg);
 }

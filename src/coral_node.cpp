@@ -101,15 +101,9 @@ SceneParams CoralNode::parameters()
 
 Link* CoralNode::getKnownCamParent()
 {
-  static Link* prev_link{};
-
+  Link* prev_link = nullptr;
   auto parent{tf_buffer.getParent(coral_cam_link)};
-  if(prev_link != nullptr && parent.has_value() && parent.value() == prev_link->getName())
-    return prev_link;
 
-  prev_link = nullptr;
-
-  // have to find it
   while(true)
   {
     // if we have reached the world frame
