@@ -7,7 +7,6 @@
 #include <rosgraph_msgs/msg/clock.hpp>
 
 #include <coral/srv/spawn.hpp>
-#include <coral/srv/surface.hpp>
 #include <coral/scene_params.h>
 #include <coral/viewer.h>
 #include <coral/link.h>
@@ -20,7 +19,6 @@ class Viewer;
 
 using geometry_msgs::msg::Pose;
 using coral::srv::Spawn;
-using coral::srv::Surface;
 
 class CoralNode : public rclcpp::Node
 {

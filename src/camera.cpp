@@ -40,7 +40,7 @@ void Camera::addCameras(osg::Group* link, const std::vector<urdf_parser::CameraI
 
 Camera::Camera(const urdf_parser::CameraInfo &info)
 {
-  RCLCPP_INFO(node->get_logger(), "Rendering images for camera frame %s", info.frame_id.c_str());
+  RCLCPP_INFO(node->get_logger(), "Rendering images for camera @ %s", info.frame_id.c_str());
   // init image
   image = osg::make_ref<osg::Image>();
   image->allocateImage(info.width, info.height, 1, GL_RGB, GL_UNSIGNED_BYTE);

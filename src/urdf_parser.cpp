@@ -166,11 +166,24 @@ auto Tree::simplify()
   }
 }
 
+urdf::ModelInterfaceConstSharedPtr loadModel(const std::string &description)
+{
+  const auto urdf{description.find("<robot")};
+  const auto sdf{description.find("<sdf>")};
+
+  if(urdf < sdf)
+    return urdf::parseURDF(description);
+
+  auto model = std::make_shared<urdf::Model>();
+  model->initString(description);
+  return model;
+}
+
 // main function
 Tree::Tree(const string &description, const bool keep_thrusters)
 {
   const auto cameras(CameraInfo::extractFrom(description));
-  const auto model(urdf::parseURDF(description));
+  const auto model{loadModel(description)};
 
   // extract all links
   for(const auto &[name, link]: model->links_)
@@ -191,11 +204,11 @@ Tree::Tree(const string &description, const bool keep_thrusters)
     auto link{find(joint->child_link_name)};
     if(link)
     {
-    link->setParent(find(joint->parent_link_name));
-    auto limits(joint->limits);
-    if(joint->type == urdf::Joint::FIXED || (limits && limits->lower == limits->upper))
-      link->pose = osgMatFrom(joint->parent_to_joint_origin_transform.position,
-                              joint->parent_to_joint_origin_transform.rotation);
+      link->setParent(find(joint->parent_link_name));
+      auto limits(joint->limits);
+      if(joint->type == urdf::Joint::FIXED || (limits && limits->lower == limits->upper))
+        link->pose = osgMatFrom(joint->parent_to_joint_origin_transform.position,
+                                joint->parent_to_joint_origin_transform.rotation);
     }
   }
 
