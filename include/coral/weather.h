@@ -11,7 +11,11 @@ namespace coral
 
 struct Weather
 {
+#ifdef CORAL_CUSTOM_SCENE
+  enum class Mood{ CLEAR, DUSK, CLOUDY, NIGHT, CUSTOM};
+#else
   enum class Mood{ CLEAR, DUSK, CLOUDY, NIGHT };
+#endif
 
   std::string cubemap;
   osg::Vec4f lightColor;
@@ -20,11 +24,12 @@ struct Weather
   osg::Vec3f underwaterAttenuation;
   osg::Vec4f underwaterDiffuse;
   osg::Vec3f sunDirection;
+  osg::Vec3f sunPosition;
   osg::Vec4f sunDiffuse;
   osg::Vec4f sunAmbient;
   osg::Vec4f underwaterFogColor;
-  float aboveWaterFogDensity  = {0.0012f};
-  float underwaterFogDensity  = {0.002f};
+  float aboveWaterFogDensity = {0.0012f};
+  float underwaterFogDensity = {0.002f};
 
   inline static Mood from(const std::string &name)
   {
@@ -47,18 +52,23 @@ struct Weather
 
   inline void switchTo(Mood mood)
   {
-    osg::Vec3f sunPosition;
     switch (mood)
     {
+#ifdef CORAL_CUSTOM_SCENE
+      case Mood::CUSTOM:
+        break;
+#endif
       case Mood::CLEAR:
         cubemap = "sky_clear";
-        fogColor = lightColor = intColor( 199,226,255 );
+        fogColor = intColor( 199,226,255 );
+        lightColor = intColor( 136,226,255 );
         underwaterAttenuation = osg::Vec3f(0.015f, 0.0075f, 0.005f);
         underwaterDiffuse = intColor(27,57,109);
         sunPosition = osg::Vec3f(326.573, 1212.99 ,1275.19);
         sunDiffuse = intColor( 191, 191, 191 );
         sunAmbient = sunDiffuse / 3.f;
-        underwaterFogColor = intColor(27,57,109);
+        underwaterFogColor = intColor(72, 110, 123);
+        underwaterFogDensity = 0.015f;
         break;
       case Mood::DUSK:
         cubemap = "sky_dusk";
@@ -66,9 +76,10 @@ struct Weather
         underwaterAttenuation =  osg::Vec3f(0.015f, 0.0075f, 0.005f);
         underwaterDiffuse = intColor(44,69,106);
         sunPosition = osg::Vec3f(520.f, 1900.f, 550.f );
-        sunDiffuse =  intColor( 251, 251, 161 );
+        sunDiffuse = intColor( 251, 251, 161 );
         sunAmbient = sunDiffuse / 4.f;
         underwaterFogColor = intColor(44,69,106 );
+        underwaterFogDensity = 0.03f;
         break;
       case Mood::CLOUDY:
         cubemap = "sky_fair_cloudy";
@@ -76,19 +87,23 @@ struct Weather
         underwaterAttenuation = osg::Vec3f(0.008f, 0.003f, 0.002f);
         underwaterDiffuse = intColor(84,135,172);
         sunPosition = osg::Vec3f(-1056.89f, -771.886f, 1221.18f );
-        sunDiffuse =  intColor( 191, 191, 191 );
+        sunDiffuse = intColor( 191, 191, 191 );
         sunAmbient = sunDiffuse / 2.f;
-        underwaterFogColor = intColor(84,135,172 );
+        underwaterFogColor = intColor(28,80,100);
+        underwaterFogDensity = 0.02f;
         break;
       case Mood::NIGHT:
         cubemap = "sky_night";
-        fogColor = lightColor = intColor(20,20,50);
-        underwaterAttenuation = osg::Vec3f(0.008f, 0.003f, 0.002f);
+        fogColor = intColor(20,20,50);
+        lightColor = intColor(20,20,50);
+        underwaterAttenuation = osg::Vec3f(0.8f, 0.3f, 0.2f);
         underwaterDiffuse = intColor(10, 10, 30);
-        sunPosition = osg::Vec3f(0.f, 0.f, -100.f );
-        sunDiffuse = intColor( 10, 10, 30 );
+        sunPosition = osg::Vec3f(100000.f, 100000.f, 100000.f );
+        sunDiffuse = intColor( 10, 10, 10 );
         sunAmbient = sunDiffuse / 3.f;
         underwaterFogColor = underwaterDiffuse;
+        underwaterFogDensity = 0.06f;
+        break;
     }
 
     lightColor /= 10.f;

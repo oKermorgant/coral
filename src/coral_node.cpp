@@ -8,6 +8,11 @@
 #include <coral/viewer.h>
 #include <std_srvs/srv/empty.hpp>
 
+#ifdef CORAL_CUSTOM_SCENE
+#include <coral/msg/color.hpp>
+#include <coral/custom_scene.h>
+#endif
+
 using namespace coral;
 using namespace std::chrono_literals;
 using std::vector, std::string;
@@ -58,6 +63,10 @@ void CoralNode::manage(osg::ref_ptr<OceanScene> scene, Viewer & viewer)
   });
 
   static auto pose_update_timer = create_wall_timer(50ms, [&](){refreshLinkPoses();});
+
+#ifdef CORAL_CUSTOM_SCENE
+  static auto color_sub = create_subscription<coral::msg::Color>("/color", 1, colorCallback(scene));
+#endif
 }
 
 SceneParams CoralNode::parameters()

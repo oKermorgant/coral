@@ -220,10 +220,9 @@ void OceanScene::loadCubeMapTextures( const std::string& dir )
     cubemap->setImage(dir, osgDB::readImageFile(path + filename));
 }
 
-void OceanScene::changeMood(const Weather::Mood &mood)
+void OceanScene::changeMood(const Weather &weather)
 {
-  weather.switchTo(mood);
-
+  this->weather = weather;
   base_water_color = weather.underwaterFogColor;
 
   loadCubeMapTextures(weather.cubemap);
@@ -235,9 +234,10 @@ void OceanScene::changeMood(const Weather::Mood &mood)
   refreshAboveWaterFog();
   refreshUnderwaterFog();
 
-  sun->setPosition( osg::Vec4f(-weather.sunDirection, 0.f));
+  sun->setPosition( osg::Vec4f(weather.sunPosition, 0.f));
   sun->setAmbient( weather.sunAmbient);
   sun->setDiffuse( weather.sunDiffuse);
+  sun->setSpecular({});
 
   for(auto cam: cameras)
     cam->setClearColor(weather.underwaterFogColor);
@@ -326,7 +326,7 @@ OceanScene::OceanScene(const SceneParams &params) : params{params}
   sun->setLightNum(0);
 
   // init overall scene
-  changeMood(params.scene_type);
+  changeMood(Weather(params.scene_type));
 
   addChild(lightSource);
   auto ss{getOrCreateStateSet()};
@@ -590,8 +590,7 @@ void OceanScene::ViewData::dirty( bool flag )
 
 void OceanScene::fitToSize(int width, int height)
 {
-  _screenDims.x() = width;
-  _screenDims.y() = height;
+  _screenDims.set(width,height);
   _isDirty = true;
 }
 

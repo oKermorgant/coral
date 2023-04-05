@@ -45,7 +45,6 @@
 #include <map>
 
 
-
 namespace coral
 {
 /**
@@ -214,11 +213,19 @@ public:
     refreshUnderwaterFog();
     return weather.underwaterDiffuse;
   }
-  void changeMood(const Weather::Mood &mood);
-  inline void changeMood( const std::string &type)
+
+  void changeMood(const Weather &weather);
+  inline void changeMood(const Weather::Mood &mood)
+  {
+    weather.switchTo(mood);
+    changeMood(weather);
+  }
+  /*inline void changeMood( const std::string &type)
   {
     changeMood(Weather::from(type));
-  }
+  }*/
+
+
   inline void registerCamera(osg::Camera* cam)
   {
     cam->setClearColor(weather.underwaterFogColor);

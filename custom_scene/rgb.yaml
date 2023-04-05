@@ -1,0 +1,24 @@
+color:
+  a:
+    default: 255
+    max: 255
+    min: 0
+    to: a
+  b:
+    default: 4
+    max: 255
+    min: 0
+    to: b
+  base: night
+  field: sunDiffuse
+  g:
+    default: 4
+    max: 255
+    min: 0
+    to: g
+  r:
+    default: 4
+    max: 255
+    min: 0
+    to: r
+  type: coral/Color

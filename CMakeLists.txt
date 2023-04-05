@@ -19,8 +19,16 @@ find_package(geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
+option(CUSTOM_SCENE "Build messages to play with scene colors" ON)
+
+if(CUSTOM_SCENE)
+    add_definitions(-DCORAL_CUSTOM_SCENE)
+    rosidl_generate_interfaces(${PROJECT_NAME} "srv/Spawn.srv" "srv/Marker.srv" "msg/Color.msg"
+    DEPENDENCIES geometry_msgs)
+else()
 rosidl_generate_interfaces(${PROJECT_NAME} "srv/Spawn.srv" "srv/Marker.srv"
 DEPENDENCIES geometry_msgs)
+endif()
 
 if("$ENV{ROS_DISTRO}" STREQUAL "galactic" OR "$ENV{ROS_DISTRO}" STREQUAL "foxy")
     set(LEGACY_IDL TRUE)
@@ -127,7 +135,7 @@ endif()
 
 install(TARGETS coral_gui spawn marker DESTINATION lib/${PROJECT_NAME})
 
-FILE(GLOB SCRIPTS scripts/*.py)
+FILE(GLOB SCRIPTS src/scripts/*.py)
 install(PROGRAMS ${SCRIPTS}
   DESTINATION lib/${PROJECT_NAME}
 )
@@ -148,6 +156,10 @@ install(DIRECTORY ${OSGOCEAN_SRC}/demo/island DESTINATION share/${PROJECT_NAME}/
 
 # override some shaders if needed
 install(DIRECTORY osgocean/resources DESTINATION share/${PROJECT_NAME})
+
+if(CUSTOM_SCENE)
+install(DIRECTORY custom_scene DESTINATION share/${PROJECT_NAME})
+endif()
 
 ament_export_libraries(osgOcean)
 ament_package()
