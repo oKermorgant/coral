@@ -14,9 +14,6 @@
 namespace coral
 {
 
-
-
-
 namespace
 {
 namespace fs = std::filesystem;

@@ -65,7 +65,12 @@ SceneParams CoralNode::parameters()
   SceneParams params;
 
   const auto updateParam = [&](const string &description, auto & val)
-  {val = declare_parameter(description, val);};
+  {
+    if(has_parameter(description))
+      get_parameter(description, val);
+    else
+      val = declare_parameter(description, val);
+  };
 
   // display
   updateParam("gui.width", params.width);
@@ -247,12 +252,6 @@ void CoralNode::spawnModel(const std::string &model_ns,
                 model_ns.c_str(),
                 pose_topic.c_str(),
                 model_root.getName().c_str());
-
-    /*links[root_link_idx].ignoreTF();
-    pose_subs.push_back(create_subscription<Pose>(model_ns + "/" + pose_topic, 1, [&,root_link_idx](Pose::SharedPtr msg)
-    {
-      links[root_link_idx].setPending(osgMatFrom(msg->position, msg->orientation));
-    }));*/
 
     pose_subs.push_back(create_subscription<Pose>(model_ns + "/" + pose_topic, 1, model_root.poseCallback()));
   }
