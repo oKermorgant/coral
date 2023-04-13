@@ -8,11 +8,12 @@ namespace coral
 
 namespace fs = std::filesystem;
 
-inline void addResourcePath(const std::string &path)
+inline void addResourcePath(const fs::path &path)
 {
+  const auto path_str{path.string()};
   static auto &paths(osgDB::Registry::instance()->getDataFilePathList());
-  if(std::find(paths.begin(), paths.end(), path) == paths.end())
-    paths.insert(paths.begin(), path);
+  if(std::find(paths.begin(), paths.end(), path_str) == paths.end())
+    paths.insert(paths.begin(), path_str);
 }
 
 void initCoralResources()

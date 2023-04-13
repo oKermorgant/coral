@@ -158,6 +158,11 @@ bool Viewer::EventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIAc
       viewer->changeMood( Weather::Mood::NIGHT);
       return true;
     }
+    else if(key == '5' )
+    {
+      viewer->changeMood( Weather::Mood::CUSTOM);
+      return true;
+    }
   }
   return false;
 }
@@ -169,4 +174,5 @@ void Viewer::EventHandler::getUsage(osg::ApplicationUsage& usage) const
   usage.addKeyboardMouseBinding("2","Select scene \"Dusk\"");
   usage.addKeyboardMouseBinding("3","Select scene \"Pacific Cloudy\"");
   usage.addKeyboardMouseBinding("4","Select scene \"Night\"");
+  usage.addKeyboardMouseBinding("5","Select scene \"Custom\"");
 }

@@ -9,7 +9,7 @@ color:
     max: 255
     min: 0
     to: b
-  base: clear
+  base: night
   field: sunDiffuse
   g:
     default: 4

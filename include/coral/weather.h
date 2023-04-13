@@ -11,11 +11,7 @@ namespace coral
 
 struct Weather
 {
-#ifdef CORAL_CUSTOM_SCENE
   enum class Mood{ CLEAR, DUSK, CLOUDY, NIGHT, CUSTOM};
-#else
-  enum class Mood{ CLEAR, DUSK, CLOUDY, NIGHT };
-#endif
 
   std::string cubemap;
   osg::Vec4f lightColor;
@@ -36,6 +32,7 @@ struct Weather
     if(name == "cloudy") return Mood::CLOUDY;
     if(name == "dusk")   return Mood::DUSK;
     if(name == "night")  return Mood::NIGHT;
+    if(name == "custom")  return Mood::CUSTOM;
     return Mood::CLEAR;
   }
 
@@ -54,10 +51,9 @@ struct Weather
   {
     switch (mood)
     {
-#ifdef CORAL_CUSTOM_SCENE
       case Mood::CUSTOM:
+        cubemap = "sky_custom";
         break;
-#endif
       case Mood::CLEAR:
         cubemap = "sky_clear";
         fogColor = intColor( 199,226,255 );

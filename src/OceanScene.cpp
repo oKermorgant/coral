@@ -116,12 +116,13 @@ bool OceanScene::EventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::G
     }
     else if (key == osgGA::GUIEventAdapter::KEY_Home)
     {
+      _oceanScene->setOceanVisible(true);
       _oceanScene->setOceanSurfaceHeight(0.);
       return true;
     }
     else if (key == osgGA::GUIEventAdapter::KEY_End)
     {
-      _oceanScene->setOceanVisible(!_oceanScene->isOceanVisible());
+      _oceanScene->setOceanVisible(false);
       _oceanScene->setOceanSurfaceHeight(-1000.);
       return true;
     }

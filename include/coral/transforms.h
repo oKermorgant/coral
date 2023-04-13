@@ -9,13 +9,14 @@
 namespace coral
 {
 
+constexpr auto WORLD_NAME = "world";
+
 class Buffer : public tf2_ros::Buffer
 {
   constexpr static auto timeout{std::chrono::milliseconds(10)};
-  constexpr static auto world{"world"};
 public:
   explicit Buffer(rclcpp::Node *spinning_node);
-  inline std::optional<geometry_msgs::msg::Transform> lookup(const std::string &frame,const std::string &reference = world) const
+  inline std::optional<geometry_msgs::msg::Transform> lookup(const std::string &frame,const std::string &reference = WORLD_NAME) const
   {
     if(canTransform(reference, frame, tf2::TimePointZero, timeout))
       return lookupTransform(reference, frame, tf2::TimePointZero).transform;
@@ -25,7 +26,7 @@ public:
   {
     static auto ok{false};
     if(ok)  return true;
-    return ok = _frameExists(world);
+    return ok = _frameExists(WORLD_NAME);
   }
   inline std::optional<std::string> getParent(const std::string &frame) const
   {

@@ -118,7 +118,7 @@ Link* CoralNode::getKnownCamParent()
   Link* prev_link = nullptr;
   auto parent{tf_buffer.getParent(coral_cam_link)};
 
-  while(true)
+  while(parent.has_value())
   {
     // if we have reached the world frame
     if(parent.value() == world_link.getName())
@@ -127,16 +127,13 @@ Link* CoralNode::getKnownCamParent()
       break;
     }
     // if we have reached a link that moves without TF knowing
-    const auto root{std::find(links.begin(), links.end(), parent)};
-    if(root != links.end())
+    if(auto root{findLink(parent.value())}; root)
     {
-      prev_link = root.base();
+      prev_link = root;
       break;
     }
     // continue parenting
     parent = tf_buffer.getParent(parent.value());
-    if(!parent.has_value())
-      break;
   }
   return prev_link;
 }
@@ -147,14 +144,14 @@ void CoralNode::refreshLinkPoses()
   {
     // cache retrieval of pending new poses
     for(auto &link: links)
-      link.refreshFrom(tf_buffer);
+      link->refreshFrom(tf_buffer);
   }
 
   {
     // locked while forwarding poses to scene
     [[maybe_unused]] const auto lock{coral_lock()};
     for(auto &link: links)
-      link.applyNewPose();
+      link->applyNewPose();
   }
 
   if(tf_buffer._frameExists(coral_cam_link))
@@ -170,7 +167,7 @@ void CoralNode::refreshLinkPoses()
     {
       auto M = osgMatFrom(tr.transform.translation, tr.transform.rotation);
 
-      if(parent->getName() != "world")
+      if(parent->getName() != WORLD_NAME)
         M = M*parent->frame()->getMatrix();
       viewer->lockCamera(M);
     }
@@ -222,14 +219,14 @@ void CoralNode::spawnModel(const std::string &model_ns,
                            const std::string &world_model)
 {
   if(!world_model.empty())
-  {
+  {    
     std::ifstream urdf{world_model};
     if(!urdf)
     {
       RCLCPP_WARN(get_logger(), "cannot open file %s", world_model.c_str());
       return;
     }
-    RCLCPP_INFO(get_logger(), "Loading world from %s", world_model.c_str());
+    ScopedTimer("Loading world model from " + world_model, this);
     using Buffer = std::istreambuf_iterator<char>;
     parseModel({(Buffer(urdf)), Buffer()});
     return;
@@ -250,51 +247,51 @@ void CoralNode::spawnModel(const std::string &model_ns,
     return;
   }
 
-  const auto root_link_idx{links.size()};
-  parseModel(rsp_param_srv->get_parameter<string>("robot_description"));
+  ScopedTimer("Loading world model from " + model_ns + "/robot_state_publisher", this);
+  const auto root{parseModel(rsp_param_srv->get_parameter<string>("robot_description"))};
 
-  if(!pose_topic.empty() && links.size() > root_link_idx)
+  if(!pose_topic.empty() && root)
   {
-    auto &model_root{links[root_link_idx]};
     RCLCPP_INFO(get_logger(), "%s seems to have its pose published on %s/%s for frame %s",
                 model_ns.substr(1).c_str(),
                 model_ns.c_str(),
                 pose_topic.c_str(),
-                model_root.getName().c_str());
+                root->getName().c_str());
 
-    pose_subs.push_back(create_subscription<Pose>(model_ns + "/" + pose_topic, 1, model_root.poseCallback()));
+    pose_subs.push_back(create_subscription<Pose>(model_ns + "/" + pose_topic, 1, root->poseCallback()));
   }
   known_model_namespaces.push_back(model_ns);
 }
 
-void CoralNode::parseModel(const string &description)
+Link* CoralNode::parseModel(const string &description)
 {
   const auto tree{urdf_parser::Tree(description, display_thrusters)};
-  links.reserve(links.size() + tree.size());
-  const auto root{links.end()};
+  Link* root{};
 
   for(const auto &link: tree)
   {
-    if(link.name == "world")
+    if(link.name == WORLD_NAME)
     {
       world_link.addElements(link);
       Camera::addCameras(world_link.frame(), link.cameras);
     }
     else
     {
-      auto &last{links.emplace_back(link)};
+      auto &last{links.emplace_back(std::make_unique<Link>(link))};
+      if(!root)
+        root = last.get();
       // find the parent if any, was already added
-      if(!link.parent || link.parent->name == "world")
+      if(!link.parent || link.parent->name == WORLD_NAME)
       {
-        RCLCPP_INFO(get_logger(), "Got new frame %s", link.name.c_str());
-        last.setParent(world_link);
+        RCLCPP_INFO(get_logger(), "  Got frame %s", link.name.c_str());
+        last->setParent(world_link);
       }
       else
       {
-        auto parent_link{std::find(root, links.end(), link.parent->name)};
-        last.setParent(*parent_link);
+        last->setParent(*findLink(link.parent->name));
       }
-      Camera::addCameras(last.frame(), link.cameras);
+      Camera::addCameras(last->frame(), link.cameras);
     }
   }
+  return root;
 }

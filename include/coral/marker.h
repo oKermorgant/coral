@@ -41,9 +41,9 @@ namespace markers
 
 class Pose : public Marker
 {
-  constexpr static auto length{1.f};
-  constexpr static auto radius{.1f};
-  constexpr static auto head{.2f};
+  constexpr static auto length{.7f};
+  constexpr static auto radius{.05f};
+  constexpr static auto head{.3f};
   inline void setMatrix(const osg::Matrix &M)
   {
     base->asTransform()->asMatrixTransform()->setMatrix(M);

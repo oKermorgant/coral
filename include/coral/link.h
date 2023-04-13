@@ -12,12 +12,13 @@ namespace coral
 class Link
 {
 public:
-  Link(const std::string &name) : name{name}
+  Link(const std::string &name = "") : name{name}
   {
     pose->setDataVariance(osg::Object::STATIC);
   }
-  Link(const urdf_parser::LinkInfo &info) : name{info.name}
+  Link(const urdf_parser::LinkInfo &info)
   {
+    name = info.name;
     pose->setDataVariance(osg::Object::DYNAMIC);
     addElements(info);
   }
@@ -45,24 +46,23 @@ public:
   inline void setParent(const Link &root)
   {
     root.pose->addChild(pose);
-    parent = root.name;
+    parent = &root;
   }
 
+  /// inits last pose received (disables pose from tf) and returns the callback to update this pose
   inline auto poseCallback()
   {
-    last = geometry_msgs::msg::Pose();
+    last.emplace();
     return [&](geometry_msgs::msg::Pose::SharedPtr msg)
     {
-      setPending(osgMatFrom(msg->position, msg->orientation));
+      last = *msg;
     };
   }
 
-  inline void ignoreTF() {last.emplace();}
-
 private:
 
-  const std::string name;
-  std::string parent;
+  std::string name;
+  Link const * parent = nullptr;
   osg::Matrix M_pending;
   osg::ref_ptr <osg::MatrixTransform> pose = new osg::MatrixTransform;
 

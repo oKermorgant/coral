@@ -110,12 +110,12 @@ osg::ref_ptr<osg::Group> extractMesh(const std::string &mesh)
     return opt;
   }();
 
-  auto node{osgDB::readNodeFile(filename, opt)};
+  auto node{osgDB::readNodeFile(filename.string(), opt)};
 
   if(!node)
   {
-    OSG_FATAL << "Cannot find mesh file '"
-              << fullpath << "'\n";
+    OSG_FATAL << "Cannot find mesh file "
+              << fullpath.string() << "\n";
     return nullptr;
   }
   return node->asGroup();

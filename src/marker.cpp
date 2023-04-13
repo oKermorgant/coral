@@ -181,7 +181,7 @@ markers::Pose::Pose(const std::string &topic, const std::array<double, 3> &rgb, 
   }
   else
   {
-    frame_id = "world";
+    frame_id = WORLD_NAME;
     sub = node->create_subscription<geometry_msgs::msg::Pose>(topic, 1, [&](geometry_msgs::msg::Pose::SharedPtr msg)
     {
         pending = *msg;
@@ -195,7 +195,7 @@ void markers::Pose::refresh()
     return;
 
   auto Mw{osgMatFrom(pending->position, pending->orientation)};
-  if(frame_id != "world")
+  if(frame_id != WORLD_NAME)
   {
     const auto tr{buffer->lookup(frame_id)};
     if(!tr.has_value())
@@ -205,8 +205,10 @@ void markers::Pose::refresh()
     }
     Mw = osgMatFrom(tr->translation, tr->rotation) * Mw;
   }
+  // z to x
+  const osg::Matrix xMz(osg::Quat{0, .5, 0, .5});
   [[maybe_unused]] const auto lock{coral_lock()};
-  setMatrix(Mw);
+  setMatrix(xMz * Mw);
 }
 
 
@@ -238,7 +240,7 @@ void markers::Path::refresh()
 
   bool update_segments{true};
   std::optional<osg::Matrix> M;
-  if(frame_id != "world")
+  if(frame_id != WORLD_NAME)
   {
     const auto pose{buffer->lookup(frame_id)};
     if(!pose.has_value())

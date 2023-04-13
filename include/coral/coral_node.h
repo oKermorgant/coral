@@ -32,7 +32,25 @@ public:
   void findModels();
 
 private:
-  Link world_link{"world"};
+
+  struct ScopedTimer
+  {
+    using Clock = std::chrono::high_resolution_clock;
+    std::string msg;
+    Clock::time_point start;
+    Node* node;
+    inline explicit ScopedTimer(const std::string &msg, Node * node) : msg{msg}, start{Clock::now()}, node{node}
+    {}
+    inline ~ScopedTimer()
+    {
+      RCLCPP_INFO(node->get_logger(), "%s... took %ld μs", msg.c_str(),
+                  std::chrono::duration_cast<std::chrono::microseconds>(Clock::now()-start).count());
+    }
+  };
+
+
+
+  Link world_link{WORLD_NAME};
   OceanScene* scene;
   Viewer* viewer;
 
@@ -50,11 +68,17 @@ private:
     return std::find(known_model_namespaces.begin(), known_model_namespaces.end(), model) != known_model_namespaces.end();
   }
   bool display_thrusters = false;
-  std::vector<Link> links;
+  std::vector<std::unique_ptr<Link>> links;
+  inline Link* findLink(const std::string &name) const
+  {
+    auto link{std::find_if(links.begin(), links.end(), [&](auto &link){return link->getName() == name;})};
+    return link == links.end() ? nullptr : link->get();
+  }
 
   // how to get them
   void spawnModel(const std::string &model_ns, const std::string &pose_topic = "", const std::string &world_model = "");
-  void parseModel(const std::string &model);
+  /// add a model and returns the root link
+  Link *parseModel(const std::string &model);
   rclcpp::Subscription<rosgraph_msgs::msg::Clock>::SharedPtr clock_sub;
 
   // camera view point 
