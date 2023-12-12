@@ -14,6 +14,7 @@
   <depend>rclcpp</depend>
   <depend>sensor_msgs</depend>
   <depend>urdfdom</depend>
+  <depend>tinyxml2_vendor</depend>
   <depend>ament_index_cpp</depend>
   <depend>tf2_ros</depend>
   <depend>image_transport</depend>

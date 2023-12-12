@@ -6,7 +6,10 @@
 #include <osg/MatrixTransform>
 #include <optional>
 
-struct TiXmlElement;
+namespace tinyxml2
+{
+struct XMLElement;
+}
 
 namespace coral
 {
@@ -25,7 +28,7 @@ struct CameraInfo
   int period_ms;
   osg::ref_ptr<osg::MatrixTransform> pose = new osg::MatrixTransform;
 
-  CameraInfo(const std::string &link, const TiXmlElement* sensor_elem);
+  CameraInfo(const std::string &link, const tinyxml2::XMLElement* sensor_elem);
   inline CameraInfo(const CameraInfo &src, const osg::Matrix &M) : CameraInfo{src}
   {
     // copy with change in the matrix

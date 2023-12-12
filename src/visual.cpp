@@ -102,13 +102,9 @@ osg::ref_ptr<osg::Group> extractMesh(const std::string &mesh)
   const auto path(fullpath.parent_path());
 
   addResourcePath(path);
-  static auto opt = []()
-  {
-    auto opt{osg::make_ref<osgDB::Options>()};
-    opt->setObjectCacheHint(osgDB::Options::CACHE_ALL);
-    opt->setPrecisionHint(osgDB::Options::FLOAT_PRECISION_ALL);
-    return opt;
-  }();
+  auto opt{osg::make_ref<osgDB::Options>()};
+  opt->setObjectCacheHint(osgDB::Options::CACHE_ALL);
+  opt->setPrecisionHint(osgDB::Options::FLOAT_PRECISION_ALL);
 
   auto node{osgDB::readNodeFile(filename.string(), opt)};
 

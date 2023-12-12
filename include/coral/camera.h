@@ -14,9 +14,12 @@ class Camera
 {
   static inline std::unique_ptr<image_transport::ImageTransport> transport;
   static inline rclcpp::Node::SharedPtr node;  
+  static inline osg::Group* scene;
+  static inline std::vector<std::unique_ptr<Camera>> cameras;
 
 public:
 
+  static inline void observe(osg::Group* scene) {Camera::scene = scene;}
   static void addCameras(osg::Group* parent, const std::vector<urdf_parser::CameraInfo> &new_cameras);
 
 private:

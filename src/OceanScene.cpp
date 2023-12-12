@@ -44,6 +44,9 @@ enum DrawMask
   RECEIVE_SHADOW          = (0x1<<29),
 };
 
+constexpr auto lowResScale{4};
+constexpr auto lowResMul{1.f/lowResScale};
+
 }
 
 
@@ -331,13 +334,13 @@ OceanScene::OceanScene(const SceneParams &params) : params{params}
 
   addChild(lightSource);
   auto ss{getOrCreateStateSet()};
-  ss->addUniform(new osg::Uniform("uOverlayMap", 1));
-  ss->addUniform(new osg::Uniform("uNormalMap", 2));
-  ss->addUniform(new osg::Uniform("SLStex", 3));
-  ss->addUniform(new osg::Uniform("SLStex2", 4));
-  ss->addUniform( new osg::Uniform("stddev", 0.0f ) );
-  ss->addUniform( new osg::Uniform("mean", 0.0f ) );
-  ss->addUniform( new osg::Uniform("light", 1.f ) );
+  ss->addUniform(osg::make_ref<osg::Uniform>("uOverlayMap", 1));
+  ss->addUniform(osg::make_ref<osg::Uniform>("uNormalMap", 2));
+  ss->addUniform(osg::make_ref<osg::Uniform>("SLStex", 3));
+  ss->addUniform(osg::make_ref<osg::Uniform>("SLStex2", 4));
+  ss->addUniform( osg::make_ref<osg::Uniform>("stddev", 0.0f ) );
+  ss->addUniform( osg::make_ref<osg::Uniform>("mean", 0.0f ) );
+  ss->addUniform( osg::make_ref<osg::Uniform>("light", 1.f ) );
 
   setOceanSurfaceHeight(0);
 
@@ -391,18 +394,18 @@ void OceanScene::init( void )
     // Note that since _lightID can change, we will need to change the
     // global definition and reload all the shaders that depend on its
     // value when it does. This is not implemented yet.
-    //_globalStateSet->addUniform( new osg::Uniform("osgOcean_LightID", _lightID ) );
+    //_globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_LightID", _lightID ) );
 
-    _globalStateSet->addUniform( new osg::Uniform("osgOcean_EnableDOF", params.underwaterDOF ) );
-    _globalStateSet->addUniform( new osg::Uniform("osgOcean_EnableGlare", params.glare ) );
-    _globalStateSet->addUniform( new osg::Uniform("osgOcean_EnableUnderwaterScattering", params.underwaterScattering ) );
-    _globalStateSet->addUniform( new osg::Uniform("osgOcean_WaterHeight", float(getOceanSurfaceHeight()) ) );
-    _globalStateSet->addUniform( new osg::Uniform("osgOcean_UnderwaterFogColor", weather.underwaterFogColor ) );
-    _globalStateSet->addUniform( new osg::Uniform("osgOcean_AboveWaterFogColor", weather.fogColor ) );
-    _globalStateSet->addUniform( new osg::Uniform("osgOcean_UnderwaterFogDensity", -weather.underwaterFogDensity*weather.underwaterFogDensity*LOG2E ) );
-    _globalStateSet->addUniform( new osg::Uniform("osgOcean_AboveWaterFogDensity", -weather.aboveWaterFogDensity*weather.aboveWaterFogDensity*LOG2E ) );
-    _globalStateSet->addUniform( new osg::Uniform("osgOcean_UnderwaterDiffuse", weather.underwaterDiffuse ) );
-    _globalStateSet->addUniform( new osg::Uniform("osgOcean_UnderwaterAttenuation", weather.underwaterAttenuation ) );
+    _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_EnableDOF", params.underwaterDOF ) );
+    _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_EnableGlare", params.glare ) );
+    _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_EnableUnderwaterScattering", params.underwaterScattering ) );
+    _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_WaterHeight", float(getOceanSurfaceHeight()) ) );
+    _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_UnderwaterFogColor", weather.underwaterFogColor ) );
+    _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_AboveWaterFogColor", weather.fogColor ) );
+    _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_UnderwaterFogDensity", -weather.underwaterFogDensity*weather.underwaterFogDensity*LOG2E ) );
+    _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_AboveWaterFogDensity", -weather.aboveWaterFogDensity*weather.aboveWaterFogDensity*LOG2E ) );
+    _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_UnderwaterDiffuse", weather.underwaterDiffuse ) );
+    _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_UnderwaterAttenuation", weather.underwaterAttenuation ) );
 
     if(_enableDefaultShader)
     {
@@ -444,13 +447,13 @@ void OceanScene::init( void )
     {
       _dofPasses.clear();
 
-      osg::Vec2s lowResDims = _screenDims/4;
+      const auto lowResDims = _screenDims/lowResScale;
 
       _dofStateSet = new osg::StateSet;
-      _dofStateSet->addUniform( new osg::Uniform("osgOcean_DOF_Near",  _dofNear ) );
-      _dofStateSet->addUniform( new osg::Uniform("osgOcean_DOF_Far",   _dofFar ) );
-      _dofStateSet->addUniform( new osg::Uniform("osgOcean_DOF_Clamp", _dofFarClamp ) );
-      _dofStateSet->addUniform( new osg::Uniform("osgOcean_DOF_Focus", _dofFocus ) );
+      _dofStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_DOF_Near",  _dofNear ) );
+      _dofStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_DOF_Far",   _dofFar ) );
+      _dofStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_DOF_Clamp", _dofFarClamp ) );
+      _dofStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_DOF_Focus", _dofFocus ) );
 
       // First capture screen color buffer and a luminance buffer used for a custom depth map
       osg::TextureRectangle* fullScreenTexture   = createTextureRectangle( _screenDims, GL_RGBA );
@@ -487,10 +490,10 @@ void OceanScene::init( void )
     {
       _glarePasses.clear();
 
-      osg::Vec2s lowResDims = _screenDims/4;
+      const auto lowResDims = _screenDims/lowResScale;
 
       _glareStateSet = new osg::StateSet;
-      _glareStateSet->addUniform( new osg::Uniform("osgOcean_EnableGlare", params.glare ) );
+      _glareStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_EnableGlare", params.glare ) );
 
       // First capture screen
       osg::TextureRectangle* fullScreenTexture = createTextureRectangle( _screenDims, GL_RGBA );
@@ -606,21 +609,21 @@ void OceanScene::ViewData::init( OceanScene *oceanScene, osgUtil::CullVisitor * 
   _globalStateSet = new osg::StateSet;
   _surfaceStateSet = new osg::StateSet;
 
-  _globalStateSet->addUniform( new osg::Uniform("osgOcean_EyeUnderwater", false ) );
-  _globalStateSet->addUniform( new osg::Uniform("osgOcean_Eye", osg::Vec3f() ) );
+  _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_EyeUnderwater", false ) );
+  _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_Eye", osg::Vec3f() ) );
 
-  _surfaceStateSet->addUniform( new osg::Uniform("osgOcean_EnableReflections",  _oceanScene->params.reflections ) );
-  _surfaceStateSet->addUniform( new osg::Uniform("osgOcean_ReflectionMap",      _oceanScene->_reflectionUnit ) );
+  _surfaceStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_EnableReflections",  _oceanScene->params.reflections ) );
+  _surfaceStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_ReflectionMap",      _oceanScene->_reflectionUnit ) );
 
-  _surfaceStateSet->addUniform( new osg::Uniform("osgOcean_EnableRefractions",  _oceanScene->params.refractions ) );
-  _surfaceStateSet->addUniform( new osg::Uniform("osgOcean_RefractionMap",      _oceanScene->_refractionUnit ) );
-  _surfaceStateSet->addUniform( new osg::Uniform("osgOcean_RefractionDepthMap", _oceanScene->_refractionDepthUnit ) );
+  _surfaceStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_EnableRefractions",  _oceanScene->params.refractions ) );
+  _surfaceStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_RefractionMap",      _oceanScene->_refractionUnit ) );
+  _surfaceStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_RefractionDepthMap", _oceanScene->_refractionDepthUnit ) );
 
-  _surfaceStateSet->addUniform( new osg::Uniform("osgOcean_EnableHeightmap",    _oceanScene->params.heightmap ) );
-  _surfaceStateSet->addUniform( new osg::Uniform("osgOcean_Heightmap",          _oceanScene->_heightmapUnit ) );
+  _surfaceStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_EnableHeightmap",    _oceanScene->params.heightmap ) );
+  _surfaceStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_Heightmap",          _oceanScene->_heightmapUnit ) );
 
-  _surfaceStateSet->addUniform( new osg::Uniform(osg::Uniform::FLOAT_MAT4, "osgOcean_RefractionInverseTransformation") );
-  _surfaceStateSet->addUniform( new osg::Uniform("osgOcean_ViewportDimensions", osg::Vec2(_oceanScene->_screenDims.x(), _oceanScene->_screenDims.y()) ) );
+  _surfaceStateSet->addUniform( osg::make_ref<osg::Uniform>(osg::Uniform::FLOAT_MAT4, "osgOcean_RefractionInverseTransformation") );
+  _surfaceStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_ViewportDimensions", osg::Vec2(_oceanScene->_screenDims.x(), _oceanScene->_screenDims.y()) ) );
 
   _fog = new osg::Fog;
   _fog->setMode(osg::Fog::EXP2);
@@ -1124,7 +1127,7 @@ osg::Camera* OceanScene::downsamplePass(osg::TextureRectangle* colorBuffer,
   static const char osgOcean_downsample_frag_file[]       = "osgOcean_downsample.frag";
   static const char osgOcean_downsample_glare_frag_file[] = "osgOcean_downsample_glare.frag";
 
-  osg::Vec2s lowResDims = _screenDims/4;
+  const auto lowResDims = _screenDims/lowResScale;
 
   osg::StateSet* ss = new osg::StateSet;
 
@@ -1138,8 +1141,8 @@ osg::Camera* OceanScene::downsamplePass(osg::TextureRectangle* colorBuffer,
 
     ss->setTextureAttributeAndModes( 1, auxBuffer,   osg::StateAttribute::ON );
 
-    ss->addUniform( new osg::Uniform("osgOcean_GlareThreshold", _glareThreshold ) );
-    ss->addUniform( new osg::Uniform("osgOcean_LuminanceTexture", 1 ) );
+    ss->addUniform( osg::make_ref<osg::Uniform>("osgOcean_GlareThreshold", _glareThreshold ) );
+    ss->addUniform( osg::make_ref<osg::Uniform>("osgOcean_LuminanceTexture", 1 ) );
   }
   else
   {
@@ -1151,7 +1154,7 @@ osg::Camera* OceanScene::downsamplePass(osg::TextureRectangle* colorBuffer,
   }
 
   ss->setTextureAttributeAndModes( 0, colorBuffer, osg::StateAttribute::ON );
-  ss->addUniform( new osg::Uniform( "osgOcean_ColorTexture", 0 ) );
+  ss->addUniform( osg::make_ref<osg::Uniform>( "osgOcean_ColorTexture", 0 ) );
 
   osg::Geode* downSizedQuad = createScreenQuad( lowResDims, _screenDims );
   downSizedQuad->setStateSet(ss);
@@ -1174,7 +1177,7 @@ osg::Camera* OceanScene::gaussianPass( osg::TextureRectangle* inputTexture, osg:
   static const char osgOcean_gaussian1_frag_file[] = "osgOcean_gaussian1.frag";
   static const char osgOcean_gaussian2_frag_file[] = "osgOcean_gaussian2.frag";
 
-  osg::Vec2s lowResDims = _screenDims/4.f;
+  const auto lowResDims = _screenDims * lowResMul;
 
   osg::StateSet* ss = new osg::StateSet;
 
@@ -1196,7 +1199,7 @@ osg::Camera* OceanScene::gaussianPass( osg::TextureRectangle* inputTexture, osg:
   }
 
   ss->setTextureAttributeAndModes( 0, inputTexture, osg::StateAttribute::ON );
-  ss->addUniform( new osg::Uniform( "osgOcean_GaussianTexture", 0 ) );
+  ss->addUniform( osg::make_ref<osg::Uniform>( "osgOcean_GaussianTexture", 0 ) );
 
   osg::Geode* gaussianQuad = createScreenQuad( lowResDims, lowResDims );
   gaussianQuad->setStateSet(ss);
@@ -1222,7 +1225,7 @@ osg::Camera* OceanScene::dofCombinerPass(osg::TextureRectangle* fullscreenTextur
 
   osg::Vec2f screenRes( (float)_screenDims.x(), (float)_screenDims.y() );
   osg::Vec2f invScreenRes( 1.f / (float)_screenDims.x(), 1.f / (float)_screenDims.y() );
-  osg::Vec2f lowRes( float(_screenDims.x())*0.25f, float(_screenDims.y())*0.25f );
+  osg::Vec2f lowRes = screenRes * lowResMul;
 
   auto ss = osg::make_ref<osg::StateSet>();
   ss->setTextureAttributeAndModes( 0, fullscreenTexture, osg::StateAttribute::ON );
@@ -1235,12 +1238,12 @@ osg::Camera* OceanScene::dofCombinerPass(osg::TextureRectangle* fullscreenTextur
                                                           osgOcean_dof_combiner_vert,      osgOcean_dof_combiner_frag),
         osg::StateAttribute::ON );
 
-  ss->addUniform( new osg::Uniform( "osgOcean_FullColourMap", 0 ) );
-  ss->addUniform( new osg::Uniform( "osgOcean_FullDepthMap",  1 ) );
-  ss->addUniform( new osg::Uniform( "osgOcean_BlurMap",       2 ) );
-  ss->addUniform( new osg::Uniform( "osgOcean_ScreenRes",     screenRes ) );
-  ss->addUniform( new osg::Uniform( "osgOcean_ScreenResInv",  invScreenRes ) );
-  ss->addUniform( new osg::Uniform( "osgOcean_LowRes",        lowRes ) );
+  ss->addUniform( osg::make_ref<osg::Uniform>( "osgOcean_FullColourMap", 0 ) );
+  ss->addUniform( osg::make_ref<osg::Uniform>( "osgOcean_FullDepthMap",  1 ) );
+  ss->addUniform( osg::make_ref<osg::Uniform>( "osgOcean_BlurMap",       2 ) );
+  ss->addUniform( osg::make_ref<osg::Uniform>( "osgOcean_ScreenRes",     screenRes ) );
+  ss->addUniform( osg::make_ref<osg::Uniform>( "osgOcean_ScreenResInv",  invScreenRes ) );
+  ss->addUniform( osg::make_ref<osg::Uniform>( "osgOcean_LowRes",        lowRes ) );
 
   osg::Geode* combinedDOFQuad = createScreenQuad( _screenDims, osg::Vec2s(1,1) );
   combinedDOFQuad->setStateSet(ss);
@@ -1279,7 +1282,7 @@ osg::Camera* OceanScene::glarePass(osg::TextureRectangle* streakInput,
   static const char osgOcean_streak_vert_file[] = "osgOcean_streak.vert";
   static const char osgOcean_streak_frag_file[] = "osgOcean_streak.frag";
 
-  osg::Vec2s lowResDims = _screenDims / 4;
+  const auto lowResDims = _screenDims / lowResScale;
 
   osg::Camera* glarePass = renderToTexturePass( steakOutput );
   glarePass->setClearColor( osg::Vec4f( 0.f, 0.f, 0.f, 0.f) );
@@ -1294,10 +1297,10 @@ osg::Camera* OceanScene::glarePass(osg::TextureRectangle* streakInput,
     osg::Geode* screenQuad = createScreenQuad(lowResDims, lowResDims);
     screenQuad->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
     screenQuad->getOrCreateStateSet()->setAttributeAndModes(program, osg::StateAttribute::ON );
-    screenQuad->getStateSet()->addUniform( new osg::Uniform("osgOcean_Buffer", 0) );
-    screenQuad->getStateSet()->addUniform( new osg::Uniform("osgOcean_Pass", float(pass)) );
-    screenQuad->getStateSet()->addUniform( new osg::Uniform("osgOcean_Direction", direction) );
-    screenQuad->getStateSet()->addUniform( new osg::Uniform("osgOcean_Attenuation", _glareAttenuation ) );
+    screenQuad->getStateSet()->addUniform( osg::make_ref<osg::Uniform>("osgOcean_Buffer", 0) );
+    screenQuad->getStateSet()->addUniform( osg::make_ref<osg::Uniform>("osgOcean_Pass", float(pass)) );
+    screenQuad->getStateSet()->addUniform( osg::make_ref<osg::Uniform>("osgOcean_Direction", direction) );
+    screenQuad->getStateSet()->addUniform( osg::make_ref<osg::Uniform>("osgOcean_Attenuation", _glareAttenuation ) );
     screenQuad->getOrCreateStateSet()->setTextureAttributeAndModes(0,streakInput,osg::StateAttribute::ON);
     glarePass->addChild( screenQuad );
   }
@@ -1340,11 +1343,11 @@ osg::Camera* OceanScene::glareCombinerPass( osg::TextureRectangle* fullscreenTex
   ss->setTextureAttributeAndModes(2, glareTexture2, osg::StateAttribute::ON );
   ss->setTextureAttributeAndModes(3, glareTexture3, osg::StateAttribute::ON );
   ss->setTextureAttributeAndModes(4, glareTexture4, osg::StateAttribute::ON );
-  ss->addUniform( new osg::Uniform("osgOcean_ColorBuffer",   0 ) );
-  ss->addUniform( new osg::Uniform("osgOcean_StreakBuffer1", 1 ) );
-  ss->addUniform( new osg::Uniform("osgOcean_StreakBuffer2", 2 ) );
-  ss->addUniform( new osg::Uniform("osgOcean_StreakBuffer3", 3 ) );
-  ss->addUniform( new osg::Uniform("osgOcean_StreakBuffer4", 4 ) );
+  ss->addUniform( osg::make_ref<osg::Uniform>("osgOcean_ColorBuffer",   0 ) );
+  ss->addUniform( osg::make_ref<osg::Uniform>("osgOcean_StreakBuffer1", 1 ) );
+  ss->addUniform( osg::make_ref<osg::Uniform>("osgOcean_StreakBuffer2", 2 ) );
+  ss->addUniform( osg::make_ref<osg::Uniform>("osgOcean_StreakBuffer3", 3 ) );
+  ss->addUniform( osg::make_ref<osg::Uniform>("osgOcean_StreakBuffer4", 4 ) );
 
   camera->addChild( quad );
 
@@ -1398,8 +1401,8 @@ osg::Geode* OceanScene::createScreenQuad( const osg::Vec2s& dims, const osg::Vec
 
 osg::Program* OceanScene::createDefaultSceneShader(void)
 {
-  static const char osgOcean_ocean_scene_vert_file[] = "coral_scene.vert";//"default_scene.vert";
-  static const char osgOcean_ocean_scene_frag_file[] = "coral_scene.frag";//"default_scene.frag";
+  static const char osgOcean_ocean_scene_vert_file[] = /*"coral_scene.vert";*/ "default_scene.vert";
+  static const char osgOcean_ocean_scene_frag_file[] = /*"coral_scene.frag";// */ "default_scene.frag";
 
   return osgOcean::ShaderManager::instance().createProgram("scene_shader",
                                                            osgOcean_ocean_scene_vert_file, osgOcean_ocean_scene_frag_file,

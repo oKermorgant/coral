@@ -12,19 +12,19 @@ namespace coral
 class Link
 {
 public:
-  Link(const std::string &name = "") : name{name}
+  Link(const std::string &name = "") : name_{name}
   {
     pose->setDataVariance(osg::Object::STATIC);
   }
   Link(const urdf_parser::LinkInfo &info)
   {
-    name = info.name;
+    name_ = info.name;
     pose->setDataVariance(osg::Object::DYNAMIC);
     addElements(info);
   }
 
   inline auto frame() const {return pose.get();}
-  inline std::string getName() const {return name;}
+  inline auto name() const {return name_;}
 
   void addElements(const urdf_parser::LinkInfo &info);
   void refreshFrom(const Buffer &buffer);
@@ -38,10 +38,10 @@ public:
     pose->setMatrix(M_pending);
   }
 
-  inline bool operator==(const std::string &name) const
+ /* inline bool operator==(const std::string &name) const
   {
-    return this->name == name;
-  }
+    return this->name_ == name;
+  }*/
 
   inline void setParent(const Link &root)
   {
@@ -61,7 +61,7 @@ public:
 
 private:
 
-  std::string name;
+  std::string name_;
   Link const * parent = nullptr;
   osg::Matrix M_pending;
   osg::ref_ptr <osg::MatrixTransform> pose = new osg::MatrixTransform;

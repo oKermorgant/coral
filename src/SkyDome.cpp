@@ -52,7 +52,7 @@ void SkyDome::setupStateSet( osg::TextureCubeMap* cubemap )
     ss->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
     ss->setTextureAttributeAndModes( 0, cubemap, osg::StateAttribute::ON );
     ss->setAttributeAndModes( createShader().get(), osg::StateAttribute::ON );
-    ss->addUniform( new osg::Uniform("uEnvironmentMap", 0) );
+    ss->addUniform( osg::make_ref<osg::Uniform>("uEnvironmentMap", 0) );
 
     setStateSet(ss);
 }
@@ -86,8 +86,8 @@ osg::ref_ptr<osg::Program> SkyDome::createShader(void)
             "}\n";
 
         program->setName( "sky_dome_shader" );
-        program->addShader(new osg::Shader(osg::Shader::VERTEX,   vertexSource));
-        program->addShader(new osg::Shader(osg::Shader::FRAGMENT, fragmentSource));
+        program->addShader(osg::make_ref<osg::Shader>(osg::Shader::VERTEX,   vertexSource));
+        program->addShader(osg::make_ref<osg::Shader>(osg::Shader::FRAGMENT, fragmentSource));
     }
 
     return program;

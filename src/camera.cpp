@@ -20,21 +20,17 @@ void Camera::addCameras(osg::Group* link, const std::vector<urdf_parser::CameraI
     static auto cam_thread{std::thread([&](){rclcpp::spin(node);})};
   }
 
-  using CamPtr = std::unique_ptr<Camera>;
-
-  const auto current_topics{node->get_topic_names_and_types()};
-  static std::vector<CamPtr> cameras;
   cameras.reserve(cameras.size() + infos.size());
 
   for(auto &cam: infos)
   {
-
-    if(current_topics.find(cam.topic) != current_topics.end())
+    if(!node->get_publishers_info_by_topic(cam.topic).empty())
+    {
       RCLCPP_WARN(node->get_logger(), "Image topic %s seems already advertized", cam.topic.c_str());
-
+    }
     cam.pose->setDataVariance(osg::Object::STATIC);
     link->addChild(cam.pose);
-    cameras.push_back(CamPtr(new Camera(cam)));
+    cameras.push_back(std::unique_ptr<Camera>(new Camera(cam)));
   }
 }
 
@@ -47,6 +43,7 @@ Camera::Camera(const urdf_parser::CameraInfo &info)
 
   // init cam projection
   cam = osg::make_ref<osg::Camera>();
+  //cam->addChild(scene);
   cam->setReferenceFrame(osg::Transform::RELATIVE_RF);
   cam->setClearMask(GL_COLOR_BUFFER_BIT);
   cam->setViewport(0, 0, info.width, info.height);
@@ -83,6 +80,8 @@ void Camera::publish()
 
   // TODO find how to get the actual data here
   const auto data(static_cast<unsigned char*>(image->data()));
+
+
 
   for(uint row = 0; row < height; ++row)
   {

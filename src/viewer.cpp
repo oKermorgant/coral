@@ -38,6 +38,7 @@ Viewer::Viewer(OceanScene *scene) : scene(scene)
   tracking_manip->setTrackNode(cam_pose);
   tracking_manip->setTrackerMode(osgGA::NodeTrackerManipulator::NODE_CENTER_AND_ROTATION);
   tracking_manip->setHomePosition({3,0,0}, {0,0,0}, {0,0,1});
+  tracking_manip->setVerticalAxisFixed(true);
 
   // virtual cam
   camera = osg::make_ref<osg::Camera>();

@@ -1,4 +1,5 @@
 #include <coral/urdf_parser.h>
+#include <tinyxml2.h>
 #include <urdf_parser/urdf_parser.h>
 #include <algorithm>
 
@@ -14,14 +15,14 @@ namespace urdf_parser
 
 struct NestedXML
 {
-  const TiXmlElement* root;
-  explicit NestedXML(const TiXmlElement* root) : root(root) {}
+  const tinyxml2::XMLElement* root;
+  explicit NestedXML(const tinyxml2::XMLElement* root) : root(root) {}
 
-  static const TiXmlElement* getNested(const TiXmlElement* root, const vector<string> &keys)
+  static const tinyxml2::XMLElement* getNested(const tinyxml2::XMLElement* root, const vector<string> &keys)
   {
     if(keys.size() == 0)  return root;
 
-    const auto child = root->FirstChildElement(keys[0]);
+    const auto child = root->FirstChildElement(keys[0].c_str());
     if(child == nullptr)  return nullptr;
 
     return getNested(child, {keys.begin()+1, keys.end()});
@@ -58,7 +59,7 @@ vector<CameraInfo> CameraInfo::extractFrom(const string &description)
   vector<CameraInfo> cameras;
 
   // tediously parse the description XML to extract gazebo sensors and plugins
-  TiXmlDocument doc;
+  tinyxml2::XMLDocument doc;
   doc.Parse(description.c_str());
   auto root = doc.RootElement();
 
@@ -82,7 +83,7 @@ vector<CameraInfo> CameraInfo::extractFrom(const string &description)
   return cameras;
 }
 
-CameraInfo::CameraInfo(const std::string &link, const TiXmlElement* sensor_elem)
+CameraInfo::CameraInfo(const std::string &link, const tinyxml2::XMLElement* sensor_elem)
   : frame_id(link)
 {
   const auto sensor(NestedXML{sensor_elem});
@@ -116,12 +117,8 @@ bool LinkInfo::canBeMerged(const LinkInfo &link)
     return false;
 
   // you can only merge links with floating children
-  if(std::any_of(link.children.begin(), link.children.end(),
-                 [](LinkInfo* child)
-  {return !child->isFloating();}))
-    return false;
-
-  return true;
+  return std::all_of(link.children.begin(), link.children.end(), [](auto child)
+    {return child->isFloating();});
 }
 
 void LinkInfo::mergeIntoParent()
@@ -160,7 +157,7 @@ auto Tree::simplify()
   {
     auto link{std::find_if(begin(), end(), LinkInfo::canBeMerged)};
     if(link == end())
-      break;
+      return;
     link->mergeIntoParent();
     erase(link);
   }

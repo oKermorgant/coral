@@ -10,7 +10,7 @@ color:
     min: 0
     to: b
   base: clear
-  field: sunDiffuse
+  field: uwDensity
   g:
     default: 4
     max: 255

@@ -24,7 +24,7 @@ const std::string coral_cam_link = "coral_cam_view";
 
 CoralNode::CoralNode() : rclcpp::Node("coral"), tf_buffer(this)
 {
-  display_thrusters = declare_parameter("with_thrusters", false);
+  display_thrusters = declare_parameter("with_thrusters", true);
 
   clock_sub = create_subscription<rosgraph_msgs::msg::Clock>("/clock", 1, [&]([[maybe_unused]] rosgraph_msgs::msg::Clock::SharedPtr msg)
   {
@@ -41,6 +41,7 @@ void CoralNode::manage(osg::ref_ptr<OceanScene> scene, Viewer & viewer)
   Marker::spawnThrough(this, scene.get(), &tf_buffer);
 
   scene->addChild(world_link.frame());
+  Camera::observe(scene.get());
 
   if(const auto delay = declare_parameter("spawn_auto", 2); delay > 0)
   {
@@ -121,7 +122,7 @@ Link* CoralNode::getKnownCamParent()
   while(parent.has_value())
   {
     // if we have reached the world frame
-    if(parent.value() == world_link.getName())
+    if(parent.value() == world_link.name())
     {
       prev_link = &world_link;
       break;
@@ -161,13 +162,13 @@ void CoralNode::refreshLinkPoses()
     if(parent == nullptr)
       return;
 
-    const auto tr{tf_buffer.lookupTransform(parent->getName(), coral_cam_link, tf2::TimePointZero, 10ms)};
+    const auto tr{tf_buffer.lookupTransform(parent->name(), coral_cam_link, tf2::TimePointZero, 10ms)};
     const auto delay{(now() - tr.header.stamp).seconds()};
     if(delay < 1 || delay > 1e8)
     {
       auto M = osgMatFrom(tr.transform.translation, tr.transform.rotation);
 
-      if(parent->getName() != WORLD_NAME)
+      if(parent->name() != WORLD_NAME)
         M = M*parent->frame()->getMatrix();
       viewer->lockCamera(M);
     }
@@ -256,7 +257,7 @@ void CoralNode::spawnModel(const std::string &model_ns,
                 model_ns.substr(1).c_str(),
                 model_ns.c_str(),
                 pose_topic.c_str(),
-                root->getName().c_str());
+                root->name().c_str());
 
     pose_subs.push_back(create_subscription<Pose>(model_ns + "/" + pose_topic, 1, root->poseCallback()));
   }
@@ -273,7 +274,7 @@ Link* CoralNode::parseModel(const string &description)
     if(link.name == WORLD_NAME)
     {
       world_link.addElements(link);
-      Camera::addCameras(world_link.frame(), link.cameras);
+      Camera::addCameras(world_link.frame(), link.cameras);      
     }
     else
     {

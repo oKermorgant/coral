@@ -91,6 +91,7 @@ private:
 
   static constexpr bool _enableDefaultShader       {true};
 
+  // TODO put some of those in parameters
   osg::Vec2s _reflectionTexSize   {512,512};
   osg::Vec2s _refractionTexSize   {512,512};
   osg::Vec2s _screenDims          {1024,768};
@@ -200,7 +201,7 @@ private:
 
   ViewData * initViewDependentData( osgUtil::CullVisitor *cv, OceanScene::ViewData * vd );
 
-  std::vector<osg::ref_ptr<osg::Camera>> cameras;
+  std::vector<osg::Camera*> cameras;
 public:
 
   explicit OceanScene() {}
@@ -231,8 +232,6 @@ public:
     cam->setClearColor(weather.underwaterFogColor);
     cameras.push_back(cam);
   }
-
-
 
   void loadCubeMapTextures( const std::string& dir );
 

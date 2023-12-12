@@ -185,10 +185,10 @@ void main(void)
       {
         if(isLaser)//treating as laser projection (not dependent on the distance, substitutes original color)
 	{
-	  if (round(texcolor.x)+round(texcolor.y)+round(texcolor.z)>0.0)
+	  if ((texcolor.x)+(texcolor.y)+(texcolor.z)>0.0)
 	  {
             //Set Laser as light color and unset texture color (textureColor will suffer from lighting)
-	    lightColor = vec4(round(texcolor.x),round(texcolor.y),round(texcolor.z),1.0);
+	    lightColor = vec4((texcolor.x),(texcolor.y),(texcolor.z),1.0);
             textureColor = vec4(0,0,0,0);
 	  }
 	}

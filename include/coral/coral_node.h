@@ -71,7 +71,7 @@ private:
   std::vector<std::unique_ptr<Link>> links;
   inline Link* findLink(const std::string &name) const
   {
-    auto link{std::find_if(links.begin(), links.end(), [&](auto &link){return link->getName() == name;})};
+    auto link{std::find_if(links.begin(), links.end(), [&](auto &link){return link->name() == name;})};
     return link == links.end() ? nullptr : link->get();
   }
 
