@@ -203,7 +203,7 @@ void markers::Pose::refresh()
       hide();
       return;
     }
-    Mw = osgMatFrom(tr->translation, tr->rotation) * Mw;
+    Mw = tr.value() * Mw;
   }
   // z to x
   const osg::Matrix xMz(osg::Quat{0, .5, 0, .5});
@@ -242,10 +242,9 @@ void markers::Path::refresh()
   std::optional<osg::Matrix> M;
   if(frame_id != WORLD_NAME)
   {
-    const auto pose{buffer->lookup(frame_id)};
-    if(!pose.has_value())
+    M = buffer->lookup(frame_id);
+    if(!M.has_value())
       return;
-    M = osgMatFrom(pose->translation, pose->rotation);
   }
 
   const auto toWorld = [&M](const geometry_msgs::msg::Point &point) -> osg::Vec3d

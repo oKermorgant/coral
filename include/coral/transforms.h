@@ -11,32 +11,6 @@ namespace coral
 
 constexpr auto WORLD_NAME = "world";
 
-class Buffer : public tf2_ros::Buffer
-{
-  constexpr static auto timeout{std::chrono::milliseconds(10)};
-public:
-  explicit Buffer(rclcpp::Node *spinning_node);
-  inline std::optional<geometry_msgs::msg::Transform> lookup(const std::string &frame,const std::string &reference = WORLD_NAME) const
-  {
-    if(canTransform(reference, frame, tf2::TimePointZero, timeout))
-      return lookupTransform(reference, frame, tf2::TimePointZero).transform;
-    return {};
-  }
-  inline bool ready() const
-  {
-    static auto ok{false};
-    if(ok)  return true;
-    return ok = _frameExists(WORLD_NAME);
-  }
-  inline std::optional<std::string> getParent(const std::string &frame) const
-  {
-    std::string parent;
-    if(_getParent(frame, tf2::TimePointZero, parent))
-      return parent;
-    return {};
-  }
-};
-
 // some conversions
 template <class Translation>
 inline osg::Matrix osgMatFrom(const Translation &t, const geometry_msgs::msg::Quaternion &q)
@@ -55,6 +29,37 @@ inline osg::Vec3 osgVecFrom(const Translation &t)
 {
   return osg::Vec3(t.x, t.y, t.z);
 }
+
+class Buffer : public tf2_ros::Buffer
+{
+  constexpr static auto timeout{std::chrono::milliseconds(10)};
+public:
+  explicit Buffer(rclcpp::Node *spinning_node);
+  inline std::optional<osg::Matrix> lookup(const std::string &frame,const std::string &reference = WORLD_NAME) const
+  {
+    if(canTransform(reference, frame, tf2::TimePointZero, timeout))
+    {
+      const auto tf{lookupTransform(reference, frame, tf2::TimePointZero).transform};
+      return osgMatFrom(tf.translation, tf.rotation);
+    }
+    return {};
+  }
+  inline bool ready() const
+  {
+    static auto ok{false};
+    if(ok)  return true;
+    return ok = _frameExists(WORLD_NAME);
+  }
+  inline std::optional<std::string> getParent(const std::string &frame) const
+  {
+    std::string parent;
+    if(_getParent(frame, tf2::TimePointZero, parent))
+      return parent;
+    return {};
+  }
+};
+
+
 
 }
 

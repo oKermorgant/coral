@@ -13,7 +13,7 @@ void Link::refreshFrom(const Buffer &buffer)
   {
     const auto pose{buffer.lookup(name_, parent->name_)};
     if(pose.has_value())
-      setPending(osgMatFrom(pose->translation, pose->rotation));
+      setPending(pose.value());
   }
 }
 
