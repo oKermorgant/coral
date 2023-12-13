@@ -16,23 +16,14 @@ int main(int argc, char *argv[])
 
   node->manage(scene, viewer);
 
-#ifndef CORAL_NO_THREADS
   std::thread ros([&](){rclcpp::spin(node);});
-#endif
 
   while(!viewer.done() && rclcpp::ok())
-  {
-#ifdef CORAL_NO_THREADS
-    rclcpp::spin_some(node);
-#endif
     viewer.frame();
-  }
 
   if(rclcpp::ok())
     rclcpp::shutdown();
-#ifndef CORAL_NO_THREADS
   ros.join();
-#endif
 
   return 0;
 }
