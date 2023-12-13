@@ -30,7 +30,9 @@ int main(int argc, char *argv[])
 
   if(rclcpp::ok())
     rclcpp::shutdown();
+#ifndef CORAL_NO_THREADS
   ros.join();
+#endif
 
   return 0;
 }
