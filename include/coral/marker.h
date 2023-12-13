@@ -28,7 +28,7 @@ public:
       world->removeChild(base);
   }
   virtual void refresh() = 0;
-  inline void attachTo(bool moving)
+  inline void attachToWorld(bool moving)
   {
     Visual::attachTo(world, moving, false);
   }

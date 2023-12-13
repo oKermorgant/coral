@@ -106,7 +106,8 @@ osg::ref_ptr<osg::Group> extractMesh(const std::string &mesh)
   opt->setObjectCacheHint(osgDB::Options::CACHE_ALL);
   opt->setPrecisionHint(osgDB::Options::FLOAT_PRECISION_ALL);
 
-  auto node{osgDB::readNodeFile(filename.string(), opt)};
+  //auto node{osgDB::readNodeFile(filename.string(), opt)};
+  auto node{osgDB::readRefNodeFile(filename)};
 
   if(!node)
   {

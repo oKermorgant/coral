@@ -22,24 +22,22 @@ find_package(tf2_ros REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 
-option(CUSTOM_SCENE "Build messages to play with scene colors" ON)
+option(CUSTOM_SCENE "Build messages to play with scene colors" OFF)
 
 if(CUSTOM_SCENE)
     add_definitions(-DCORAL_CUSTOM_SCENE)
     rosidl_generate_interfaces(${PROJECT_NAME} "srv/Spawn.srv" "srv/Marker.srv" "msg/Color.msg"
-    DEPENDENCIES geometry_msgs)
+                                DEPENDENCIES geometry_msgs)
 else()
-rosidl_generate_interfaces(${PROJECT_NAME} "srv/Spawn.srv" "srv/Marker.srv"
-DEPENDENCIES geometry_msgs)
+    rosidl_generate_interfaces(${PROJECT_NAME} "srv/Spawn.srv" "srv/Marker.srv"
+                                DEPENDENCIES geometry_msgs)
 endif()
 
-if("$ENV{ROS_DISTRO}" STREQUAL "galactic" OR "$ENV{ROS_DISTRO}" STREQUAL "foxy")
+if("$ENV{ROS_DISTRO}" STRLESS_EQUAL "humble")
     set(LEGACY_IDL TRUE)
 else()
     set(LEGACY_IDL FALSE)
-endif()
-if(NOT ${LEGACY_IDL})
-  rosidl_get_typesupport_target(cpp_typesupport_target "${PROJECT_NAME}" "rosidl_typesupport_cpp")
+    rosidl_get_typesupport_target(cpp_typesupport_target "${PROJECT_NAME}" "rosidl_typesupport_cpp")
 endif()
 
 set(OSGOCEAN_SRC ${PROJECT_SOURCE_DIR}/osgocean/osgocean)

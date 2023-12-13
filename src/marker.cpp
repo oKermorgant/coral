@@ -169,7 +169,7 @@ markers::Pose::Pose(const std::string &topic, const std::array<double, 3> &rgb, 
   base = Visual::fromShapes({osg::make_ref<osg::Cylinder>(osg::Vec3{0,0,length/2}, radius, length),
                              osg::make_ref<osg::Cone>(osg::Vec3{0,0,length}, radius*1.5, head)},
                             makeStateSet(rgb), osg::Matrix::identity()).frame();
-  attachTo(true);
+  attachToWorld(true);
 
   if(pose_stamped)
   {
@@ -215,7 +215,7 @@ void markers::Pose::refresh()
 markers::Path::Path(const std::string &topic, const RGB &rgb)
 {
   base = Visual::fromShapes({}, makeStateSet(rgb)).frame();
-  attachTo(false);
+  attachToWorld(false);
 
   sub = node->create_subscription<nav_msgs::msg::Path>(topic, 1, [&](nav_msgs::msg::Path::SharedPtr msg)
   {
