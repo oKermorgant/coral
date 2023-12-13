@@ -3,7 +3,7 @@
 
 #include <coral/coral_node.h>
 #include <coral/OceanScene.h>
-#include <coral/msg/color.hpp>
+#include <coral/srv/scene_color.hpp>
 
 
 
@@ -12,33 +12,33 @@ namespace coral
 
 auto colorCallback(OceanScene *scene)
 {
-  using coral::msg::Color;
-  return [=](const Color &msg)
+  using coral::srv::SceneColor;
+  return [=](const SceneColor::Request::SharedPtr req, SceneColor::Response::SharedPtr)
   {
-    static Weather weather(msg.base);
-    static Color prev;
-    if(prev == msg)
+    static Weather weather(req->weather);
+    static SceneColor::Request prev;
+    if(prev == *req)
       return;
-    if(msg.base != prev.base)
-      weather = Weather(msg.base);
-    prev = msg;
+    if(!req->weather.empty() && req->weather != prev.weather)
+      weather = Weather(req->weather);
+    prev = *req;
 
-    const auto color = Weather::intColor(msg.r, msg.g, msg.b, msg.a);
-    if(msg.field == "light")
+    const auto color = Weather::intColor(req->r, req->g, req->b, req->a);
+    if(req->origin == "light")
       weather.lightColor = color;
-    else if(msg.field == "fog")
+    else if(req->origin == "fog")
       weather.fogColor = color;
-    else if(msg.field == "uwDiffuse")
+    else if(req->origin == "uwDiffuse")
       weather.underwaterDiffuse = color;
-    else if(msg.field == "sunAmbient")
+    else if(req->origin == "sunAmbient")
       weather.sunAmbient = color;
-    else if(msg.field == "uwFog")
+    else if(req->origin == "uwFog")
       weather.underwaterFogColor = color;
-    else if(msg.field == "sunDiffuse")
+    else if(req->origin == "sunDiffuse")
       weather.sunDiffuse = color;
-    else if(msg.field == "uwAttenuation")
-      weather.underwaterAttenuation = {msg.r/100.f, msg.g/100.f, msg.b/100.f};
-    else if(msg.field == "uwDensity")
+    else if(req->origin == "uwAttenuation")
+      weather.underwaterAttenuation = {req->r/100.f, req->g/100.f, req->b/100.f};
+    else if(req->origin == "uwDensity")
       weather.underwaterFogDensity = color.a() + 10*color.r() + 100*color.g() + 1000*color.b();
 
   scene->changeMood(weather);

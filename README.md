@@ -41,6 +41,7 @@ A helper launch file is `track_launch.py` and simply publishes a static transfor
 ## Spawning a marker
 
 The `marker` node takes three parameters to spawn a given marker:
+
     - `topic` (string): which topic to subscribe to
     - `color` (0-1 RGB): the color of the marker
     - `delete` (bool): whether the marker from this topic should now be deleted

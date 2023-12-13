@@ -22,18 +22,18 @@ find_package(tf2_ros REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 
-option(CUSTOM_SCENE "Build messages to play with scene colors" OFF)
+option(CUSTOM_SCENE "Build service to change scene colors" ON)
 
 if(CUSTOM_SCENE)
     add_definitions(-DCORAL_CUSTOM_SCENE)
-    rosidl_generate_interfaces(${PROJECT_NAME} "srv/Spawn.srv" "srv/Marker.srv" "msg/Color.msg"
+    rosidl_generate_interfaces(${PROJECT_NAME} "srv/Spawn.srv" "srv/Marker.srv" "srv/SceneColor.srv"
                                 DEPENDENCIES geometry_msgs)
 else()
     rosidl_generate_interfaces(${PROJECT_NAME} "srv/Spawn.srv" "srv/Marker.srv"
                                 DEPENDENCIES geometry_msgs)
 endif()
 
-if("$ENV{ROS_DISTRO}" STRLESS_EQUAL "humble")
+if("$ENV{ROS_DISTRO}" STRLESS_EQUAL "galactic")
     set(LEGACY_IDL TRUE)
 else()
     set(LEGACY_IDL FALSE)

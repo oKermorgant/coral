@@ -9,8 +9,8 @@ color:
     max: 255
     min: 0
     to: b
-  base: night
-  field: sunDiffuse
+  weather: night
+  origin: sunDiffuse
   g:
     default: 4
     max: 255
@@ -21,4 +21,4 @@ color:
     max: 255
     min: 0
     to: r
-  type: coral/Color
+  type: coral/SceneColor

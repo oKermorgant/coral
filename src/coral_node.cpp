@@ -9,7 +9,7 @@
 #include <std_srvs/srv/empty.hpp>
 
 #ifdef CORAL_CUSTOM_SCENE
-#include <coral/msg/color.hpp>
+#include <coral/srv/scene_color.hpp>
 #include <coral/custom_scene.h>
 #endif
 
@@ -66,7 +66,7 @@ void CoralNode::manage(osg::ref_ptr<OceanScene> scene, Viewer & viewer)
   static auto pose_update_timer = create_wall_timer(50ms, [&](){refreshLinkPoses();});
 
 #ifdef CORAL_CUSTOM_SCENE
-  static auto color_sub = create_subscription<coral::msg::Color>("/color", 1, colorCallback(scene));
+  static auto color_sub = create_service<coral::srv::SceneColor>("/coral/scene_color", colorCallback(scene));
 #endif
 }
 

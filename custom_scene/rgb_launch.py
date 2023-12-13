@@ -3,8 +3,8 @@ import yaml
 import os
 
 sl = SimpleLauncher()
-sl.declare_arg('field', 'uwFog')
-sl.declare_arg('base', 'night')
+sl.declare_arg('origin', 'uwFog')
+sl.declare_arg('weather', 'night')
 
 def launch_setup():
 
@@ -12,8 +12,8 @@ def launch_setup():
 
     with open(rgb) as f:
         config = yaml.safe_load(f)
-    config['color']['field'] = sl.arg('field')
-    config['color']['base'] = sl.arg('base')
+    config['color']['origin'] = sl.arg('origin')
+    config['color']['weather'] = sl.arg('weather')
     with open(rgb,'w') as f:
         yaml.safe_dump(config, f)
 
