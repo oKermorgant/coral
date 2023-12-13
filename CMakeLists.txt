@@ -39,10 +39,6 @@ else()
     rosidl_get_typesupport_target(cpp_typesupport_target "${PROJECT_NAME}" "rosidl_typesupport_cpp")
 endif()
 
-if("$ENV{ROS_DISTRO}" STRLESS_EQUAL "galactic")
-   add_definitions(-DCORAL_NO_THREADS)
- endif()
-
 set(OSGOCEAN_SRC ${PROJECT_SOURCE_DIR}/osgocean/osgocean)
 
 OPTION(OSGOCEAN_EXTERNAL "Compile osgOcean as external lib" ON)
