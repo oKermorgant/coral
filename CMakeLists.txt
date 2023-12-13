@@ -21,7 +21,6 @@ find_package(geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
-
 option(CUSTOM_SCENE "Build service to change scene colors" ON)
 
 if(CUSTOM_SCENE)
@@ -39,6 +38,10 @@ else()
     set(LEGACY_IDL FALSE)
     rosidl_get_typesupport_target(cpp_typesupport_target "${PROJECT_NAME}" "rosidl_typesupport_cpp")
 endif()
+
+if("$ENV{ROS_DISTRO}" STRLESS_EQUAL "galactic")
+   add_definitions(-DCORAL_NO_THREADS)
+ endif()
 
 set(OSGOCEAN_SRC ${PROJECT_SOURCE_DIR}/osgocean/osgocean)
 
