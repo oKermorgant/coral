@@ -2,9 +2,10 @@
 #include <tf2_ros/transform_listener.h>
 
 
-coral::Buffer::Buffer(rclcpp::Node* spinning_node) : tf2_ros::Buffer(spinning_node->get_clock())
+coral::Buffer::Buffer() : node{std::make_shared<rclcpp::Node>("coral_listener")},
+                          buffer{node->get_clock()}
 {
-  static tf2_ros::TransformListener listener(*this, spinning_node);
+  static tf2_ros::TransformListener listener(buffer);
 }
 
 osg::Matrix coral::osgMatFrom(const urdf::Vector3 &t, const urdf::Rotation &q, const urdf::Vector3 &scale)

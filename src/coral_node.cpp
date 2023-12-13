@@ -22,7 +22,7 @@ namespace
 const std::string coral_cam_link = "coral_cam_view";
 }
 
-CoralNode::CoralNode() : rclcpp::Node("coral"), tf_buffer(this)
+CoralNode::CoralNode() : rclcpp::Node("coral")
 {
   display_thrusters = declare_parameter("with_thrusters", true);
 
@@ -155,14 +155,14 @@ void CoralNode::refreshLinkPoses()
       link->applyNewPose();
   }
 
-  if(tf_buffer._frameExists(coral_cam_link))
+  if(tf_buffer.frameExists(coral_cam_link))
   {
     const auto parent{getKnownCamParent()};
 
     if(parent == nullptr)
       return;
 
-    const auto tr{tf_buffer.lookupTransform(parent->name(), coral_cam_link, tf2::TimePointZero, 10ms)};
+    const auto tr{tf_buffer.lookupTransform(parent->name(), coral_cam_link, 10ms)};
     const auto delay{(now() - tr.header.stamp).seconds()};
     if(delay < 1 || delay > 1e8)
     {
