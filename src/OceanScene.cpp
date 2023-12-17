@@ -129,6 +129,7 @@ bool OceanScene::EventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::G
       _oceanScene->setOceanSurfaceHeight(-1000.);
       return true;
     }
+
     // Ocean surface shape, override FFTOceanTechnique's event handler
     auto fftSurface{_oceanScene->surface()};
 

@@ -1,8 +1,8 @@
 # change scene colors according to base weather (if any) and specific light origin
+string weather #    clear, cloudy, night, dusk
 string origin # light, fog, uwDiffuse, sunAmbient, uwFog, sunDiffuse, uwAttenuation, uwDensity
 uint8 r
 uint8 g
 uint8 b
 uint8 a
-string weather #    clear, cloudy, night, dusk
 ---

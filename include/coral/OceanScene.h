@@ -42,6 +42,10 @@
 #include <coral/weather.h>
 #include <coral/SkyDome.h>
 
+#ifdef CORAL_SYNC_WAVES
+#include <rcl_interfaces/msg/parameter.hpp>
+#endif
+
 #include <map>
 
 
@@ -208,6 +212,24 @@ public:
   explicit OceanScene(const SceneParams &params);
   SceneParams params;
 
+#ifdef CORAL_SYNC_WAVES
+  void setWavesParams(const std::vector<rcl_interfaces::msg::Parameter> &params)
+  {
+    if(params.empty())
+      return;
+    // do something with the message
+    _isDirty = true;
+  }
+  void setWindSpeed(double speed)
+  {
+
+  }
+  void setWindDirection(double direction)
+  {
+
+  }
+#endif
+
   inline auto scaleUnderwaterColor(float f = 1.f)
   {
     weather.underwaterDiffuse = weather.underwaterFogColor = base_water_color * f;
@@ -221,11 +243,6 @@ public:
     weather.switchTo(mood);
     changeMood(weather);
   }
-  /*inline void changeMood( const std::string &type)
-  {
-    changeMood(Weather::from(type));
-  }*/
-
 
   inline void registerCamera(osg::Camera* cam)
   {

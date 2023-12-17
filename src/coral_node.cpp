@@ -13,6 +13,11 @@
 #include <coral/custom_scene.h>
 #endif
 
+#ifdef CORAL_SYNC_WAVES
+#include <ros_gz_interfaces/msg/param_vec.hpp>
+#include <std_msgs/msg/float32.hpp>
+#endif
+
 using namespace coral;
 using namespace std::chrono_literals;
 using std::vector, std::string;
@@ -67,6 +72,18 @@ void CoralNode::manage(osg::ref_ptr<OceanScene> scene, Viewer & viewer)
 
 #ifdef CORAL_CUSTOM_SCENE
   static auto color_sub = create_service<coral::srv::SceneColor>("/coral/scene_color", colorCallback(scene));
+#endif
+
+#ifdef CORAL_SYNC_WAVES
+  static auto wave_sub = create_subscription<ros_gz_interfaces::msg::ParamVec>("/coral/waves", 1,
+                                                                               [&](ros_gz_interfaces::msg::ParamVec::SharedPtr msg)
+                                                                               {scene->setWavesParams(msg->params);});
+  static auto wind_speed_sub = create_subscription<std_msgs::msg::Float32>("/vrx/debug/wind/speed", 1,
+                                                                           [&](std_msgs::msg::Float32::SharedPtr msg)
+                                                                           {scene->setWindSpeed(msg->data);});
+  static auto wind_dir_sub = create_subscription<std_msgs::msg::Float32>("/vrx/debug/wind/direction", 1,
+                                                                         [&](std_msgs::msg::Float32::SharedPtr msg)
+                                                                         {scene->setWindDirection(msg->data);});
 #endif
 }
 
@@ -220,7 +237,7 @@ void CoralNode::spawnModel(const std::string &model_ns,
                            const std::string &world_model)
 {
   if(!world_model.empty())
-  {    
+  {
     std::ifstream urdf{world_model};
     if(!urdf)
     {
@@ -248,7 +265,7 @@ void CoralNode::spawnModel(const std::string &model_ns,
     return;
   }
 
-  ScopedTimer("Loading world model from " + model_ns + "/robot_state_publisher", this);
+  ScopedTimer("Loading model from " + model_ns + "/robot_state_publisher", this);
   const auto root{parseModel(rsp_param_srv->get_parameter<string>("robot_description"))};
 
   if(!pose_topic.empty() && root)

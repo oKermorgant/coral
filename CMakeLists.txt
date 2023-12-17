@@ -20,6 +20,8 @@ find_package(TinyXML2 REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(ros_gz_interfaces QUIET)
+
 
 option(CUSTOM_SCENE "Build service to change scene colors" ON)
 
@@ -30,6 +32,10 @@ if(CUSTOM_SCENE)
 else()
     rosidl_generate_interfaces(${PROJECT_NAME} "srv/Spawn.srv" "srv/Marker.srv"
                                 DEPENDENCIES geometry_msgs)
+endif()
+
+if(ros_gz_interfaces_FOUND)
+    add_definitions(-DCORAL_SYNC_WAVES)
 endif()
 
 if("$ENV{ROS_DISTRO}" STRLESS_EQUAL "galactic")
@@ -109,6 +115,11 @@ target_include_directories(coral_gui SYSTEM PRIVATE include ${OPENSCENEGRAPH_INC
 target_include_directories(coral_gui PRIVATE include)
 target_link_libraries(coral_gui osgOcean ${OPENSCENEGRAPH_LIBRARIES} ${OPENGL_LIBRARY})
 ament_target_dependencies(coral_gui rclcpp sensor_msgs geometry_msgs nav_msgs urdf ament_index_cpp tf2_ros image_transport std_srvs)
+
+if(ros_gz_interfaces_FOUND)
+    ament_target_dependencies(coral_gui ros_gz_interfaces)
+endif()
+
 if(${LEGACY_IDL})
     rosidl_target_interfaces(coral_gui ${PROJECT_NAME} "rosidl_typesupport_cpp")
 else()
