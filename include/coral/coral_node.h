@@ -56,7 +56,7 @@ private:
 
   // tf interface
   void refreshLinkPoses();
-  Buffer tf_buffer{this};
+  Buffer tf_buffer;
 
   // ground truth subscribers from Gazebo or other Pose topic
   std::vector<rclcpp::Subscription<Pose>::SharedPtr> pose_subs;

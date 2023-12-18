@@ -37,7 +37,6 @@ class Buffer
   constexpr static auto timeout{std::chrono::milliseconds(10)};
 public:
   explicit Buffer();
-  explicit Buffer(rclcpp::Node* node);
   inline std::optional<osg::Matrix> lookup(const std::string &frame,const std::string &reference = WORLD_NAME) const
   {
     if(buffer.canTransform(reference, frame, tf2::TimePointZero, timeout))
