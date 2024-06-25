@@ -16,12 +16,14 @@ Contrary to UWSim, Coral is not a simulator at all and only renders available mo
 ## Spawning a robot
 
 `coral_gui` provides the `/coral/spawn` service defined as:
+
 ```
 string robot_namespace
 string pose_topic "pose_gt"
 string world_model
 ---
 ```
+
  - If `world_model` is defined, it should be the path to some URDF file where `world` is the root frame (typically a world mesh).
 Otherwise, will use the `robot_namespace` to listen for a `robot_description` topic and spawn the corresponding robot.
 - If `pose_topic` is defined (and carries `geometry_msgs/Pose` msgs, Coral will use it to update the pose of the root frame of the robot. Otherwise, it will rely on `/tf`.
@@ -29,6 +31,7 @@ Otherwise, will use the `robot_namespace` to listen for a `robot_description` to
 Note that Coral will always rely on `/tf` to get the relative pose of the links that belong to a given robot (typically published by `robot_state_publisher`). Only the root link can be chosen as being updated either from a topic, or from `/tf`.
 
 If both `world_model` and `robot_namespace` are empty (default) then Coral will poll all current `robot_description` topics.
+
  - if any was not parsed yet, it will add the corresponding model
  - if a topic in the same namespace is carrying `geometry_msgs/Pose` data, Coral will assume it is the ground truth for this model
 
@@ -36,7 +39,11 @@ The `spawn` executable is a wrapper around the `Spawn` service that is used to a
 
 ## Controlling the point of view
 
-A helper launch file is `track_launch.py` and simply publishes a static transform between the given `link` and the `coral_cam_node` link, in order to automatically track the corresponding link inside Coral.
+A helper launch file is `track_launch.py` and simply publishes a static transform between the given `link` and the `coral_cam_node` link, in order to automatically track the corresponding link inside Coral. The `simple_launch` and `slider_publisher` packages are required to tune the view point:
+
+```
+sudo apt install ros-${ROS_DISTRO}-slider-publisher ros-${ROS_DISTRO}-simple-launch
+```
 
 ## Spawning a marker
 
@@ -46,5 +53,5 @@ The `marker` node takes three parameters to spawn a given marker:
     - `color` (0-1 RGB): the color of the marker
     - `delete` (bool): whether the marker from this topic should now be deleted
 The node will identify which message type goes through the given topic and forward it to `coral_gui`.
-For now only `geometry_msgs/Pose`, `geometry_msgs/PoseStamped` and `nav_msgs/Path` are supported.
+For now `geometry_msgs/Pose`, `geometry_msgs/PoseStamped` and `nav_msgs/Path` are supported.
 

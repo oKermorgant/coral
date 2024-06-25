@@ -81,9 +81,8 @@ private:
   Link *parseModel(const std::string &model);
   rclcpp::Subscription<rosgraph_msgs::msg::Clock>::SharedPtr clock_sub;
 
-  // camera view point 
-  bool has_cam_view = false;
-  Link* getKnownCamParent();
+  // camera view point if requested
+  void updateViewPoint();
 };
 
 }

@@ -45,11 +45,13 @@ else()
     rosidl_get_typesupport_target(cpp_typesupport_target "${PROJECT_NAME}" "rosidl_typesupport_cpp")
 endif()
 
+
+# TODO adapt osgOcean to vsg
 set(OSGOCEAN_SRC ${PROJECT_SOURCE_DIR}/osgocean/osgocean)
 
 OPTION(OSGOCEAN_EXTERNAL "Compile osgOcean as external lib" ON)
 
-# get osgocean if not here
+#get osgocean if not here
 if(NOT EXISTS ${OSGOCEAN_SRC}/CMakeLists.txt)
 message("getting osgocean submodule...")
 execute_process(COMMAND git submodule update --init
@@ -86,12 +88,10 @@ endif()
 
 set(OSGOCEAN_INCLUDE_DIRS ${OSGOCEAN_SRC}/include)
 
-#find_package(OpenSceneGraph COMPONENTS osgSim osgUtil osgDB osgFX osgGA osgTerrain osgViewer osgText osgWidget osg osgParticle osgManipulator osgShadow)
+find_package(OpenSceneGraph COMPONENTS osgSim osgUtil osgDB osgFX osgGA osgTerrain osgViewer osgText osgWidget osg osgParticle osgManipulator osgShadow)
 find_package(OpenSceneGraph COMPONENTS osgUtil osgDB osgGA osgViewer osgText osg osgShadow)
 find_package (OpenThreads REQUIRED)
 
-set(OpenGL_GL_PREFERENCE GLVND)
-find_package (OpenGL REQUIRED)
 
 add_executable(coral_gui
                   src/coral_main.cpp
@@ -161,9 +161,11 @@ endif()
 
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 
-# common osgocean resources
+# osgocean resources
 install(DIRECTORY ${OSGOCEAN_SRC}/resources/shaders DESTINATION share/${PROJECT_NAME}/resources)
+install(DIRECTORY ${OSGOCEAN_SRC}/resources/textures DESTINATION share/${PROJECT_NAME}/resources)
 install(DIRECTORY ${OSGOCEAN_SRC}/demo/island DESTINATION share/${PROJECT_NAME}/resources)
+install(DIRECTORY ${OSGOCEAN_SRC}/demo/textures DESTINATION share/${PROJECT_NAME}/resources)
 
 # override some shaders if needed
 install(DIRECTORY osgocean/resources DESTINATION share/${PROJECT_NAME})

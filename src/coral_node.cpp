@@ -58,8 +58,8 @@ void CoralNode::manage(osg::ref_ptr<OceanScene> scene, Viewer & viewer)
   }
 
   static auto spawn_srv = create_service<Spawn>
-      ("/coral/spawn",
-       [&](const Spawn::Request::SharedPtr request, [[maybe_unused]] Spawn::Response::SharedPtr response)
+                          ("/coral/spawn",
+                           [&](const Spawn::Request::SharedPtr request, [[maybe_unused]] Spawn::Response::SharedPtr response)
   {
     [[maybe_unused]] const auto lock{coral_lock()};
     if(request->robot_namespace.empty() && request->world_model.empty())
@@ -77,13 +77,13 @@ void CoralNode::manage(osg::ref_ptr<OceanScene> scene, Viewer & viewer)
 #ifdef CORAL_SYNC_WAVES
   static auto wave_sub = create_subscription<ros_gz_interfaces::msg::ParamVec>("/coral/waves", 1,
                                                                                [&](ros_gz_interfaces::msg::ParamVec::SharedPtr msg)
-                                                                               {scene->setWavesParams(msg->params);});
+  {scene->setWavesParams(msg->params);});
   static auto wind_speed_sub = create_subscription<std_msgs::msg::Float32>("/vrx/debug/wind/speed", 1,
                                                                            [&](std_msgs::msg::Float32::SharedPtr msg)
-                                                                           {scene->setWindSpeed(msg->data);});
+  {scene->setWindSpeed(msg->data);});
   static auto wind_dir_sub = create_subscription<std_msgs::msg::Float32>("/vrx/debug/wind/direction", 1,
                                                                          [&](std_msgs::msg::Float32::SharedPtr msg)
-                                                                         {scene->setWindDirection(msg->data);});
+  {scene->setWindDirection(msg->data);});
 #endif
 }
 
@@ -131,29 +131,55 @@ SceneParams CoralNode::parameters()
   return params;
 }
 
-Link* CoralNode::getKnownCamParent()
+void CoralNode::updateViewPoint()
 {
-  Link* prev_link = nullptr;
-  auto parent{tf_buffer.getParent(coral_cam_link)};
 
-  while(parent.has_value())
+  if(tf_buffer.frameExists(coral_cam_link))
   {
-    // if we have reached the world frame
-    if(parent.value() == world_link.name())
+    // get the frame we are observing
+    Link* cam_parent = nullptr;
+    auto parent{tf_buffer.getParent(coral_cam_link)};
+
+    while(parent.has_value())
     {
-      prev_link = &world_link;
-      break;
+      // if we have reached the world frame
+      if(parent.value() == world_link.name())
+      {
+        cam_parent = &world_link;
+        break;
+      }
+      // if we have reached a link that moves without TF knowing
+      if(auto root{findLink(parent.value())}; root)
+      {
+        cam_parent = root;
+        break;
+      }
+      // continue parenting
+      parent = tf_buffer.getParent(parent.value());
     }
-    // if we have reached a link that moves without TF knowing
-    if(auto root{findLink(parent.value())}; root)
+
+    if(cam_parent == nullptr)
     {
-      prev_link = root;
-      break;
+      viewer->freeCamera();
+      return;
     }
-    // continue parenting
-    parent = tf_buffer.getParent(parent.value());
+
+    const auto tr{tf_buffer.lookupTransform(cam_parent->name(), coral_cam_link, 10ms)};
+    const auto delay{(now() - tr.header.stamp).seconds()};
+    if(delay < 1)
+    {
+      // add 180 deg yaw for intuitivity
+      static const osg::Matrix M180(-osg::Quat{0,0,1,0});
+
+      auto M = osgMatFrom(tr.transform.translation, tr.transform.rotation) * M180;
+
+      if(cam_parent->name() != WORLD_NAME)
+        M = M*cam_parent->frame()->getMatrix();
+      viewer->lockCamera(M);
+      return;
+    }
   }
-  return prev_link;
+  viewer->freeCamera();
 }
 
 void CoralNode::refreshLinkPoses()
@@ -172,28 +198,7 @@ void CoralNode::refreshLinkPoses()
       link->applyNewPose();
   }
 
-  if(tf_buffer.frameExists(coral_cam_link))
-  {
-    const auto parent{getKnownCamParent()};
-
-    if(parent == nullptr)
-      return;
-
-    const auto tr{tf_buffer.lookupTransform(parent->name(), coral_cam_link, 10ms)};
-    const auto delay{(now() - tr.header.stamp).seconds()};
-    if(delay < 1 || delay > 1e8)
-    {
-      auto M = osgMatFrom(tr.transform.translation, tr.transform.rotation);
-
-      if(parent->name() != WORLD_NAME)
-        M = M*parent->frame()->getMatrix();
-      viewer->lockCamera(M);
-    }
-    else
-    {
-      viewer->freeCamera();
-    }
-  }
+  updateViewPoint();
 }
 
 void CoralNode::findModels()
@@ -222,9 +227,9 @@ void CoralNode::findModels()
 
     // pose_topic should be a geometry_msgs/Pose, published by Gazebo as ground truth
     const auto pose_topic{std::find_if(topics.begin(), topics.end(), [&](const auto &elem)
-    {
-      return isSameNS(elem.first) && elem.second[0] == "geometry_msgs/msg/Pose";
-    })};
+      {
+        return isSameNS(elem.first) && elem.second[0] == "geometry_msgs/msg/Pose";
+      })};
     if(pose_topic == topics.end())
       spawnModel(ns);
     else
@@ -256,7 +261,7 @@ void CoralNode::spawnModel(const std::string &model_ns,
   // retrieve full model through robot_state_publisher
   const auto rsp_node(std::make_shared<Node>("coral_rsp"));
   const auto rsp_param_srv = std::make_shared<rclcpp::SyncParametersClient>
-      (rsp_node, model_ns + "/robot_state_publisher");
+                             (rsp_node, model_ns + "/robot_state_publisher");
   rsp_param_srv->wait_for_service();
   if(!rsp_param_srv->has_parameter("robot_description"))
   {
@@ -291,7 +296,7 @@ Link* CoralNode::parseModel(const string &description)
     if(link.name == WORLD_NAME)
     {
       world_link.addElements(link);
-      Camera::addCameras(world_link.frame(), link.cameras);      
+      Camera::addCameras(world_link.frame(), link.cameras);
     }
     else
     {

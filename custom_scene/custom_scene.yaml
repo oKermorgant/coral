@@ -9,8 +9,12 @@
     max: 255
     min: 0
     to: b
-  weather: night
-  origin: sunDiffuse
+  weather:
+    to: weather
+    default: clear
+  origin:
+    to: origin
+    default: sunDiffuse
   g:
     default: 4
     max: 255

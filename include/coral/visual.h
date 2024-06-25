@@ -1,7 +1,7 @@
 #ifndef CORAL_VISUAL_H
 #define CORAL_VISUAL_H
 
-#include <memory>
+#include <array>
 #include <osg/Node>
 #include <osg/MatrixTransform>
 #include <coral/masks.h>
