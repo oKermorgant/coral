@@ -52,10 +52,10 @@ public:
   /// inits last pose received (disables pose from tf) and returns the callback to update this pose
   inline auto poseCallback()
   {
-    last.emplace();
+    pose_msg.emplace();
     return [&](geometry_msgs::msg::Pose::SharedPtr msg)
     {
-      last = *msg;
+      pose_msg = *msg;
     };
   }
 
@@ -66,7 +66,7 @@ private:
   osg::Matrix M_pending;
   osg::ref_ptr <osg::MatrixTransform> pose = new osg::MatrixTransform;
 
-  std::optional<geometry_msgs::msg::Pose> last;
+  std::optional<geometry_msgs::msg::Pose> pose_msg;
 
 };
 

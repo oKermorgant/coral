@@ -18,20 +18,11 @@
 */
 
 #include <coral/SkyDome.h>
+#include <osg/Geometry>
 #include <osgOcean/ShaderManager>
 
 using namespace coral;
 
-SkyDome::SkyDome( void )
-{
-
-}
-
-SkyDome::SkyDome( const SkyDome& copy, const osg::CopyOp& copyop ):
-    SphereSegment( copy, copyop )
-{
-
-}
 
 SkyDome::SkyDome( float radius, unsigned int longSteps, unsigned int latSteps, osg::TextureCubeMap* cubemap )
 {
@@ -39,11 +30,6 @@ SkyDome::SkyDome( float radius, unsigned int longSteps, unsigned int latSteps, o
     setupStateSet(cubemap);
 }
 
-/*void SkyDome::create( float radius, unsigned int latSteps, unsigned int longSteps, osg::TextureCubeMap* cubemap )
-{
-    compute( radius, longSteps, latSteps, 90.f, 180.f, 0.f, 360.f );
-    setupStateSet(cubemap);
-}*/
 
 void SkyDome::setupStateSet( osg::TextureCubeMap* cubemap )
 {
@@ -56,6 +42,79 @@ void SkyDome::setupStateSet( osg::TextureCubeMap* cubemap )
 
     setStateSet(ss);
 }
+
+void SkyDome::compute( float radius,
+							unsigned int longitudeSteps,
+							unsigned int lattitudeSteps,
+							float longStart,
+							float longEnd,
+							float latStart,
+							float latEnd )
+
+{
+  removeDrawables(0,getNumDrawables());
+
+  osg::Vec3Array* vertices = new osg::Vec3Array();
+  osg::Vec2Array* texcoords = new osg::Vec2Array();
+
+  double longInc = (longEnd - longStart) / (double)longitudeSteps;
+  double latInc  = (latEnd  - latStart ) / (double)lattitudeSteps;
+
+  double theta = longStart, phi = latStart;
+
+  float uScale = 1.f / longitudeSteps;
+  float vScale = 1.f / lattitudeSteps;
+
+  for( unsigned int i = 0; i <= longitudeSteps; ++i)
+  {
+    const auto t{osg::DegreesToRadians(theta)};
+    const auto sin_t{sin(t)};
+    const auto cos_t{cos(t)};
+
+	for( unsigned int j = 0; j <= lattitudeSteps; ++j)
+	{
+	  const auto p{osg::DegreesToRadians( phi )};
+
+	  const auto x{radius * sin_t * cos(p)};
+	  const auto y{radius * sin_t * sin(p)};
+	  const auto z{radius * cos_t};
+
+	  vertices->push_back( osg::Vec3( x, y, z ) );
+	  texcoords->push_back( osg::Vec2( j*vScale, i*uScale ) );
+
+	  phi += latInc;
+	}
+
+	theta -= longInc;
+	phi = latStart;
+  }
+
+  auto geom = osg::make_ref<osg::Geometry>();
+
+  for(unsigned int r = 0; r <= longitudeSteps-1; r += 1)
+  {
+    auto indices = new osg::DrawElementsUInt( osg::PrimitiveSet::TRIANGLE_STRIP, 0 );
+
+	for(unsigned int c = 0; c <= lattitudeSteps; c += 1 )
+	{
+	  indices->push_back( idx( r,    c,  lattitudeSteps+1 ) );
+	  indices->push_back( idx( r+1,    c,  lattitudeSteps+1 ) );
+	}
+
+    geom->addPrimitiveSet( indices );
+  }
+
+  osg::Vec4Array* colors = new osg::Vec4Array();
+  colors->push_back( osg::Vec4( 1.f, 1.f, 1.f, 1.f ) );
+
+  geom->setVertexArray( vertices );
+  geom->setTexCoordArray( 0, texcoords );
+  geom->setColorArray( colors );
+  geom->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+  addDrawable( geom.get() );
+}
+
 
 osg::ref_ptr<osg::Program> SkyDome::createShader(void)
 {
@@ -91,4 +150,20 @@ osg::ref_ptr<osg::Program> SkyDome::createShader(void)
     }
 
     return program;
+}
+
+osg::Vec2 SkyDome::sphereMap( osg::Vec3& vertex, float radius)
+{
+  float u, v;
+
+  float TWOPI = M_PI * 2.f;
+
+  v = acos( vertex.y() / radius ) / M_PI;
+
+  if (vertex.z() >= 0.f)
+    u = acos( vertex.x() / (radius * sin( M_PI*v ) ) )  / TWOPI;
+  else
+    u = (M_PI + acos( vertex.x() / ( radius * sin( M_PI * v ) ) ) ) / TWOPI;
+
+  return osg::Vec2( u, v );
 }

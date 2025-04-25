@@ -15,7 +15,8 @@ auto colorCallback(OceanScene *scene)
   using coral::srv::SceneColor;
   return [=](const SceneColor::Request::SharedPtr req, SceneColor::Response::SharedPtr)
   {
-    static Weather weather(req->weather);
+    const auto mood{Weather::from(req->weather)};
+    auto &weather{scene->weather(mood)};
     static SceneColor::Request prev;
     if(prev == *req)
       return;
@@ -24,24 +25,16 @@ auto colorCallback(OceanScene *scene)
     prev = *req;
 
     const auto color = Weather::intColor(req->r, req->g, req->b, req->a);
-    if(req->origin == "light")
+    if(req->origin == "light")          // useless?
       weather.lightColor = color;
-    else if(req->origin == "fog")
+    else if(req->origin == "fog")       // horizon fog
       weather.fogColor = color;
-    else if(req->origin == "uwDiffuse")
-      weather.underwaterDiffuse = color;
-    else if(req->origin == "sunAmbient")
+    else if(req->origin == "sunAmbient")  // similar to sunDiffuse
       weather.sunAmbient = color;
-    else if(req->origin == "uwFog")
-      weather.underwaterFogColor = color;
-    else if(req->origin == "sunDiffuse")
+    else if(req->origin == "sunDiffuse")    // overall light
       weather.sunDiffuse = color;
-    else if(req->origin == "uwAttenuation")
-      weather.underwaterAttenuation = {req->r/100.f, req->g/100.f, req->b/100.f};
-    else if(req->origin == "uwDensity")
-      weather.underwaterFogDensity = color.a() + 10*color.r() + 100*color.g() + 1000*color.b();
 
-  scene->changeMood(weather);
+  scene->changeMood(mood);
   };
 }
 

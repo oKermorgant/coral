@@ -25,7 +25,6 @@ struct SceneParams
   float windSpeed                 {3.3};
 
   float depth                     {1000};
-  float depth_attn                {300};
   float reflectionDamping         {0.35f};
 
   float waveScale                 {1e-8f};
@@ -36,15 +35,26 @@ struct SceneParams
   bool reflections                {true};
   bool godrays                    {false};  // godrays do not work on Intel GPUs
   bool glare                      {true};
-  bool underwaterDOF              {false};  // do not work on Intel GPUs
+  bool underwaterDOF              {true};  // creates a dark effect on close objects?
   bool distortion                 {true};
   bool silt                       {true};
-  bool underwaterScattering       {false};
+  bool underwaterScattering       {true};
   bool heightmap                  {false};
-  osg::Vec3 initialCameraPosition {-10.,0.,10.};
+  osg::Vec3 initialCameraPosition {-10.,0.,5.};
 
+  // display
   int width         {1024};
   int height        {768};
+  bool surface_keys{true};
+  bool stats_keys{true};
+  bool stateset_keys{false};
+
+
+  // light conditions
+  double jerlov{0.2};
+  double elev{60.};
+  double azim{20.};
+  double fogDensity{0.002f};
 
   inline bool isChoppy() const {return std::abs(choppyFactor) > 1e-3;}
 

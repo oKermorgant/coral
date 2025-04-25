@@ -10,25 +10,29 @@ int DebugMsg::indent{};
 using namespace coral;
 using std::chrono::system_clock;
 
-Viewer::Viewer(OceanScene *scene) : scene(scene)
+Viewer::Viewer(OceanScene *scene) :
+  scene(scene),
+  width{scene->getParams().width},
+  height{scene->getParams().height},
+  event_handler{osg::make_ref<Viewer::EventHandler>(this)}
 {
-  width = scene->params.width;
-  height = scene->params.height;
-  setUpViewInWindow( 150, 150, width, height, 0 );  
-  setSceneData(scene);
+  setUpViewInWindow( 150, 150, width, height, 0 );
+  setSceneData(scene->getRoot());
 
-  addEventHandler( new osgViewer::StatsHandler );
-  addEventHandler( new osgGA::StateSetManipulator( getCamera()->getOrCreateStateSet() ) );
-  event_handler = osg::make_ref<Viewer::EventHandler>(this);
+  if(scene->getParams().stats_keys)
+    addEventHandler( new osgViewer::StatsHandler );
+  if(scene->getParams().stateset_keys)
+    addEventHandler( new osgGA::StateSetManipulator( getCamera()->getOrCreateStateSet() ) );
+
   addEventHandler(event_handler);
-  addEventHandler(scene->getEventHandler());
+  addEventHandler(scene->getEventHandler(scene->getParams().surface_keys));
   addEventHandler( new osgViewer::HelpHandler);
 
   getCamera()->setName("MainCamera");
   scene->registerCamera(getCamera());
 
   // init free-flying cam + default
-  osg::Vec3 eye(scene->params.initialCameraPosition);
+  osg::Vec3 eye(scene->getParams().initialCameraPosition);
   free_manip->setHomePosition( eye, eye + osg::Vec3(0,20,0), osg::Vec3f(0,0,1) );
   free_manip->setVerticalAxisFixed(true);
   setCameraManipulator(free_manip);
@@ -43,7 +47,7 @@ Viewer::Viewer(OceanScene *scene) : scene(scene)
   // virtual cam
   camera = osg::make_ref<osg::Camera>();
   scene->fitToSize(width, height);
-  camera->setReferenceFrame( osg::Transform::ABSOLUTE_RF );
+  camera->setReferenceFrame( osg::Transform::ABSOLUTE_RF);
   camera->setRenderOrder(osg::Camera::POST_RENDER);
   camera->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
   camera->setClearMask(GL_DEPTH_BUFFER_BIT);
@@ -57,6 +61,7 @@ Viewer::Viewer(OceanScene *scene) : scene(scene)
   getWindows(windows);
   window = windows[0];
   window->setWindowName("Coral");
+
 }
 
 void Viewer::frame(double simTime)

@@ -5,9 +5,9 @@ namespace coral
 
 void Link::refreshFrom(const Buffer &buffer)
 {
-  if(last.has_value())
+  if(pose_msg.has_value())
   {
-    setPending(osgMatFrom(last->position, last->orientation));
+    setPending(osgMatFrom(pose_msg->position, pose_msg->orientation));
   }
   else
   {
@@ -24,7 +24,7 @@ void Link::addElements(const urdf_parser::LinkInfo &info)
   {
     auto visual{Visual::fromURDF(*urdf, M)};
     if(visual.has_value())
-      visual->attachTo(pose);
+      visual->attachTo(pose, true);
   }
 }
 

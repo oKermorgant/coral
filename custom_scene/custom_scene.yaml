@@ -1,28 +1,28 @@
 /coral/scene_color:
-  a:
-    default: 255
-    max: 255
-    min: 0
-    to: a
-  b:
-    default: 4
-    max: 255
-    min: 0
-    to: b
   weather:
     to: weather
     default: clear
   origin:
     to: origin
-    default: sunDiffuse
-  g:
-    default: 4
-    max: 255
-    min: 0
-    to: g
+    default: ''
   r:
     default: 4
     max: 255
     min: 0
     to: r
+  g:
+    default: 4
+    max: 255
+    min: 0
+    to: g
+  b:
+    default: 4
+    max: 255
+    min: 0
+    to: b
+  a:
+    default: 255
+    max: 255
+    min: 0
+    to: a
   type: coral/SceneColor

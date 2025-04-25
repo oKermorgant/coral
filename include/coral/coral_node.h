@@ -19,6 +19,7 @@ class Viewer;
 
 using geometry_msgs::msg::Pose;
 using coral::srv::Spawn;
+using rcl_interfaces::msg::SetParametersResult;
 
 class CoralNode : public rclcpp::Node
 {
@@ -47,8 +48,6 @@ private:
                   std::chrono::duration_cast<std::chrono::microseconds>(Clock::now()-start).count());
     }
   };
-
-
 
   Link world_link{WORLD_NAME};
   OceanScene* scene;
@@ -83,6 +82,66 @@ private:
 
   // camera view point if requested
   void updateViewPoint();
+
+  // helper functions to declare and describe parameters
+  template <typename ParamType>
+  inline void declareParamDescription(std::string name,
+                                           ParamType &value,
+                                           std::string description = "")
+  {
+    if(has_parameter(name))
+    {
+      get_parameter(name, value);
+      return;
+    }
+    /*rcl_interfaces::msg::ParameterDescriptor descriptor;
+    descriptor.set__name(name).set__description(description);
+    value = declare_parameter<ParamType>(name, value, descriptor);*/
+    value = declare_parameter<ParamType>(name, value);
+  }
+
+  inline void declareParamDescription(std::string name,
+                                     int &value,
+                                     int lower,
+                                     int upper,
+                                     int step = 1,
+                                      std::string description = "")
+  {
+    if(has_parameter(name))
+    {
+      get_parameter(name, value);
+      return;
+    }
+    rcl_interfaces::msg::ParameterDescriptor descriptor;
+    descriptor.set__name(name).set__description(description);
+    descriptor.integer_range = {rcl_interfaces::msg::IntegerRange()
+                                .set__from_value(lower)
+                                .set__to_value(upper)
+                                .set__step(step)};
+    value = declare_parameter<int>(name, value, descriptor);
+  }
+
+  inline void declareParamDescription(std::string name,
+                                     double &value,
+                                     double lower,
+                                     double upper,
+                                      std::string description = "")
+  {
+    if(has_parameter(name))
+    {
+      get_parameter(name, value);
+      return;
+    }
+    rcl_interfaces::msg::ParameterDescriptor descriptor;
+    descriptor.set__name(name).set__description(description);
+    descriptor.floating_point_range = {rcl_interfaces::msg::FloatingPointRange()
+                                .set__from_value(lower)
+                                .set__to_value(upper)};
+    value = declare_parameter<double>(name, value, descriptor);
+  }
+
+  OnSetParametersCallbackHandle::SharedPtr param_change;
+  SetParametersResult parametersCallback(const std::vector<rclcpp::Parameter> &parameters);
 };
 
 }

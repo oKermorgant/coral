@@ -18,6 +18,8 @@ int main(int argc, char *argv[])
 
   std::thread ros([&](){rclcpp::spin(node);});
 
+  //std::this_thread::sleep_for(std::chrono::seconds(10));
+
   while(!viewer.done() && rclcpp::ok())
     viewer.frame();
 

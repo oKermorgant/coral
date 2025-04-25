@@ -89,6 +89,9 @@ CameraInfo::CameraInfo(const std::string &link, const tinyxml2::XMLElement* sens
   const auto sensor(NestedXML{sensor_elem});
   const auto cam(NestedXML{sensor_elem->FirstChildElement("camera")});
 
+  // custom frame id
+  cam.read({"optical_frame_id"}, frame_id);
+
   cam.read({"horizontal_fov"}, fov);
   cam.read({"image", "width"}, width);
   cam.read({"image", "height"}, height);

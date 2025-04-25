@@ -40,6 +40,7 @@
 #include <coral/masks.h>
 #include <coral/scene_params.h>
 #include <coral/weather.h>
+#include <coral/water_lights.h>
 #include <coral/SkyDome.h>
 
 #ifdef CORAL_SYNC_WAVES
@@ -65,24 +66,32 @@ public:
   class EventHandler : public osgGA::GUIEventHandler
   {
   public:
-    EventHandler(OceanScene* oceanScene) : _oceanScene{oceanScene} {}
+    EventHandler(OceanScene* oceanScene, bool allow_change_height)
+      : _oceanScene{oceanScene}, _allow_change_height{allow_change_height} {}
     virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, osg::Object*, osg::NodeVisitor*);
     virtual void getUsage(osg::ApplicationUsage& usage) const;
   protected:
     OceanScene* _oceanScene;
+    bool _allow_change_height{true};
   };
 
   /// Virtual constructor for OceanScene::EventHandler - override in
   /// derived classes to return subclass-specific handler if needed.
-  virtual EventHandler* getEventHandler()
+  virtual EventHandler* getEventHandler(bool allow_change_height)
   {
     if (!eventHandler.valid())
-      eventHandler = new EventHandler(this);
+      eventHandler = new EventHandler(this, allow_change_height);
     return eventHandler.get();
   }
 
 private:
-  Weather weather;
+
+  osg::ref_ptr<osg::Group> root, scene;
+  SceneParams params;
+  std::map<Weather::Mood, Weather> weathers;
+  Weather::Mood mood;  
+  Water water;
+
   osg::Vec4f base_water_color;
   osg::ref_ptr<osg::TextureCubeMap> cubemap;
   osg::ref_ptr<SkyDome> skyDome;
@@ -138,6 +147,8 @@ private:
   osg::ref_ptr<osgOcean::GodRays> _godrays;
   osg::ref_ptr<osg::ClipNode> _siltClipNode;
   osg::ref_ptr<osg::ClipNode> _reflectionClipNode;
+
+
 
   ViewSet _viewsWithRTTEffectsDisabled;
 
@@ -209,8 +220,7 @@ private:
 public:
 
   explicit OceanScene() {}
-  explicit OceanScene(const SceneParams &params);
-  SceneParams params;
+  explicit OceanScene(const SceneParams &params);  
 
 #ifdef CORAL_SYNC_WAVES
   void setWavesParams(const std::vector<rcl_interfaces::msg::Parameter> &params)
@@ -230,23 +240,76 @@ public:
   }
 #endif
 
-  inline auto scaleUnderwaterColor(float f = 1.f)
+  inline const SceneParams & getParams() const
   {
-    weather.underwaterDiffuse = weather.underwaterFogColor = base_water_color * f;
-    refreshUnderwaterFog();
-    return weather.underwaterDiffuse;
+    return params;
   }
 
-  void changeMood(const Weather &weather);
-  inline void changeMood(const Weather::Mood &mood)
+  inline auto connect(osg::Camera *cam)
   {
-    weather.switchTo(mood);
-    changeMood(weather);
+    cam->addChild(scene);
+    root->addChild(cam);
+  }
+
+  inline auto getRoot() const
+  {
+    return root.get();
+  }
+
+  inline std::tuple<const SceneParams&, const Water&, const Weather> getFullParams() const
+  {
+    return {params, water, weathers.at(mood)};
+  }
+
+  inline auto& weather(const Weather::Mood &mood)
+  {
+    return weathers[mood];
+  }
+
+  inline const auto& weather() const
+  {
+    return weathers.at(mood);
+  }
+
+  inline auto scaleUnderwaterColor() const
+  {
+    return water.diffuse;
+  }
+
+  void changeMood(const Weather::Mood &mood);
+
+
+  inline void setSunAzimuth(double azim)
+  {
+    auto &weather{weathers[Weather::Mood::CUSTOM]};
+    weather.sunAzimuth = azim;
+    weather.recomputeSun();
+    _isDirty = true;
+  }
+
+  inline void setSunElevation(double elev)
+  {
+    auto &weather{weathers[Weather::Mood::CUSTOM]};
+    weather.sunElevation = elev;
+    weather.recomputeSun();
+    _isDirty = true;
+  }
+
+  inline void setFogDensity(double density)
+  {
+    water.fogDensity = density;
+    _isDirty = true;
+  }
+
+  inline void setJerlov(double jerlov)
+  {
+    water.fromJerlov(jerlov);
+    _isDirty = true;
   }
 
   inline void registerCamera(osg::Camera* cam)
   {
-    cam->setClearColor(weather.underwaterFogColor);
+    cam->setClearColor(water.fogColor);
     cameras.push_back(cam);
   }
 
@@ -379,18 +442,6 @@ public:
   /// and DOF frame buffers. Default is 1024x768.
   void fitToSize(int width , int height);
 
-  /// Set sun direction.
-  inline void setSunDirection( const osg::Vec3f& sunDir ){
-    weather.sunDirection = sunDir;
-    _isDirty = true;
-  }
-
-  /// Get sun direction.
-  inline osg::Vec3f getSunDirection() const{
-    return weather.sunDirection;
-  }
-
-
   /// Set near DOF blur distance.
   inline void setDOFNear( float dofNear ) {
     _dofNear = dofNear;
@@ -492,9 +543,10 @@ public:
   /// EXP fog
   inline void refreshAboveWaterFog()
   {
+    const auto &weather{this->weather()};
     const float LOG2E = 1.442695;
     if( _globalStateSet.valid() ){
-      _globalStateSet->getUniform("osgOcean_AboveWaterFogDensity")->set(-weather.aboveWaterFogDensity*weather.aboveWaterFogDensity*LOG2E);
+      _globalStateSet->getUniform("osgOcean_AboveWaterFogDensity")->set(-weather.fogDensity*weather.fogDensity*LOG2E);
       _globalStateSet->getUniform("osgOcean_AboveWaterFogColor")->set(weather.fogColor);
     }
 
@@ -505,10 +557,10 @@ public:
   /// EXP2 fog
   inline void refreshUnderwaterFog()
   {
-    const float LOG2E = 1.442695;
+    constexpr float LOG2E{1.442695};
     if( _globalStateSet.valid() ){
-      _globalStateSet->getUniform("osgOcean_UnderwaterFogDensity")->set(-weather.underwaterFogDensity*weather.underwaterFogDensity*LOG2E);
-      _globalStateSet->getUniform("osgOcean_UnderwaterFogColor")->set(weather.underwaterFogColor);
+      _globalStateSet->getUniform("osgOcean_UnderwaterFogDensity")->set(-water.fogDensity*water.fogDensity*LOG2E);
+      _globalStateSet->getUniform("osgOcean_UnderwaterFogColor")->set(water.fogColor);
     }
 
     _isDirty = true;

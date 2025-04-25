@@ -104,16 +104,16 @@ add_executable(coral_gui
                   src/marker.cpp
                   src/transforms.cpp
                   src/visual.cpp
+                  src/water_lights.cpp
 
                   # adapted from osgOcean + example
                   src/OceanScene.cpp
                   src/SkyDome.cpp
-                  src/SphereSegment.cpp
 )
 
 target_include_directories(coral_gui SYSTEM PRIVATE include ${OPENSCENEGRAPH_INCLUDE_DIR} ${OSGOCEAN_INCLUDE_DIRS} ${OPENGL_INCLUDE_DIR})
 target_include_directories(coral_gui PRIVATE include)
-target_link_libraries(coral_gui osgOcean ${OPENSCENEGRAPH_LIBRARIES} ${OPENGL_LIBRARY})
+target_link_libraries(coral_gui osgOcean ${OPENSCENEGRAPH_LIBRARIES} ${OPENGL_LIBRARY} tinyxml2::tinyxml2)
 ament_target_dependencies(coral_gui rclcpp sensor_msgs geometry_msgs nav_msgs urdf ament_index_cpp tf2_ros image_transport std_srvs)
 
 if(ros_gz_interfaces_FOUND)

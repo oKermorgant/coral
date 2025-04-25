@@ -7,6 +7,7 @@
 #include <coral/OceanScene.h>
 #include <coral/viewer.h>
 #include <std_srvs/srv/empty.hpp>
+#include <functional>
 
 #ifdef CORAL_CUSTOM_SCENE
 #include <coral/srv/scene_color.hpp>
@@ -21,6 +22,7 @@
 using namespace coral;
 using namespace std::chrono_literals;
 using std::vector, std::string;
+using namespace std::placeholders;
 
 namespace
 {
@@ -39,6 +41,7 @@ CoralNode::CoralNode() : rclcpp::Node("coral")
   });
 }
 
+
 void CoralNode::manage(osg::ref_ptr<OceanScene> scene, Viewer & viewer)
 {
   this->scene = scene.get();
@@ -46,9 +49,9 @@ void CoralNode::manage(osg::ref_ptr<OceanScene> scene, Viewer & viewer)
   Marker::spawnThrough(this, scene.get(), &tf_buffer);
 
   scene->addChild(world_link.frame());
-  Camera::observe(scene.get());
+  Camera::observe(world_link.frame(), scene.get());
 
-  if(const auto delay = declare_parameter("spawn_auto", 2); delay > 0)
+  if(const auto delay{get_parameter("spawn_auto").as_int()}; delay > 0)
   {
     [[maybe_unused]] static auto future = std::async([=]()
     {
@@ -61,7 +64,6 @@ void CoralNode::manage(osg::ref_ptr<OceanScene> scene, Viewer & viewer)
                           ("/coral/spawn",
                            [&](const Spawn::Request::SharedPtr request, [[maybe_unused]] Spawn::Response::SharedPtr response)
   {
-    [[maybe_unused]] const auto lock{coral_lock()};
     if(request->robot_namespace.empty() && request->world_model.empty())
       findModels();
     else
@@ -91,44 +93,85 @@ SceneParams CoralNode::parameters()
 {
   SceneParams params;
 
-  const auto updateParam = [&](const string &description, auto & val)
-  {
-    if(has_parameter(description))
-      get_parameter(description, val);
-    else
-      val = declare_parameter(description, val);
-  };
-
   // display
-  updateParam("gui.width", params.width);
-  updateParam("gui.height", params.height);
+  declareParamDescription("gui.width", params.width, "Width of the window");
+  declareParamDescription("gui.height", params.height, "Height of the window");
+  declareParamDescription("gui.allow_change_height", params.surface_keys,"Allow to change surface height");
+  declareParamDescription("gui.enable_stats", params.stats_keys,"Allow to show stats");
+  declareParamDescription("gui.enable_stateset", params.stateset_keys,"Allow to show 3D states");
   auto cam(params.asVector(params.initialCameraPosition));
-  updateParam("gui.camera", cam);
+  declareParamDescription("gui.camera", cam,"Initial camera position");
   params.initialCameraPosition.set(cam[0], cam[1], cam[2]);
 
-  // weather
-  updateParam("scene_type", params.scene_type);
+  // sky
+  declareParamDescription("scene_type", params.scene_type,"Weather");
+  this->declareParamDescription("sun.azimuth", params.azim, -180., 180.,
+                          "Sun azimuth [deg]");
+  this->declareParamDescription("sun.elevation", params.elev, 0., 90.,
+                          "Sun elevation [deg]");
+
+  // wind
   auto wind(params.asVector(params.windDirection));
-  updateParam("wind.direction", wind);
+  declareParamDescription("wind.direction", wind);
   params.windDirection.set(wind[0], wind[1]);
-  updateParam("wind.speed", params.windSpeed);
-  updateParam("wave.scale", params.waveScale);
-  updateParam("wave.choppy_factor", params.choppyFactor);
-  updateParam("wave.foam_height", params.crestFoamHeight);
+  declareParamDescription("wind.speed", params.windSpeed);
+  declareParamDescription("wave.scale", params.waveScale);
+  declareParamDescription("wave.choppy_factor", params.choppyFactor);
+  declareParamDescription("wave.foam_height", params.crestFoamHeight);
 
   // underwater
-  updateParam("ocean.depth", params.depth);
-  updateParam("ocean.attenuation", params.depth_attn);
+  declareParamDescription("ocean.depth", params.depth);
+  this->declareParamDescription("ocean.jerlov", params.jerlov, 0., 1.,
+                                  "Jerlov water type");
+  this->declareParamDescription("ocean.fog_density", params.fogDensity, 0., 0.01f,
+                                  "Water fog density");
+
 
   // ocean surface params
-  updateParam("surface.reflection_damping", params.reflectionDamping);
+  declareParamDescription("surface.reflection_damping", params.reflectionDamping);
 
   // vfx
-  updateParam("vfx.godrays", params.godrays);
-  updateParam("vfx.glare", params.glare);
-  updateParam("vfx.underwaterDof", params.underwaterDOF);
+  declareParamDescription("vfx.godrays", params.godrays);
+  declareParamDescription("vfx.glare", params.glare);
+  declareParamDescription("vfx.underwaterDof", params.underwaterDOF);
+
+  declare_parameter("spawn_auto", 2);
+
+  if(!param_change)
+    param_change = add_on_set_parameters_callback(std::bind(&CoralNode::parametersCallback,
+                                                          this,
+                                                          _1));
 
   return params;
+}
+
+SetParametersResult CoralNode::parametersCallback(const std::vector<rclcpp::Parameter> &parameters)
+{
+  auto result{SetParametersResult().set__successful(true)};
+  for(const auto &param: parameters)
+  {
+    if(param.get_name() == "ocean.jerlov")
+    {
+      scene->setJerlov(param.as_double());
+    }
+    else if(param.get_name() == "ocean.fog_density")
+    {
+      scene->setFogDensity(param.as_double());
+    }
+    else if(param.get_name() == "sun.azimuth")
+    {
+      scene->setSunAzimuth(param.as_double());
+    }
+    else if(param.get_name() == "sun.elevation")
+    {
+      scene->setSunElevation(param.as_double());
+    }
+    else
+    {
+      result.successful = false;
+    }
+  }
+  return result;
 }
 
 void CoralNode::updateViewPoint()
@@ -186,9 +229,10 @@ void CoralNode::refreshLinkPoses()
 {
   if(tf_buffer.ready())
   {
+    const auto size{[&](){const auto lock{coral_lock()};return links.size();}()};
     // cache retrieval of pending new poses
-    for(auto &link: links)
-      link->refreshFrom(tf_buffer);
+    for(size_t link = 0; link < size; ++link)
+      links[link]->refreshFrom(tf_buffer);
   }
 
   {
@@ -259,7 +303,7 @@ void CoralNode::spawnModel(const std::string &model_ns,
   if(model_ns.empty() || hasModel(model_ns))
     return;
   // retrieve full model through robot_state_publisher
-  const auto rsp_node(std::make_shared<Node>("coral_rsp"));
+  const auto rsp_node(std::make_shared<Node>("coral_rsp", model_ns));
   const auto rsp_param_srv = std::make_shared<rclcpp::SyncParametersClient>
                              (rsp_node, model_ns + "/robot_state_publisher");
   rsp_param_srv->wait_for_service();
@@ -290,6 +334,8 @@ Link* CoralNode::parseModel(const string &description)
 {
   const auto tree{urdf_parser::Tree(description, display_thrusters)};
   Link* root{};
+
+  const auto lock{coral_lock()};
 
   for(const auto &link: tree)
   {

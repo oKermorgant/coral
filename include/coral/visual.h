@@ -45,4 +45,4 @@ public:
 
 }
 
-#endif // CORAL_RESOURCE_HELPERS_H
+#endif // CORAL_VISUAL_H

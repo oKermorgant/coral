@@ -32,6 +32,7 @@
 #include <coral/OceanScene.h>
 #include <coral/resource_helpers.h>
 #include <coral/scene_lock.h>
+#include <coral/camera.h>
 
 using namespace coral;
 
@@ -48,7 +49,6 @@ constexpr auto lowResScale{4};
 constexpr auto lowResMul{1.f/lowResScale};
 
 }
-
 
 bool OceanScene::EventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter&, osg::Object*, osg::NodeVisitor*)
 {
@@ -75,12 +75,6 @@ bool OceanScene::EventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::G
       _oceanScene->switchParam(_oceanScene->params.underwaterDOF);
       return true;
     }
-    // Glare
-    if (key == 'g')
-    {
-      _oceanScene->switchParam(_oceanScene->params.glare);
-      return true;
-    }
     // God rays
     if (key == 'G')
     {
@@ -94,7 +88,7 @@ bool OceanScene::EventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::G
       return true;
     }
     // Underwater scattering
-    if (key == 'T')
+    if (key == 'd')
     {
       _oceanScene->switchParam(_oceanScene->params.underwaterScattering);
       return true;
@@ -107,12 +101,12 @@ bool OceanScene::EventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::G
       return true;
     }
     // Ocean surface height
-    if (key == osgGA::GUIEventAdapter::KEY_Page_Up)
+    if (_allow_change_height && key == osgGA::GUIEventAdapter::KEY_Page_Up)
     {
       _oceanScene->setOceanSurfaceHeight(_oceanScene->getOceanSurfaceHeight() + .5);
       return true;
     }
-    if (key == osgGA::GUIEventAdapter::KEY_Page_Down)
+    if (_allow_change_height && key == osgGA::GUIEventAdapter::KEY_Page_Down)
     {
       _oceanScene->setOceanSurfaceHeight(_oceanScene->getOceanSurfaceHeight() - .5);
       return true;
@@ -136,40 +130,40 @@ bool OceanScene::EventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::G
     // Crest foam
     if (key == 'f' )
     {
-        fftSurface->enableCrestFoam(!fftSurface->isCrestFoamEnabled());
-        return true;
+      fftSurface->enableCrestFoam(!fftSurface->isCrestFoamEnabled());
+      return true;
     }
     // isChoppy
     if( key == 'p' )
     {
-        fftSurface->setIsChoppy(!fftSurface->isChoppy(), true);
-        return true;
+      fftSurface->setIsChoppy(!fftSurface->isChoppy(), true);
+      return true;
     }
     // Wind speed + 0.5
     if (key == '+')
     {
-        fftSurface->setWindSpeed(fftSurface->getWindSpeed() + 0.5, true);
-        return true;
+      fftSurface->setWindSpeed(fftSurface->getWindSpeed() + 0.5, true);
+      return true;
     }
     // Wind speed - 0.5
     if (key == '-')
     {
-        fftSurface->setWindSpeed(fftSurface->getWindSpeed() - 0.5, true);
-        return true;
+      fftSurface->setWindSpeed(fftSurface->getWindSpeed() - 0.5, true);
+      return true;
     }
     // Scale factor + 1e-9
     if(key == 'K' )
     {
-        float waveScale = fftSurface->getWaveScaleFactor();
-        fftSurface->setWaveScaleFactor(waveScale+(1e-9), true);
-        return true;
+      float waveScale = fftSurface->getWaveScaleFactor();
+      fftSurface->setWaveScaleFactor(waveScale+(1e-9), true);
+      return true;
     }
     // Scale factor - 1e-9
     if(key == 'k' )
     {
-        float waveScale = fftSurface->getWaveScaleFactor();
-        fftSurface->setWaveScaleFactor(waveScale-(1e-9), true);
-        return true;
+      float waveScale = fftSurface->getWaveScaleFactor();
+      fftSurface->setWaveScaleFactor(waveScale-(1e-9), true);
+      return true;
     }
   }
   return false;
@@ -181,13 +175,15 @@ void OceanScene::EventHandler::getUsage(osg::ApplicationUsage& usage) const
   usage.addKeyboardMouseBinding("r","Toggle reflections (above water)");
   usage.addKeyboardMouseBinding("R","Toggle refractions (underwater)");
   usage.addKeyboardMouseBinding("o","Toggle Depth of Field (DOF) (underwater)");
-  usage.addKeyboardMouseBinding("g","Toggle glare (above water)");
   usage.addKeyboardMouseBinding("G","Toggle God rays (underwater)");
   usage.addKeyboardMouseBinding("u","Toggle silt (underwater)");
-  usage.addKeyboardMouseBinding("T","Toggle scattering (underwater)");
+  usage.addKeyboardMouseBinding("d","Toggle scattering (underwater)");
   usage.addKeyboardMouseBinding("H","Toggle Height lookup for shoreline foam and sine shape (above water)");
-  usage.addKeyboardMouseBinding("Page Up","Raise ocean surface");
-  usage.addKeyboardMouseBinding("Page Down","Lower ocean surface");
+  if(_allow_change_height)
+  {
+    usage.addKeyboardMouseBinding("Page Up","Raise ocean surface");
+    usage.addKeyboardMouseBinding("Page Down","Lower ocean surface");
+  }
   usage.addKeyboardMouseBinding("End","Remove ocean surface");
   usage.addKeyboardMouseBinding("Home","Reset ocean surface at z=0");
 
@@ -225,10 +221,12 @@ void OceanScene::loadCubeMapTextures( const std::string& dir )
     cubemap->setImage(dir, osgDB::readImageFile(path + filename));
 }
 
-void OceanScene::changeMood(const Weather &weather)
+void OceanScene::changeMood(const Weather::Mood &mood)
 {
-  this->weather = weather;
-  base_water_color = weather.underwaterFogColor;
+  this->mood = mood;
+  const auto &weather{this->weather()};
+  water.from(mood);
+  base_water_color = water.fogColor;
 
   loadCubeMapTextures(weather.cubemap);
   skyDome->setCubeMap( cubemap.get() );
@@ -244,8 +242,8 @@ void OceanScene::changeMood(const Weather &weather)
   sun->setDiffuse( weather.sunDiffuse);
   sun->setSpecular({});
 
-  for(auto cam: cameras)
-    cam->setClearColor(weather.underwaterFogColor);
+  /*for(auto cam: cameras)
+    cam->setClearColor(water.fogColor);*/
 
   _isDirty = true;
 }
@@ -254,19 +252,35 @@ OceanScene::OceanScene(const SceneParams &params) : params{params}
 {
   initCoralResources();
 
+  root = new osg::Group;
+  root->getOrCreateStateSet()->addUniform(new osg::Uniform("uOverlayMap", 1));
+  root->getStateSet()->addUniform(new osg::Uniform("uNormalMap", 2));
+
+  scene = osg::make_ref<osg::Group>();
+
+  for(auto w: {Weather::Mood::CLEAR,
+      Weather::Mood::CLOUDY,
+      Weather::Mood::CUSTOM,
+      Weather::Mood::DUSK,
+      Weather::Mood::NIGHT})
+    weathers[w].switchTo(w);
+
+  water.fogDensity = params.fogDensity;
+  water.fromJerlov(params.jerlov);
+
   osgOcean::ShaderManager::instance().enableShaders(true);
 
   loadCubeMapTextures(Weather(params.scene_type).cubemap);
 
   // Set up surface
   oceanSurface = osg::make_ref<osgOcean::FFTOceanSurface>(
-        64, 256, 17,
-        //128, 128, 17, // some tests
-        params.windDirection,
-        params.windSpeed, params.depth,
-        params.reflectionDamping,
-        params.waveScale, params.isChoppy(),
-        params.choppyFactor, 10.f, 256 );
+                   64, 256, 17,
+                   //128, 128, 17, // some tests
+                   params.windDirection,
+                   params.windSpeed, params.depth,
+                   params.reflectionDamping,
+                   params.waveScale, params.isChoppy(),
+                   params.choppyFactor, 10.f, 256 );
 
   oceanSurface->setEnvironmentMap( cubemap.get() );
   oceanSurface->setFoamBottomHeight( 2.2f );
@@ -295,14 +309,12 @@ OceanScene::OceanScene(const SceneParams &params) : params{params}
   registerVisual(skyDome);
 
   // add a pat to track the camera
-  auto transform = osg::make_ref<osg::MatrixTransform>();
+  /*auto transform = osg::make_ref<osg::MatrixTransform>();
   transform->setDataVariance( osg::Object::DYNAMIC );
   transform->setMatrix( osg::Matrixf::translate( osg::Vec3f(0.f, 0.f, 0.f) ));
-  //transform->setCullCallback( new CameraTrackCallback );
-
-  //transform->addChild( skyDome.get() );
-
-  //addChild( transform );
+  transform->setCullCallback( new CameraTrackCallback );
+  transform->addChild( skyDome.get() );
+  addChild( transform );*/
   addChild(skyDome);
 
   // Create and add fake texture for use with nodes without any texture
@@ -331,9 +343,9 @@ OceanScene::OceanScene(const SceneParams &params) : params{params}
   sun->setLightNum(0);
 
   // init overall scene
-  changeMood(Weather(params.scene_type));
+  changeMood(Weather::from(params.scene_type));
 
-  addChild(lightSource);
+  scene->addChild(lightSource);
   auto ss{getOrCreateStateSet()};
   ss->addUniform(osg::make_ref<osg::Uniform>("uOverlayMap", 1));
   ss->addUniform(osg::make_ref<osg::Uniform>("uNormalMap", 2));
@@ -355,6 +367,9 @@ OceanScene::OceanScene(const SceneParams &params) : params{params}
 
   osgOcean::ShaderManager::instance().setGlobalDefinition("osgOcean_LightID", _lightID);
   _defaultSceneShader = createDefaultSceneShader();
+
+  scene->addChild(this);
+  root->addChild(scene);
 }
 
 
@@ -384,9 +399,11 @@ void OceanScene::init( void )
     _siltClipNode = NULL;
   }
 
+  const auto &weather{this->weather()};
+
   if( oceanSurface.valid() )
   {
-    const float LOG2E = 1.442695;
+    constexpr float LOG2E{1.442695};
 
     _globalStateSet = new osg::StateSet;
 
@@ -401,12 +418,12 @@ void OceanScene::init( void )
     _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_EnableGlare", params.glare ) );
     _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_EnableUnderwaterScattering", params.underwaterScattering ) );
     _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_WaterHeight", float(getOceanSurfaceHeight()) ) );
-    _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_UnderwaterFogColor", weather.underwaterFogColor ) );
+    _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_UnderwaterFogColor", water.fogColor ) );
     _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_AboveWaterFogColor", weather.fogColor ) );
-    _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_UnderwaterFogDensity", -weather.underwaterFogDensity*weather.underwaterFogDensity*LOG2E ) );
-    _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_AboveWaterFogDensity", -weather.aboveWaterFogDensity*weather.aboveWaterFogDensity*LOG2E ) );
-    _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_UnderwaterDiffuse", weather.underwaterDiffuse ) );
-    _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_UnderwaterAttenuation", weather.underwaterAttenuation ) );
+    _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_UnderwaterFogDensity", -water.fogDensity*water.fogDensity*LOG2E ) );
+    _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_AboveWaterFogDensity", -weather.fogDensity*weather.fogDensity*LOG2E ) );
+    _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_UnderwaterDiffuse", water.diffuse ) );
+    _globalStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_UnderwaterAttenuation", water.attenuation ) );
 
     if(_enableDefaultShader)
     {
@@ -501,8 +518,8 @@ void OceanScene::init( void )
       osg::TextureRectangle* luminanceTexture  = createTextureRectangle( _screenDims, GL_LUMINANCE );
 
       osg::Camera* fullPass = multipleRenderTargetPass(
-            fullScreenTexture, osg::Camera::COLOR_BUFFER0,
-            luminanceTexture,  osg::Camera::COLOR_BUFFER1 );
+                                fullScreenTexture, osg::Camera::COLOR_BUFFER0,
+                                luminanceTexture,  osg::Camera::COLOR_BUFFER1 );
 
       fullPass->setCullCallback( new PrerenderCameraCullCallback(this) );
       fullPass->setStateSet(_glareStateSet.get());
@@ -626,10 +643,11 @@ void OceanScene::ViewData::init( OceanScene *oceanScene, osgUtil::CullVisitor * 
   _surfaceStateSet->addUniform( osg::make_ref<osg::Uniform>(osg::Uniform::FLOAT_MAT4, "osgOcean_RefractionInverseTransformation") );
   _surfaceStateSet->addUniform( osg::make_ref<osg::Uniform>("osgOcean_ViewportDimensions", osg::Vec2(_oceanScene->_screenDims.x(), _oceanScene->_screenDims.y()) ) );
 
+  const auto &weather{_oceanScene->weather()};
   _fog = new osg::Fog;
   _fog->setMode(osg::Fog::EXP2);
-  _fog->setDensity(_oceanScene->weather.aboveWaterFogDensity);
-  _fog->setColor(_oceanScene->weather.fogColor);
+  _fog->setDensity(weather.fogDensity);
+  _fog->setColor(weather.fogColor);
   _globalStateSet->setAttributeAndModes(_fog.get(), osg::StateAttribute::ON);
 
   if( _oceanScene->params.reflections )
@@ -665,8 +683,8 @@ void OceanScene::ViewData::init( OceanScene *oceanScene, osgUtil::CullVisitor * 
     refractionTexture->setFilter(osg::Texture2D::MAG_FILTER, osg::Texture2D::NEAREST );
 
     _refractionCamera = _oceanScene->multipleRenderTargetPass(
-          refractionTexture, osg::Camera::COLOR_BUFFER,
-          refractionDepthTexture, osg::Camera::DEPTH_BUFFER );
+                          refractionTexture, osg::Camera::COLOR_BUFFER,
+                          refractionDepthTexture, osg::Camera::DEPTH_BUFFER );
 
     _refractionCamera->setClearDepth( 1.0 );
     _refractionCamera->setClearColor( osg::Vec4( 0.0, 0.0, 0.0, 0.0 ) );
@@ -722,8 +740,9 @@ void OceanScene::ViewData::updateStateSet( bool eyeAboveWater )
   _globalStateSet->getUniform("osgOcean_Eye")->set( _cv->getEyePoint() );
 
   // Switch the fog state from underwater to above water or vice versa if necessary.
-  const auto requiredFogDensity = eyeAboveWater ? _oceanScene->weather.aboveWaterFogDensity : _oceanScene->weather.underwaterFogDensity;
-  const auto requiredFogColor = eyeAboveWater ? _oceanScene->weather.fogColor   : _oceanScene->weather.underwaterFogColor;
+  const auto &weather{_oceanScene->weather()};
+  const auto requiredFogDensity = eyeAboveWater ? weather.fogDensity : _oceanScene->water.fogDensity;
+  const auto requiredFogColor = eyeAboveWater ? weather.fogColor   : _oceanScene->water.fogColor;
   if (requiredFogDensity != _fog->getDensity() || requiredFogColor != _fog->getColor())
   {
     _fog->setDensity(requiredFogDensity);
@@ -738,7 +757,7 @@ void OceanScene::ViewData::updateStateSet( bool eyeAboveWater )
   bool enabled = (_oceanScene->_viewsWithRTTEffectsDisabled.find(currentCamera->getView()) == _oceanScene->_viewsWithRTTEffectsDisabled.end());
 
   bool reflectionEnabled = _oceanScene->params.reflections && eyeAboveWater && enabled &&
-      ( _cv->getEyePoint().z() < _oceanScene->_eyeHeightReflectionCutoff - _oceanScene->getOceanSurfaceHeight() );
+                           ( _cv->getEyePoint().z() < _oceanScene->_eyeHeightReflectionCutoff - _oceanScene->getOceanSurfaceHeight() );
   _surfaceStateSet->getUniform("osgOcean_EnableReflections")->set(reflectionEnabled);
 
   if (reflectionEnabled)
@@ -838,7 +857,10 @@ void OceanScene::traverse( osg::NodeVisitor& nv )
   if( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
   {
     if( _isDirty )
+    {
       init();
+      Camera::reloadShaders();
+    }
 
     update(nv);
 
@@ -846,7 +868,7 @@ void OceanScene::traverse( osg::NodeVisitor& nv )
   }
   else if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
   {
-    osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+    auto cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
 
     if (cv)
     {
@@ -859,7 +881,7 @@ void OceanScene::traverse( osg::NodeVisitor& nv )
       }
       else
       {
-        bool eyeAboveWater  = isEyeAboveWater(cv->getEyePoint());
+        const auto eyeAboveWater{isEyeAboveWater(cv->getEyePoint())};
 
         // Push the stateset for view-dependent RTT effects.
         ViewData * vd = getViewDependentData( cv );
@@ -1386,11 +1408,11 @@ osg::Geode* OceanScene::createScreenQuad( const osg::Vec2s& dims, const osg::Vec
   osg::Geode* geode = new osg::Geode;
 
   osg::Geometry* quad = osg::createTexturedQuadGeometry(
-        osg::Vec3f(0.f,0.f,0.f),
-        osg::Vec3f(dims.x(), 0.f, 0.f),
-        osg::Vec3f( 0.f,dims.y(), 0.0 ),
-        (float)texSize.x(),
-        (float)texSize.y() );
+                          osg::Vec3f(0.f,0.f,0.f),
+                          osg::Vec3f(dims.x(), 0.f, 0.f),
+                          osg::Vec3f( 0.f,dims.y(), 0.0 ),
+                          (float)texSize.x(),
+                          (float)texSize.y() );
 
   geode->addDrawable(quad);
 
@@ -1402,11 +1424,8 @@ osg::Geode* OceanScene::createScreenQuad( const osg::Vec2s& dims, const osg::Vec
 
 osg::Program* OceanScene::createDefaultSceneShader(void)
 {
-  static const char osgOcean_ocean_scene_vert_file[] = /*"coral_scene.vert";*/ "default_scene.vert";
-  static const char osgOcean_ocean_scene_frag_file[] = /*"coral_scene.frag";// */ "default_scene.frag";
-
   return osgOcean::ShaderManager::instance().createProgram("scene_shader",
-                                                           osgOcean_ocean_scene_vert_file, osgOcean_ocean_scene_frag_file,
+                                                           Shader::ocean_scene_vert_file, Shader::ocean_scene_frag_file,
                                                            osgOcean_ocean_scene_vert,      osgOcean_ocean_scene_frag);
 }
 

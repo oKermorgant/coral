@@ -54,7 +54,7 @@ uniform float light;
 #define PI 3.14159265358979323846264
 
 //The two following functions were adapted from Gazebo camera_noise_gaussian_fs.glsl shader
-//The main idea is to use 4 CPU random number seeds added to current pixel coordinates in a
+//The main idea is to use 4 CPU random number seeds added to current pixel coordinates in a 
 //pseudo-random number generator so we can generate through Box-Muller transform 4 Gaussian outputs
 //More info on original Gazebo noise shader:
 //https://github.com/thomas-moulard/gazebo-deb/blob/master/media/materials/programs/camera_noise_gaussian_fs.glsl
@@ -78,7 +78,7 @@ vec4 gaussrand(vec2 co)
 {
   // Box-Muller method for sampling from the normal distribution
   // http://en.wikipedia.org/wiki/Normal_distribution#Generating_values_from_normal_distribution
-  // This method requires 2 uniform random inputs and produces 2
+  // This method requires 2 uniform random inputs and produces 2 
   // Gaussian random outputs.  We'll take a 3rd random variable and use it to
   // switch between the two outputs.
 
@@ -89,7 +89,7 @@ vec4 gaussrand(vec2 co)
   V = rand(co + vec2(offsets.y, offsets.y));
   W = rand(co + vec2(offsets.z, offsets.z));
   X = rand(co + vec2(offsets.w, offsets.w));
-
+  
   //generate 3 normal distributed numbers.
   float r,g,b;
   r = sqrt(-2.0 * log(U)) * sin(2.0 * PI * V);
@@ -164,12 +164,12 @@ void main(void)
     {
       // CHECK Shadowed elements in laser (0.5 shadow, 1.0 clear)
       vec4 shadowCoordinateWdivide = ShadowCoord / ShadowCoord.w ;
-
+	
       // Used to lower moiré pattern and self-shadowing
       shadowCoordinateWdivide.z -= 0.005;
 
       float distanceFromLight = texture2D(SLStex,shadowCoordinateWdivide.st).z;
-
+	
       float shadow = 1.0;
       if (ShadowCoord.w > 0.0 )
       {
@@ -184,11 +184,11 @@ void main(void)
       if(distanceFromLight>0.0 && ShadowCoord.w > 0.20 && shadow!=0.5 && texcolor!=vec4(1.0,1.0,1.0,1.0) && texcolor.w>0.0)
       {
         if(isLaser)//treating as laser projection (not dependent on the distance, substitutes original color)
-	{
-	  if ((texcolor.x)+(texcolor.y)+(texcolor.z)>0.0)
+	{ 
+	  if (round(texcolor.x)+round(texcolor.y)+round(texcolor.z)>0.0)
 	  {
             //Set Laser as light color and unset texture color (textureColor will suffer from lighting)
-	    lightColor = vec4((texcolor.x),(texcolor.y),(texcolor.z),1.0);
+	    lightColor = vec4(round(texcolor.x),round(texcolor.y),round(texcolor.z),1.0);
             textureColor = vec4(0,0,0,0);
 	  }
 	}
@@ -238,7 +238,7 @@ void main(void)
         final_color = mix( osgOcean_AboveWaterFogColor, final_color, fogFactor );
 
         // write to luminance buffer
-        // might not need the IF here, glsl compiler doesn't complain if
+        // might not need the IF here, glsl compiler doesn't complain if 
         // you try and write to a FragData index that doesn't exist. But since
         // Mac GLSL support seems so fussy I'll leave it in.
         if(osgOcean_EnableGlare)

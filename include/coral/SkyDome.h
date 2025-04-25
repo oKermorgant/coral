@@ -20,29 +20,45 @@
 #include <osg/Uniform>
 #include <osg/TextureCubeMap>
 
-#include <coral/SphereSegment.h>
+#include <osg/Geode>
 #include <coral/osg_make_ref.h>
 
 namespace coral
 {
 
-class SkyDome : public SphereSegment
+class SkyDome : public osg::Geode
 {
 public:
-	SkyDome( void );
-	SkyDome( const SkyDome& copy, const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY );
-	SkyDome( float radius, unsigned int longSteps, unsigned int latSteps, osg::TextureCubeMap* cubemap );
+  inline SkyDome( void ) {}
+  inline SkyDome( const SkyDome& copy, const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY ) : osg::Geode(copy, copyop) {}
+  SkyDome( float radius, unsigned int longSteps, unsigned int latSteps, osg::TextureCubeMap* cubemap );
 
 public:
-	void setupStateSet( osg::TextureCubeMap* cubemap );
+  void setupStateSet( osg::TextureCubeMap* cubemap );
   //void create( float radius, unsigned int latSteps, unsigned int longSteps, osg::TextureCubeMap* cubemap );
 
-	inline void setCubeMap( osg::TextureCubeMap* cubemap ){
-		getOrCreateStateSet()->setTextureAttributeAndModes( 0, cubemap, osg::StateAttribute::ON );
-	}
+  inline void setCubeMap( osg::TextureCubeMap* cubemap ){
+    getOrCreateStateSet()->setTextureAttributeAndModes( 0, cubemap, osg::StateAttribute::ON );
+  }
 
+  // 0 >= longStart/longEnd <= 180
+  // 0 >= latStart/latEnd <= 360
+  void compute( float radius,
+               unsigned int longitudeSteps,
+               unsigned int lattitudeSteps,
+               float longStart,
+               float longEnd,
+               float latStart,
+               float latEnd	);
 private:
-	osg::ref_ptr<osg::Program> createShader(void);
+  osg::Vec2 sphereMap( osg::Vec3& vertex, float radius);
+
+  inline unsigned int idx(unsigned int r, unsigned int c, unsigned int row_len)
+  {
+    return c + r * row_len;
+  }
+
+  osg::ref_ptr<osg::Program> createShader(void);
 
 };
 }
