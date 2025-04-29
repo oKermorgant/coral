@@ -35,7 +35,8 @@ If both `world_model` and `robot_namespace` are empty (default) then Coral will 
  - if any was not parsed yet, it will add the corresponding model
  - if a topic in the same namespace is carrying `geometry_msgs/Pose` data, Coral will assume it is the ground truth for this model
 
-The `spawn` executable is a wrapper around the `Spawn` service that is used to add a new model in the simulation. when run without parameters, will have Coral spawn all available `robot_description`.
+The `spawn` executable is a wrapper around the `Spawn` service that is used to add a new model in the simulation. Available if `simple_launch` is installed.
+When run without parameters, will have Coral spawn all available `robot_description`.
 
 ## Controlling the point of view
 
@@ -47,11 +48,18 @@ sudo apt install ros-${ROS_DISTRO}-slider-publisher ros-${ROS_DISTRO}-simple-lau
 
 ## Spawning a marker
 
-The `marker` node takes three parameters to spawn a given marker:
+`coral_gui` provides the `/coral/marker` service defined as:
 
-    - `topic` (string): which topic to subscribe to
-    - `color` (0-1 RGB): the color of the marker
-    - `delete` (bool): whether the marker from this topic should now be deleted
-The node will identify which message type goes through the given topic and forward it to `coral_gui`.
+```
+# topic to subscribe for this marker
+string topic
+
+# RGB color of the marker
+float64[3] rgb
+
+# Message type, empty to delete the marker on this topic
+string message
+```
+
 For now `geometry_msgs/Pose`, `geometry_msgs/PoseStamped` and `nav_msgs/Path` are supported.
-
+The `marker` executable is a wrapper around the `Marker` service. Available if `simple_launch` is installed.

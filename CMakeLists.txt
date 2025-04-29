@@ -94,21 +94,22 @@ find_package (OpenThreads REQUIRED)
 
 
 add_executable(coral_gui
-                  src/coral_main.cpp
-                  src/coral_node.cpp
-                  src/camera.cpp
-                  src/link.cpp
-                  src/urdf_parser.cpp
-                  src/resource_helpers.cpp
-                  src/viewer.cpp
-                  src/marker.cpp
-                  src/transforms.cpp
-                  src/visual.cpp
-                  src/water_lights.cpp
+                src/coral_main.cpp
+                src/coral_node.cpp
 
-                  # adapted from osgOcean + example
-                  src/OceanScene.cpp
-                  src/SkyDome.cpp
+                src/ros/link.cpp
+                src/ros/urdf_parser.cpp
+                src/ros/marker.cpp
+                src/ros/transforms.cpp
+
+                # adapted from osgOcean + UWSim
+                src/osg/camera.cpp
+                src/osg/visual.cpp
+                src/osg/water_lights.cpp
+                src/osg/OceanScene.cpp
+                src/osg/SkyDome.cpp
+                src/osg/resource_helpers.cpp
+                src/osg/viewer.cpp
 )
 
 target_include_directories(coral_gui SYSTEM PRIVATE include ${OPENSCENEGRAPH_INCLUDE_DIR} ${OSGOCEAN_INCLUDE_DIRS} ${OPENGL_INCLUDE_DIR})
@@ -126,27 +127,9 @@ else()
     target_link_libraries(coral_gui "${cpp_typesupport_target}")
 endif()
 
-# spawn service wrapper
-add_executable(spawn src/srv_wrappers/spawn.cpp)
-ament_target_dependencies(spawn rclcpp)
-if(${LEGACY_IDL})
-    rosidl_target_interfaces(spawn ${PROJECT_NAME} "rosidl_typesupport_cpp")
-else()
-    target_link_libraries(spawn "${cpp_typesupport_target}")
-endif()
+install(TARGETS coral_gui DESTINATION lib/${PROJECT_NAME})
 
-# marker service wrapper
-add_executable(marker src/srv_wrappers/marker.cpp)
-ament_target_dependencies(marker rclcpp)
-if(${LEGACY_IDL})
-    rosidl_target_interfaces(marker ${PROJECT_NAME} "rosidl_typesupport_cpp")
-else()
-    target_link_libraries(marker "${cpp_typesupport_target}")
-endif()
-
-install(TARGETS coral_gui spawn marker DESTINATION lib/${PROJECT_NAME})
-
-FILE(GLOB SCRIPTS src/scripts/*.py)
+FILE(GLOB SCRIPTS src/scripts/*)
 install(PROGRAMS ${SCRIPTS}
   DESTINATION lib/${PROJECT_NAME}
 )

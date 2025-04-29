@@ -50,7 +50,8 @@ struct SceneParams
   bool stateset_keys{false};
 
 
-  // light conditions
+  // light and weather conditions
+  std::string scene_type{"clear"};
   double jerlov{0.2};
   double elev{60.};
   double azim{20.};
@@ -58,7 +59,7 @@ struct SceneParams
 
   inline bool isChoppy() const {return std::abs(choppyFactor) > 1e-3;}
 
-  std::string scene_type;
+
 
 };
 
