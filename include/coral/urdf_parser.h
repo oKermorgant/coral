@@ -20,12 +20,12 @@ namespace urdf_parser
 // temporary structure to extract the camera info before building an actual simulated camera
 struct CameraInfo
 {
-  int height, width;
-  double fov;
-  double clip_near, clip_far;
+  int height{600}, width{800};
+  double fov{60};
+  double clip_near{0.1}, clip_far;
   std::string topic;
   std::string frame_id;
-  int period_ms;
+  int rate{20};
   osg::ref_ptr<osg::MatrixTransform> pose = new osg::MatrixTransform;
 
   CameraInfo(const std::string &link, const tinyxml2::XMLElement* sensor_elem);

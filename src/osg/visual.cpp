@@ -163,6 +163,14 @@ Visual::Visual(osg::ref_ptr<osg::Group> mesh, const std::optional<osg::Matrix> &
   if(!mesh.valid())
     return;
 
+  /*// custom shaders
+  osg::Program* program = Shader::create("object_shader", "terrain.vert", "terrain.frag");
+  mesh->setNodeMask(Mask::normal | Mask::refraction | Mask::reflection | Mask::heightmap | DrawMask::RECEIVE_SHADOW);
+  mesh->getStateSet()->addUniform(new osg::Uniform("uTextureMap", 0));
+  mesh->getOrCreateStateSet()->setAttributeAndModes(program, osg::StateAttribute::ON);
+  mesh->getStateSet()->addUniform(new osg::Uniform("uOverlayMap", 1));
+  mesh->getStateSet()->addUniform(new osg::Uniform("uNormalMap", 2));*/
+
   if(M.has_value())
   {
     base = osg::make_ref<osg::MatrixTransform>(M.value());
@@ -219,7 +227,11 @@ osg::StateSet* Visual::makeStateSet(const osg::Vec4 &rgba, const std::string &te
 void Visual::attachTo(osg::Group *parent, bool moving, bool seen_by_cameras)
 {
   base->setDataVariance(moving ? osg::Object::DYNAMIC : osg::Object::STATIC);
-  base->setNodeMask(Mask::getMask(seen_by_cameras));
+  if(seen_by_cameras)
+    base->setNodeMask(Mask::normal | Mask::reflection | Mask::refraction);
+  else
+    base->setNodeMask(Mask::marker);
+
   static osgUtil::Optimizer optim;
   optim.optimize(base, optim.ALL_OPTIMIZATIONS);
   parent->addChild(base);

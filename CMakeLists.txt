@@ -23,7 +23,7 @@ find_package(rosidl_default_generators REQUIRED)
 find_package(ros_gz_interfaces QUIET)
 
 
-option(CUSTOM_SCENE "Build service to change scene colors" ON)
+option(CUSTOM_SCENE "Build service to change scene colors" OFF)
 
 if(CUSTOM_SCENE)
     add_definitions(-DCORAL_CUSTOM_SCENE)
@@ -47,7 +47,7 @@ endif()
 
 
 # TODO adapt osgOcean to vsg
-set(OSGOCEAN_SRC ${PROJECT_SOURCE_DIR}/osgocean/osgocean)
+set(OSGOCEAN_SRC ${PROJECT_SOURCE_DIR}/osgocean/osgOcean)
 
 OPTION(OSGOCEAN_EXTERNAL "Compile osgOcean as external lib" ON)
 
@@ -103,9 +103,10 @@ add_executable(coral_gui
                 src/ros/transforms.cpp
 
                 # adapted from osgOcean + UWSim
+                src/osg/scene.cpp
                 src/osg/camera.cpp
                 src/osg/visual.cpp
-                src/osg/water_lights.cpp
+                src/osg/water.cpp
                 src/osg/OceanScene.cpp
                 src/osg/SkyDome.cpp
                 src/osg/resource_helpers.cpp
@@ -147,8 +148,6 @@ install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 # osgocean resources
 install(DIRECTORY ${OSGOCEAN_SRC}/resources/shaders DESTINATION share/${PROJECT_NAME}/resources)
 install(DIRECTORY ${OSGOCEAN_SRC}/resources/textures DESTINATION share/${PROJECT_NAME}/resources)
-install(DIRECTORY ${OSGOCEAN_SRC}/demo/island DESTINATION share/${PROJECT_NAME}/resources)
-install(DIRECTORY ${OSGOCEAN_SRC}/demo/textures DESTINATION share/${PROJECT_NAME}/resources)
 
 # override some shaders if needed
 install(DIRECTORY osgocean/resources DESTINATION share/${PROJECT_NAME})

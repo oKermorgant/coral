@@ -8,7 +8,7 @@ namespace coral
 {
 
 void initCoralResources();
-inline void addResourcePath(const std::filesystem::path &path);
+void addResourcePath(const std::filesystem::path &path);
 std::filesystem::path resolvePath(const std::string &file);
 
 }

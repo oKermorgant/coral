@@ -1,10 +1,10 @@
 /coral/scene_color:
   weather:
     to: weather
-    default: clear
+    default: [clear, cloudy, night, dusk]
   origin:
     to: origin
-    default: ''
+    default: [light, fog, uwDiffuse, sunAmbient, uwFog, sunDiffuse, uwAttenuation, uwDensity]
   r:
     default: 4
     max: 255

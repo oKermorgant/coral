@@ -207,7 +207,7 @@ void markers::Pose::refresh()
   }
   // z to x
   const osg::Matrix xMz(osg::Quat{0, .5, 0, .5});
-  [[maybe_unused]] const auto lock{coral_lock()};
+  [[maybe_unused]] const auto lock{scene_lock()};
   setMatrix(xMz * Mw);
 }
 
@@ -288,7 +288,7 @@ void markers::Path::refresh()
 
   // compute segments from new points
   const auto segments{piecewiseLinear(points, radius)};
-  [[maybe_unused]] const auto lock{coral_lock()};
+  [[maybe_unused]] const auto lock{scene_lock()};
 
   const auto prev_size{base->getNumChildren()};
   const auto new_size{segments.size()};

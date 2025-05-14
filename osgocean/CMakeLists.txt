@@ -62,7 +62,7 @@ ENDIF()
 
 set(OpenGL_GL_PREFERENCE GLVND)
 find_package (OpenGL REQUIRED)
-include_directories (${OPENGL_INCLUDE_DIR})
+include_directories(${OPENGL_INCLUDE_DIR})
 
 OPTION(USE_FFTW3 "Use FFTW3 (double-precision) (GPL) as FFT library." OFF) # Use FFTW3 by default.
 OPTION(USE_FFTW3F "Use FFTW3 (single-precision) (GPL) as FFT library." ON)

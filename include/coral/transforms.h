@@ -4,7 +4,7 @@
 #include <urdf_model/pose.h>
 #include <osg/MatrixTransform>
 #include <tf2_ros/buffer.h>
-
+#include <tf2_ros/transform_listener.h>
 
 namespace coral
 {
@@ -32,11 +32,12 @@ inline osg::Vec3 osgVecFrom(const Translation &t)
 
 class Buffer
 {
-  rclcpp::Node::SharedPtr node;
-  tf2_ros::Buffer buffer;
+  rclcpp::Node::SharedPtr node{std::make_shared<rclcpp::Node>("tf_listener", "coral")};
+  tf2_ros::Buffer buffer{node->get_clock()};
+  tf2_ros::TransformListener listener{buffer, node};
+
   constexpr static auto timeout{std::chrono::milliseconds(10)};
 public:
-  explicit Buffer();
   inline std::optional<osg::Matrix> lookup(const std::string &frame,const std::string &reference = WORLD_NAME) const
   {
     if(buffer.canTransform(reference, frame, tf2::TimePointZero, timeout))
@@ -67,7 +68,6 @@ public:
   {
      return buffer.lookupTransform(reference, dest, tf2::TimePointZero, timeout);
   }
-
 };
 
 

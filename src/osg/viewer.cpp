@@ -1,6 +1,7 @@
 #include <coral/viewer.h>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
+#include <osgWidget/ViewerEventHandlers>
 #include <chrono>
 #include <coral/debug_msg.h>
 #include <coral/scene_lock.h>
@@ -10,109 +11,158 @@ int DebugMsg::indent{};
 using namespace coral;
 using std::chrono::system_clock;
 
-Viewer::Viewer(OceanScene *scene) :
-  scene(scene),
-  width{scene->getParams().width},
-  height{scene->getParams().height},
-  event_handler{osg::make_ref<Viewer::EventHandler>(this)}
+bool Viewer::EventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter&, osg::Object*, osg::NodeVisitor*)
 {
-  setUpViewInWindow( 150, 150, width, height, 0 );
-  setSceneData(scene->getRoot());
+  if (ea.getHandled())
+    return false;
 
-  if(scene->getParams().stats_keys)
-    addEventHandler( new osgViewer::StatsHandler );
-  if(scene->getParams().stateset_keys)
-    addEventHandler( new osgGA::StateSetManipulator( getCamera()->getOrCreateStateSet() ) );
+  if(ea.getEventType() != osgGA::GUIEventAdapter::KEYUP)
+    return false;
 
-  addEventHandler(event_handler);
-  addEventHandler(scene->getEventHandler(scene->getParams().surface_keys));
-  addEventHandler( new osgViewer::HelpHandler);
+  if(ea.getKey() != 'c')
+    return false;
 
-  getCamera()->setName("MainCamera");
-  scene->registerCamera(getCamera());
+  if(viewer->camWidgets.empty())
+    return false;
+  const auto hide{viewer->camWidgets.front()->isVisible()};
+
+  for(auto &widget: viewer->camWidgets)
+  {
+    if(hide)
+      widget->hide();
+    else
+      widget->show();
+  }
+
+  return true;
+}
+
+/** Get the keyboard and mouse usage of this manipulator.*/
+void Viewer::EventHandler::getUsage(osg::ApplicationUsage& usage) const
+{
+  usage.addKeyboardMouseBinding("c","Toggle cam widgets");
+}
+
+Viewer::Viewer(Scene& scene):
+	scene{&scene},
+	ocean_scene{scene.getOceanScene()},
+	width{ocean_scene->params.width},
+	height{ocean_scene->params.height}
+{
+  const auto &params{ocean_scene->params};
+
+  viewer->setUpViewInWindow( 150, 150, width, height, 0 );
+  viewer->setSceneData(scene.getRoot());
+
+  auto camera{viewer->getCamera()};
+
+  if(params.stats_keys)
+    viewer->addEventHandler( new osgViewer::StatsHandler );
+  if(params.stateset_keys)
+    viewer->addEventHandler( new osgGA::StateSetManipulator( camera->getOrCreateStateSet() ) );
+
+  viewer->addEventHandler(scene.getEventHandler());
+  viewer->addEventHandler( new osgViewer::HelpHandler);
+  viewer->addEventHandler(new EventHandler(this));
+
+  camera->setName("MainCamera");
+  //scene->registerCamera(camera);
 
   // init free-flying cam + default
-  osg::Vec3 eye(scene->getParams().initialCameraPosition);
+  osg::Vec3 eye(params.initialCameraPosition);
   free_manip->setHomePosition( eye, eye + osg::Vec3(0,20,0), osg::Vec3f(0,0,1) );
   free_manip->setVerticalAxisFixed(true);
-  setCameraManipulator(free_manip);
+  viewer->setCameraManipulator(free_manip);
 
   // init tracking cam
-  scene->addChild(cam_pose);
+  scene.getScene()->addChild(cam_pose);
   tracking_manip->setTrackNode(cam_pose);
   tracking_manip->setTrackerMode(osgGA::NodeTrackerManipulator::NODE_CENTER_AND_ROTATION);
   tracking_manip->setHomePosition({3,0,0}, {0,0,0}, {0,0,1});
   tracking_manip->setVerticalAxisFixed(true);
 
   // virtual cam
-  camera = osg::make_ref<osg::Camera>();
-  scene->fitToSize(width, height);
-  camera->setReferenceFrame( osg::Transform::ABSOLUTE_RF);
-  camera->setRenderOrder(osg::Camera::POST_RENDER);
-  camera->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
-  camera->setClearMask(GL_DEPTH_BUFFER_BIT);
+  handleResolution();
 
-  getCamera()->addChild(camera);
 
-  osg::DisplaySettings::instance()->setNumMultiSamples(16);
-  realize();
+  wm = osg::make_ref<osgWidget::WindowManager>(viewer, width, height, 0xF0000000, 0);
+  wm->setPointerFocusMode(osgWidget::WindowManager::PFM_SLOPPY);
+  osg::ref_ptr < osg::Group > appgroup = new osg::Group();
+  osg::ref_ptr < osg::Camera > appcamera = wm->createParentOrthoCamera();
+
+  appgroup->addChild(appcamera);
+  appgroup->addChild(scene.getRoot());
+  viewer->addEventHandler(new osgWidget::ResizeHandler(wm, appcamera));
+  viewer->setSceneData(appgroup);
+
+  // FSAA
+  osg::DisplaySettings::instance()->setNumMultiSamples(4);
+
+  viewer->setThreadingModel(osgViewer::Viewer::CullDrawThreadPerContext);
+  viewer->realize();
 
   osgViewer::Viewer::Windows windows;
-  getWindows(windows);
+  viewer->getWindows(windows);
   window = windows[0];
   window->setWindowName("Coral");
-
 }
 
 void Viewer::frame(double simTime)
 {
   static auto prev_underwater(true);
   if(windowWasResized())
-    scene->fitToSize(width, height);
+    handleResolution();
 
-  const auto z{getCameraManipulator()->getMatrix().getTrans().z()};
-  const auto zSurf{scene->getOceanSurfaceHeight()};
+  const auto z{viewer->getCameraManipulator()->getMatrix().getTrans().z()};
+  const auto zSurf{ocean_scene->getOceanSurfaceHeight()};
   const auto underwater(z < zSurf);
 
   if(underwater != prev_underwater)
   {
-    scene->setOceanSurfaceHeight(underwater ? zSurf-0.05f : zSurf);
+    ocean_scene->setOceanSurfaceHeight(underwater ? zSurf-0.05f : zSurf);
     prev_underwater = underwater;
   }
 
-  advance(simTime);
+  static auto cnter{0};
+
+  //std::cout << "Frame: " << cnter++ << std::endl;
+
+
+  viewer->advance(simTime);
   {
-    [[maybe_unused]] const auto lock{coral_lock()};
-    eventTraversal();
-    updateTraversal();
+    [[maybe_unused]] const auto lock{scene_lock()};
+    viewer->eventTraversal();
+    viewer->updateTraversal();    
   }
-  renderingTraversals();
+  viewer->renderingTraversals();
+
+  //std::cout << "    Frame " << cnter << " done" << std::endl;
 }
 
 void Viewer::freeCamera()
 {
-  if(getCameraManipulator() != free_manip)
-    setCameraManipulator(free_manip, false);
+  if(viewer->getCameraManipulator() != free_manip)
+    viewer->setCameraManipulator(free_manip, false);
 }
 
 void Viewer::lockCamera(const osg::Matrix &M)
 {
   cam_pose->setMatrix(M);
 
-  if(getCameraManipulator() == free_manip)
-    setCameraManipulator(tracking_manip);
+  if(viewer->getCameraManipulator() == free_manip)
+    viewer->setCameraManipulator(tracking_manip);
 }
 
 bool Viewer::windowWasResized()
 {
-  static int x,y,w,h;
   static auto last_resize{system_clock::now()};
   static const auto delay{std::chrono::milliseconds(100)};
   static auto pending_resize{false};
 
   const auto now(system_clock::now());
 
-  window->getWindowRectangle(x,y,w,h);
+  int _,w,h;
+  window->getWindowRectangle(_,_,w,h);
   if(w != width || h != height)
   {
     width = w;
@@ -130,55 +180,12 @@ bool Viewer::windowWasResized()
   return false;
 }
 
-void Viewer::changeMood(Weather::Mood mood)
+void Viewer::addCamWidget(osgWidget::Window* widget, int width)
 {
-  scene->changeMood(mood);
-  getCamera()->setClearColor(scene->scaleUnderwaterColor());
-}
-
-
-bool Viewer::EventHandler::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter&, osg::Object*, osg::NodeVisitor*)
-{
-  if (ea.getHandled()) return false;
-
-  if(ea.getEventType() == osgGA::GUIEventAdapter::KEYUP)
-  {
-    const auto key(ea.getKey());
-    if(key == '1')
-    {
-      viewer->changeMood(Weather::Mood::CLEAR);
-      return true;
-    }
-    else if(key == '2')
-    {
-      viewer->changeMood( Weather::Mood::DUSK );
-      return true;
-    }
-    else if(key == '3' )
-    {
-      viewer->changeMood( Weather::Mood::CLOUDY );
-      return true;
-    }
-    else if(key == '4' )
-    {
-      viewer->changeMood( Weather::Mood::NIGHT);
-      return true;
-    }
-    else if(key == '5' )
-    {
-      viewer->changeMood( Weather::Mood::CUSTOM);
-      return true;
-    }
-  }
-  return false;
-}
-
-/** Get the keyboard and mouse usage of this manipulator.*/
-void Viewer::EventHandler::getUsage(osg::ApplicationUsage& usage) const
-{
-  usage.addKeyboardMouseBinding("1","Select scene \"Clear Blue Sky\"");
-  usage.addKeyboardMouseBinding("2","Select scene \"Dusk\"");
-  usage.addKeyboardMouseBinding("3","Select scene \"Pacific Cloudy\"");
-  usage.addKeyboardMouseBinding("4","Select scene \"Night\"");
-  usage.addKeyboardMouseBinding("5","Select scene \"Custom\"");
+  camWidgets.emplace_back(widget);
+  widget->setX(widget_offset);
+  widget->setY(0);  
+  wm->addChild(widget);
+  widget->hide();
+  widget_offset += width + 20;
 }

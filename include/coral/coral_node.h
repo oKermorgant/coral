@@ -14,7 +14,7 @@
 namespace coral
 {
 
-class OceanScene;
+class Scene;
 class Viewer;
 
 using geometry_msgs::msg::Pose;
@@ -26,7 +26,7 @@ class CoralNode : public rclcpp::Node
 public:
   CoralNode();
 
-  void manage(osg::ref_ptr<OceanScene> scene, Viewer &viewer);
+  void manage(Scene& scene, Viewer &viewer);
 
   SceneParams parameters();
 
@@ -50,7 +50,7 @@ private:
   };
 
   Link world_link{WORLD_NAME};
-  OceanScene* scene;
+  Scene* scene;
   Viewer* viewer;
 
   // tf interface
@@ -63,7 +63,7 @@ private:
   // links and their meshes
   std::vector<std::string> known_model_namespaces;
   inline bool hasModel(const std::string &model) const
-  {
+  {	
     return std::find(known_model_namespaces.begin(), known_model_namespaces.end(), model) != known_model_namespaces.end();
   }
   bool display_thrusters = false;
@@ -77,11 +77,11 @@ private:
   // how to get them
   void spawnModel(const std::string &model_ns, const std::string &pose_topic = "", const std::string &world_model = "");
   /// add a model and returns the root link
-  Link *parseModel(const std::string &model);
+  Link* addModel(const std::string &model);
   rclcpp::Subscription<rosgraph_msgs::msg::Clock>::SharedPtr clock_sub;
 
   // camera view point if requested
-  void updateViewPoint();
+  bool updateViewerPose();
 
   // helper functions to declare and describe parameters
   template <typename ParamType>
@@ -94,10 +94,10 @@ private:
       get_parameter(name, value);
       return;
     }
-    /*rcl_interfaces::msg::ParameterDescriptor descriptor;
+    rcl_interfaces::msg::ParameterDescriptor descriptor;
     descriptor.set__name(name).set__description(description);
-    value = declare_parameter<ParamType>(name, value, descriptor);*/
-    value = declare_parameter<ParamType>(name, value);
+    value = declare_parameter<ParamType>(name, value, descriptor);
+    //value = declare_parameter<ParamType>(name, value);
   }
 
   inline void declareParamDescription(std::string name,

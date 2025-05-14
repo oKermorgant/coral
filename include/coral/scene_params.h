@@ -35,7 +35,7 @@ struct SceneParams
   bool reflections                {true};
   bool godrays                    {false};  // godrays do not work on Intel GPUs
   bool glare                      {true};
-  bool underwaterDOF              {true};  // creates a dark effect on close objects?
+  bool underwaterDOF              {false};
   bool distortion                 {true};
   bool silt                       {true};
   bool underwaterScattering       {true};
@@ -45,10 +45,8 @@ struct SceneParams
   // display
   int width         {1024};
   int height        {768};
-  bool surface_keys{true};
   bool stats_keys{true};
-  bool stateset_keys{false};
-
+  bool stateset_keys{true};
 
   // light and weather conditions
   std::string scene_type{"clear"};
@@ -58,9 +56,6 @@ struct SceneParams
   double fogDensity{0.002f};
 
   inline bool isChoppy() const {return std::abs(choppyFactor) > 1e-3;}
-
-
-
 };
 
 }

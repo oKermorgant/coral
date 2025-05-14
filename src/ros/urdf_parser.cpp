@@ -93,14 +93,12 @@ CameraInfo::CameraInfo(const std::string &link, const tinyxml2::XMLElement* sens
   cam.read({"optical_frame_id"}, frame_id);
 
   cam.read({"horizontal_fov"}, fov);
+  fov *= 180/M_PI;
   cam.read({"image", "width"}, width);
   cam.read({"image", "height"}, height);
   cam.read({"clip", "near"}, clip_near);
   cam.read({"clip", "far"}, clip_far);
-
-  int rate = 30;
   sensor.read({"update_rate"}, rate);
-  period_ms = 1000/rate;
 
   // gz topic
   sensor.read({"topic"}, topic);

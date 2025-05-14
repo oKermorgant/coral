@@ -6,6 +6,8 @@
 #include <osg/Vec4f>
 #include <osg/Light>
 
+//#define ALLOW_CUSTOM_COLORS
+
 namespace coral
 {
 
@@ -19,20 +21,16 @@ struct Weather
   osg::Vec4f fogColor;
   float fogDensity = {0.0012f};
 
-  osg::Vec3f sunDirection;
+  inline auto sunDirection() const {return -sunPosition;}
   osg::Vec3f sunPosition;
   osg::Vec4f sunDiffuse;
   osg::Vec4f sunAmbient;
-
-  // later for custom scenes
-  float sunElevation, sunAzimuth;
 
   inline static Mood from(const std::string &name)
   {
     if(name == "cloudy") return Mood::CLOUDY;
     if(name == "dusk")   return Mood::DUSK;
     if(name == "night")  return Mood::NIGHT;
-    if(name == "custom")  return Mood::CUSTOM;
     return Mood::CLEAR;
   }
 
@@ -45,11 +43,6 @@ struct Weather
   {
     const float div{1.f/255.f};
     return osg::Vec4f( div*(float)r, div*(float)g, div*float(b), div*(float)a );
-  }
-
-  inline void recomputeSun()
-  {
-
   }
 
   inline void switchTo(Mood mood)
@@ -90,10 +83,8 @@ struct Weather
         sunAmbient = sunDiffuse / 3.f;
         break;
     }
-
     lightColor /= 10.f;
-    sunDirection = -sunPosition;
-    sunDirection.normalize();
+    sunPosition.normalize();
   }
 };
 

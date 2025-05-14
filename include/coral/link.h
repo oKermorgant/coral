@@ -29,19 +29,10 @@ public:
   void addElements(const urdf_parser::LinkInfo &info);
   void refreshFrom(const Buffer &buffer);
 
-  inline void setPending(const osg::Matrix &M)
-  {
-    M_pending = M;
-  }
   inline void applyNewPose()
   {
     pose->setMatrix(M_pending);
   }
-
- /* inline bool operator==(const std::string &name) const
-  {
-    return this->name_ == name;
-  }*/
 
   inline void setParent(const Link &root)
   {
