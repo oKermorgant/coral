@@ -5,7 +5,7 @@ cmake_minimum_required (VERSION 3.5 FATAL_ERROR)
 
 project (osgOcean)
 
-SET(OSGOCEAN_SRC ${PROJECT_SOURCE_DIR}/osgocean)
+SET(OSGOCEAN_SRC ${PROJECT_SOURCE_DIR}/osgOcean)
 # remove warnings from osgOcean / not my code
 add_compile_options(-w)
 
